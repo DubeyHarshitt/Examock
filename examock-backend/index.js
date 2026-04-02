@@ -1,5 +1,5 @@
 import express from "express";
-import config from "./utils/config.js";
+import config from "./src/config/config.js";
 import cookieParser from "cookie-parser";
 import cors from "cors"
 import rateLimit from "express-rate-limit"
