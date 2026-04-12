@@ -9,6 +9,7 @@ import {
   verifyOtp,
 } from "../../utils/otp.js";
 import { sendOtp } from "../../utils/sms.js";
+import { AppError } from '../../utils/AppError.js';
 
 // ─────────────────────────────────────────────────────────────
 // 1. Google Login (idToken flow)

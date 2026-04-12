@@ -16,7 +16,7 @@ export async function verifyGoogleToken(idToken) {
     audience: config.GOOGLE_CLIENT_ID,
   })
 
-  const payload = ticket.getPayload()
+  const payload = ticket.getPayload();
 
   if (!payload.email_verified) {
     throw new Error('Google email is not verified')
