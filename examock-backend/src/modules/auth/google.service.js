@@ -1,5 +1,6 @@
 import { OAuth2Client } from 'google-auth-library'
 import config from '../../config/config.js'
+import { AppError } from '../../utils/AppError.js'
 
 const client = new OAuth2Client(config.GOOGLE_CLIENT_ID)
 
@@ -19,7 +20,7 @@ export async function verifyGoogleToken(idToken) {
   const payload = ticket.getPayload();
 
   if (!payload.email_verified) {
-    throw new Error('Google email is not verified')
+    throw new AppError('Google email is not verified', 400)
   }
 
   // Returns: { sub, email, name, picture, email_verified }
