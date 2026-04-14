@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors"
 import rateLimit from "express-rate-limit"
 
+import authRoutes from "./src/modules/auth/auth.routes.js"
+
 const app = express();
 const PORT = config.PORT ?? 3000;
 
@@ -27,6 +29,8 @@ app.use(rateLimit({
 app.get("/health",(_req, res)=> {
     res.status(200).json({success: true, message:"OK"})
 });
+
+app.use("/api/auth", authRoutes);
 
 app.listen(PORT, ()=>{
     console.log(`The server is running on Port: ${PORT}`)
