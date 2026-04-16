@@ -4,7 +4,10 @@
 1. npx prisma init — creates schema.prisma and a .env with DATABASE_URL
 2. Set DATABASE_URL to your Postgres connection string (local, Supabase, Neon, Railway — pick one; Neon or Supabase give you a free hosted Postgres the way Atlas gives you free MongoDB)
 3. Define your models in schema.prisma
-4. npx prisma migrate dev --name init — creates your tables
+4. `npx prisma migrate dev --name init — creates your tables`
 5. npx prisma generate — generates the typed client
 6. Import PrismaClient and query — you're live
 
+
+## The DataBase is setup on Supabase
+<!-- https://supabase.com/dashboard/project/tgfazyvvtdfzqmssyght -->

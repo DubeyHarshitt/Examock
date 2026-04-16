@@ -1,114 +1,95 @@
-// ============================================================
-// Examock — Prisma Schema
-// Database: PostgreSQL
-// ============================================================
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// ============================================================
-// IDENTITY
-// ============================================================
-
 model User {
-  id             String    @id @default(uuid())
-  gmailId        String    @unique @map("gmail_id")
-  email          String    @unique
+  id             String              @id @default(uuid())
+  gmailId        String              @unique @map("gmail_id")
+  email          String              @unique
   name           String?
-  avatarUrl      String?   @map("avatar_url")
-  mobile         String?   @unique
-  mobileVerified Boolean   @default(false) @map("mobile_verified")
-  examTypeId     String?   @map("exam_type_id")
-  examDate       DateTime? @map("exam_date") @db.Date
-  role           Role      @default(STUDENT)
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  examType        ExamType?          @relation(fields: [examTypeId], references: [id])
-  otpRecords      OtpRecord[]
-  testAttempts    TestAttempt[]
-  payments        Payment[]
-  topicProgress   UserTopicProgress[]
-  doubtSessions   DoubtSession[]
+  avatarUrl      String?             @map("avatar_url")
+  mobile         String?             @unique
+  mobileVerified Boolean             @default(false) @map("mobile_verified")
+  examTypeId     String?             @map("exam_type_id")
+  examDate       DateTime?           @map("exam_date") @db.Date
+  role           Role                @default(STUDENT)
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  doubtSessions  DoubtSession[]
+  otpRecords     OtpRecord[]
+  payments       Payment[]
+  testAttempts   TestAttempt[]
+  topicProgress  UserTopicProgress[]
+  uploadedNotes  Note[]  @relation("NoteUploader")
+  examType       ExamType?           @relation(fields: [examTypeId], references: [id])
 
   @@map("users")
 }
 
-enum Role {
-  STUDENT
-  ADMIN
-}
-
 model OtpRecord {
-  id        String    @id @default(uuid())
-  userId    String    @map("user_id")
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
   mobile    String
-  otp       String    // store hashed
-  expiresAt DateTime  @map("expires_at")
-  verified  Boolean   @default(false)
-  createdAt DateTime  @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otp       String
+  expiresAt DateTime @map("expires_at")
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([mobile])
   @@map("otp_records")
 }
 
-// ============================================================
-// EXAM CONTENT
-// ============================================================
-
 model ExamType {
-  id          String   @id @default(uuid())
-  name        String   // e.g. "CAT", "NEET", "GRE"
-  slug        String   @unique // e.g. "cat", "neet"
+  id          String      @id @default(uuid())
+  name        String
+  slug        String      @unique
   description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  users      User[]
-  subjects   Subject[]
-  mockTests  MockTest[]
-  ytChannels YtChannel[]
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  mockTests   MockTest[]
+  subjects    Subject[]
+  users       User[]
+  ytChannels  YtChannel[]
+  notes  Note[] 
 
   @@map("exam_types")
 }
 
 model Subject {
-  id         String   @id @default(uuid())
-  examTypeId String   @map("exam_type_id")
-  name       String   // e.g. "Quantitative Aptitude"
-  orderIndex Int      @default(0) @map("order_index")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  examType ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
-  topics   Topic[]
+  id         String     @id @default(uuid())
+  examTypeId String     @map("exam_type_id")
+  name       String
+  orderIndex Int        @default(0) @map("order_index")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  mockTests  MockTest[]
+  examType   ExamType   @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+  topics     Topic[]
+  notes  Note[] 
 
   @@index([examTypeId])
   @@map("subjects")
 }
 
 model Topic {
-  id         String   @id @default(uuid())
-  subjectId  String   @map("subject_id")
-  name       String   // e.g. "Percentages"
-  orderIndex Int      @default(0) @map("order_index")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  subject       Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  videos        Video[]
-  questions     Question[]
-  chapterTests  MockTest[]          @relation("ChapterTestTopic")
-  userProgress  UserTopicProgress[]
+  id           String              @id @default(uuid())
+  subjectId    String              @map("subject_id")
+  name         String
+  orderIndex   Int                 @default(0) @map("order_index")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  chapterTests MockTest[]          @relation("ChapterTestTopic")
+  questions    Question[]
+  subject      Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userProgress UserTopicProgress[]
+  videos       Video[]
+  notes  Note[] 
 
   @@index([subjectId])
   @@map("topics")
@@ -117,14 +98,13 @@ model Topic {
 model Video {
   id          String   @id @default(uuid())
   topicId     String   @map("topic_id")
-  youtubeId   String   @map("youtube_id") // just the video ID, not full URL
+  youtubeId   String   @map("youtube_id")
   title       String
   durationSec Int?     @map("duration_sec")
   orderIndex  Int      @default(0) @map("order_index")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
-
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
   @@map("videos")
@@ -133,112 +113,88 @@ model Video {
 model YtChannel {
   id          String   @id @default(uuid())
   examTypeId  String   @map("exam_type_id")
-  channelId   String   @map("channel_id") // YouTube channel ID
+  channelId   String   @map("channel_id")
   channelName String   @map("channel_name")
   logoUrl     String?  @map("logo_url")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
-
-  examType ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+  examType    ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
 
   @@index([examTypeId])
   @@map("yt_channels")
 }
 
-// ============================================================
-// MOCK TESTS
-// ============================================================
-
 model MockTest {
-  id           String       @id @default(uuid())
-  examTypeId   String       @map("exam_type_id")
+  id           String         @id @default(uuid())
+  examTypeId   String         @map("exam_type_id")
   title        String
-  type         TestType     // CHAPTER or FULL
-  isFree       Boolean      @default(false) @map("is_free")
-  durationMins Int          @map("duration_mins")
-  totalMarks   Int          @map("total_marks")
-  topicId      String?      @map("topic_id") // null for full-syllabus tests
+  type         TestType
+  isFree       Boolean        @default(false) @map("is_free")
+  durationMins Int            @map("duration_mins")
+  totalMarks   Int            @map("total_marks")
+  topicId      String?        @map("topic_id")
+  subjectId    String?        @map("subject_id")
   instructions String?
-  isActive     Boolean      @default(true) @map("is_active")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-
-  examType  ExamType      @relation(fields: [examTypeId], references: [id])
-  topic     Topic?        @relation("ChapterTestTopic", fields: [topicId], references: [id])
-  questions TestQuestion[]
-  attempts  TestAttempt[]
-  payments  Payment[]
+  isActive     Boolean        @default(true) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  examType     ExamType       @relation(fields: [examTypeId], references: [id])
+  subject      Subject?       @relation(fields: [subjectId], references: [id])
+  topic        Topic?         @relation("ChapterTestTopic", fields: [topicId], references: [id])
+  payments     Payment[]
+  attempts     TestAttempt[]
+  questions    TestQuestion[]
 
   @@index([examTypeId])
   @@index([type, isFree])
   @@map("mock_tests")
 }
 
-enum TestType {
-  CHAPTER
-  FULL
-}
-
 model Question {
-  id            String   @id @default(uuid())
-  topicId       String   @map("topic_id")
-  text          String   @db.Text
-  optionA       String   @map("option_a")
-  optionB       String   @map("option_b")
-  optionC       String   @map("option_c")
-  optionD       String   @map("option_d")
-  correctOption String   @map("correct_option") // "A" | "B" | "C" | "D"
-  explanation   String?  @db.Text
-  marks         Int      @default(1)
-  negMarks      Float    @default(0) @map("neg_marks")
-  difficulty    Difficulty @default(MEDIUM)
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  topic        Topic          @relation(fields: [topicId], references: [id])
+  id            String         @id @default(uuid())
+  topicId       String         @map("topic_id")
+  text          String
+  optionA       String         @map("option_a")
+  optionB       String         @map("option_b")
+  optionC       String         @map("option_c")
+  optionD       String         @map("option_d")
+  correctOption String         @map("correct_option")
+  explanation   String?
+  marks         Int            @default(1)
+  negMarks      Float          @default(0) @map("neg_marks")
+  difficulty    Difficulty     @default(MEDIUM)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  topic         Topic          @relation(fields: [topicId], references: [id])
   testQuestions TestQuestion[]
 
   @@index([topicId])
   @@map("questions")
 }
 
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-// Junction: which questions appear in which test (with ordering)
 model TestQuestion {
-  testId     String @map("test_id")
-  questionId String @map("question_id")
-  orderIndex Int    @default(0) @map("order_index")
-
-  test     MockTest @relation(fields: [testId], references: [id], onDelete: Cascade)
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  testId     String   @map("test_id")
+  questionId String   @map("question_id")
+  orderIndex Int      @default(0) @map("order_index")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  test       MockTest @relation(fields: [testId], references: [id], onDelete: Cascade)
 
   @@id([testId, questionId])
   @@map("test_questions")
 }
 
-// ============================================================
-// TEST ATTEMPTS & PROGRESS
-// ============================================================
-
 model TestAttempt {
-  id          String        @id @default(uuid())
-  userId      String        @map("user_id")
-  mockTestId  String        @map("mock_test_id")
-  status      AttemptStatus @default(IN_PROGRESS)
-  score       Float?
-  percentile  Float?
-  timeTakenSec Int?         @map("time_taken_sec")
-  // JSONB: { "q_id": { "selected": "A", "isCorrect": true }, ... }
-  answersJson Json?         @map("answers_json")
-  startedAt   DateTime      @default(now()) @map("started_at")
-  completedAt DateTime?     @map("completed_at")
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mockTest MockTest @relation(fields: [mockTestId], references: [id])
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  mockTestId   String        @map("mock_test_id")
+  status       AttemptStatus @default(IN_PROGRESS)
+  score        Float?
+  percentile   Float?
+  timeTakenSec Int?          @map("time_taken_sec")
+  answersJson  Json?         @map("answers_json")
+  startedAt    DateTime      @default(now()) @map("started_at")
+  completedAt  DateTime?     @map("completed_at")
+  mockTest     MockTest      @relation(fields: [mockTestId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([mockTestId])
@@ -246,31 +202,20 @@ model TestAttempt {
   @@map("test_attempts")
 }
 
-enum AttemptStatus {
-  IN_PROGRESS
-  COMPLETED
-  ABANDONED
-}
-
 model UserTopicProgress {
   userId        String   @map("user_id")
   topicId       String   @map("topic_id")
   videosWatched Int      @default(0) @map("videos_watched")
-  bestScore     Float?   @map("best_score")  // best % score on chapter test
+  bestScore     Float?   @map("best_score")
   attemptCount  Int      @default(0) @map("attempt_count")
   lastActivity  DateTime @default(now()) @map("last_activity")
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic         Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, topicId])
   @@index([userId])
   @@map("user_topic_progress")
 }
-
-// ============================================================
-// PAYMENTS
-// ============================================================
 
 model Payment {
   id                String        @id @default(uuid())
@@ -279,17 +224,99 @@ model Payment {
   razorpayOrderId   String        @unique @map("razorpay_order_id")
   razorpayPaymentId String?       @unique @map("razorpay_payment_id")
   razorpaySignature String?       @map("razorpay_signature")
-  amountPaise       Int           @map("amount_paise") // store in paise, e.g. 49900 = ₹499
+  amountPaise       Int           @map("amount_paise")
   status            PaymentStatus @default(PENDING)
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  user     User     @relation(fields: [userId], references: [id])
-  mockTest MockTest @relation(fields: [mockTestId], references: [id])
+  mockTest          MockTest      @relation(fields: [mockTestId], references: [id])
+  user              User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([mockTestId])
   @@map("payments")
+}
+
+model DoubtSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  topicId   String?  @map("topic_id")
+  messages  Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("doubt_sessions")
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  examTypeId String?   @map("exam_type_id")
+  title      String
+  body       String
+  sentAt     DateTime? @map("sent_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([examTypeId])
+  @@map("notifications")
+}
+
+model Note {
+  id          String    @id @default(uuid())
+  topicId     String?   @map("topic_id")
+  subjectId   String?   @map("subject_id")
+  examTypeId  String    @map("exam_type_id")
+  title       String
+  fileUrl     String    @map("file_url")       // S3 / Cloudflare R2 URL
+  fileType    FileType  @map("file_type")      // PDF, EXCEL, DOCX etc
+  fileSizeMb  Float?    @map("file_size_mb")
+  isFree      Boolean   @default(false) @map("is_free")
+  isActive    Boolean   @default(true)  @map("is_active")
+  uploadedBy  String    @map("uploaded_by")   // Admin user id
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  topic       Topic?    @relation(fields: [topicId],    references: [id])
+  subject     Subject?  @relation(fields: [subjectId],  references: [id])
+  examType    ExamType  @relation(fields: [examTypeId], references: [id])
+  uploader  User  @relation("NoteUploader", fields: [uploadedBy], references: [id])
+
+  @@index([topicId])
+  @@index([subjectId])
+  @@index([examTypeId])
+  @@map("notes")
+}
+
+enum FileType {
+  PDF
+  EXCEL
+  DOCX
+  PPT
+  IMAGE
+  OTHER
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum TestType {
+  CHAPTER
+  MODULE
+  FULL
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
 }
 
 enum PaymentStatus {
@@ -297,38 +324,4 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
-}
-
-// ============================================================
-// AI DOUBT SOLVING
-// ============================================================
-
-model DoubtSession {
-  id        String        @id @default(uuid())
-  userId    String        @map("user_id")
-  topicId   String?       @map("topic_id") // optional context
-  messages  Json          // array of { role, content, timestamp }
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("doubt_sessions")
-}
-
-// ============================================================
-// NOTIFICATIONS (admin broadcast)
-// ============================================================
-
-model Notification {
-  id          String    @id @default(uuid())
-  examTypeId  String?   @map("exam_type_id") // null = all users
-  title       String
-  body        String    @db.Text
-  sentAt      DateTime? @map("sent_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  @@index([examTypeId])
-  @@map("notifications")
 }
