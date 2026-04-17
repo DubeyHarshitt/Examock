@@ -11,3 +11,5 @@
 
 ## The DataBase is setup on Supabase
 <!-- https://supabase.com/dashboard/project/tgfazyvvtdfzqmssyght -->
+<!-- https://supabase.com/dashboard/project/vkknjgpovzwpreweczif/database/ --> // main
+<!-- https://console.cloud.google.com/auth/clients?project=examock-492115 --> // ic
