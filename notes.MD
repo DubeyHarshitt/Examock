@@ -13,3 +13,10 @@
 <!-- https://supabase.com/dashboard/project/tgfazyvvtdfzqmssyght -->
 <!-- https://supabase.com/dashboard/project/vkknjgpovzwpreweczif/database/ --> // main
 <!-- https://console.cloud.google.com/auth/clients?project=examock-492115 --> // ic
+
+
+## The DataBase Seeding on Supabase
+`npx prisma db seed `
+<!-- Checking The contents in table -->
+`npx prisma studio`
+// o/p :- Prisma Studio is up on http://localhost:5555
