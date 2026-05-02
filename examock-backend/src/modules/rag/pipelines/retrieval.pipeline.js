@@ -4,7 +4,7 @@ import { searchSimilar } from "../ragUtils/vectorStore.js";
 import { buildPrompt } from "../ragUtils/promptBuilder.js";
 import config from "../../../config/config.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export const answerQuestion = async (question, userId) => {

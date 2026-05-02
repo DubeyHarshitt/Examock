@@ -3,6 +3,7 @@ import pdfParse from "pdf-parse"
 import { createChunkText } from "../ragUtils/chunker.js"
 import { embedTexts } from "../ragUtils/embedder.js"
 import { ensureCollection, storeChunks } from "../ragUtils/vectorStore.js"
+import { AppError } from "../../../utils/AppError.js"
 
 export const ingestFile = async (filePath, userId, fileName) => {
   // 1. LOAD — parse PDF to raw text
@@ -11,11 +12,11 @@ export const ingestFile = async (filePath, userId, fileName) => {
   const rawText = parsed.text;
 
   if (!rawText.trim()) {
-    throw new Error("PDF appears to be empty or unreadable.");
+    throw new AppError("PDF appears to be empty or unreadable.", 400);
   }
 
   // 2. CHUNK
-  const chunks = await chunkText(rawText);
+  const chunks = await createChunkText(rawText);
 
   // 3. EMBED
   const vectors = await embedTexts(chunks);

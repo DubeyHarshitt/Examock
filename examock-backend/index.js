@@ -22,7 +22,7 @@ app.use(cookieParser());
 // Global rate limit: 10 request per 15 min per IP
 // FIX: INTEGRATE with REDIS to make Horizontally scalable 
 app.use(rateLimit({
-    windowMs: 15 * 10 * 1000, // 15min
+    windowMs: 15 * 60 * 1000, // 15min
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
@@ -33,7 +33,7 @@ app.get("/health",(_req, res)=> {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("api/test", testRoutes);
+app.use("/api/test", testRoutes);
 app.use("/api/rag", ragRoutes);
 
 app.listen(PORT, ()=>{
