@@ -53,6 +53,23 @@ if (!process.env.MSG91_AUTH_KEY) {
   throw new Error("MSG91 AUTH KEY is not defined");
 }
 
+if (!process.env.OPENAI_API_KEY){
+  throw new Error("OPENAI API KEY is not defined")
+}
+
+if (!process.env.QDRANT_URL){
+  throw new Error("QDRANT URL is not defined")
+}
+
+if (!process.env.QDRANT_API_KEY){
+  throw new Error("QDRANT Api Key is not defined")
+}
+
+if (!process.env.GEMINI_API_KEY){
+  throw new Error("GEMINI Api Key is not defined")
+}
+
+
 const config = {
   PORT: Number(process.env.PORT),
   NODE_ENV: process.env.NODE_ENV,
@@ -67,6 +84,10 @@ const config = {
   MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID,
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  QDRANT_URL: process.env.QDRANT_URL,
+  QDRANT_API_KEY: process.env.QDRANT_API_KEY,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };
 
 export default config;

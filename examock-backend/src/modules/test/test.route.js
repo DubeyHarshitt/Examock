@@ -38,7 +38,7 @@ const validate = (schema) => (req, res, next) => {
 
 const schemas = {
   answer: z.object({
-    attemptId:      z.string().uuid("Invalid attempt ID"),      // ✅ added
+    attemptId:      z.string().uuid("Invalid attempt ID"),     
     questionId:     z.string().uuid("Invalid question ID"),
     selectedOption: z.enum(["A", "B", "C", "D"]).nullable(),
   }),

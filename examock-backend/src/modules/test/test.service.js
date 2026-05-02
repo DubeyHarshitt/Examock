@@ -1,6 +1,5 @@
-import { use } from "react";
-import prisma from "../../lib/prisma.js";
-import { AppError } from "../../utils/AppError";
+import prisma from "../../config/prisma.js";
+import { AppError } from "../../utils/AppError.js";
 
 // ─────────────────────────────────────────────────────────────
 // 1. List tests for user's exam type
