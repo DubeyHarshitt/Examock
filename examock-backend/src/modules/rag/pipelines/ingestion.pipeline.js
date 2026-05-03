@@ -1,12 +1,15 @@
-import fs from "fs"
-import pdfParse from "pdf-parse"
-import { createChunkText } from "../ragUtils/chunker.js"
-import { embedTexts } from "../ragUtils/embedder.js"
-import { ensureCollection, storeChunks } from "../ragUtils/vectorStore.js"
-import { AppError } from "../../../utils/AppError.js"
+import fs from "fs";
+import pdfParse from "pdf-parse";
+import { createChunkText } from "../ragUtils/chunker.js";
+import { embedTexts } from "../ragUtils/embedder.js";
+import { ensureCollection, storeChunks } from "../ragUtils/vectorStore.js";
+import { AppError } from "../../../utils/AppError.js";
 
-export const ingestFile = async (filePath, userId, fileName) => {
-  // 1. LOAD — parse PDF to raw text
+// metadata = { userId, fileName }         → student upload
+// metadata = { examTypeId, fileName }     → admin note upload
+// never pass both userId and examTypeId at the same time
+
+export const ingestFile = async (filePath, metadata = {}) => {
   const buffer = fs.readFileSync(filePath);
   const parsed = await pdfParse(buffer);
   const rawText = parsed.text;
@@ -15,18 +18,13 @@ export const ingestFile = async (filePath, userId, fileName) => {
     throw new AppError("PDF appears to be empty or unreadable.", 400);
   }
 
-  // 2. CHUNK
-  const chunks = await createChunkText(rawText);
-
-  // 3. EMBED
+  const chunks  = await createChunkText(rawText);
   const vectors = await embedTexts(chunks);
 
-  // 4. STORE
   await ensureCollection();
-  await storeChunks(chunks, vectors, { userId, fileName });
+  await storeChunks(chunks, vectors, metadata);
 
-  // Clean up the temp file multer saved
   fs.unlinkSync(filePath);
 
-  return { chunksStored: chunks.length, fileName };
+  return { chunksStored: chunks.length };
 };

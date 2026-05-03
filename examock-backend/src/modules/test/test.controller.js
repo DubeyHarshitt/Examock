@@ -27,7 +27,7 @@ export async function listTests(req, res, next) {
 
 export async function getTest(req, res, next) {
   try {
-    const test = await getTestById(req.params.id, req.user.userId);
+    const test = await getTestById(req.user.userId, req.params.id);
     res.json({ test });
   } catch (err) {
     next(err);

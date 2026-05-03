@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit"
 import authRoutes from "./src/modules/auth/auth.routes.js"
 import testRoutes from "./src/modules/test/test.route.js"
 import ragRoutes from "./src/modules/rag/rag.routes.js"
+import adminRoutes from "./src/modules/admin/admin.routes.js"
 
 const app = express();
 const PORT = config.PORT ?? 3000;
@@ -35,6 +36,7 @@ app.get("/health",(_req, res)=> {
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/rag", ragRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.listen(PORT, ()=>{
     console.log(`The server is running on Port: ${PORT}`)

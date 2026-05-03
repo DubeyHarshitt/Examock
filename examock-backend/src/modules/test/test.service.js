@@ -46,6 +46,8 @@ export async function getTests(userId) {
     ...t,
     isPaid: !t.isFree && paidTestIds.has(t.id),
   }));
+  
+  return testsWithPaymentInfo;
 }
 
 // ─────────────────────────────────────────────────────────────
