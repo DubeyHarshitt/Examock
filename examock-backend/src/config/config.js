@@ -6,7 +6,7 @@ if (!process.env.PORT) {
 }
 
 if (!process.env.NODE_ENV) {
-  throw new Error("NODE ENVis not defined");
+  throw new Error("NODE ENV is not defined");
 }
 
 if (!process.env.CLIENT_URI) {
