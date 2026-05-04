@@ -78,3 +78,4 @@ pdf-parse @qdrant/js-client-rest multer dotenv
 6. **@google/generative-ai** → Generate final answer using retrieved context
 
 ---
+
