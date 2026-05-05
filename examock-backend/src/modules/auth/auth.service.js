@@ -1,6 +1,6 @@
 import prisma from "../../config/prisma.js";
 import { verifyGoogleToken } from "./google.service.js";
-import { issueTokenPair, verifyRefreshToken } from "../../utils/jwt.js";
+import { issueTokenPair, verifyRefreshToken, hashToken } from "../../utils/jwt.js";
 import {
   generateOtp,
   hashOtp,
@@ -10,6 +10,23 @@ import {
 } from "../../utils/otp.js";
 import { sendOtp } from "../../utils/sms.js";
 import { AppError } from "../../utils/AppError.js";
+
+// ─────────────────────────────────────────────────────────────
+// Helper — issue tokens AND persist the refresh token hash
+// Every place that creates tokens must call this instead of
+// issueTokenPair() directly, so the DB always stays in sync.
+// ─────────────────────────────────────────────────────────────
+
+async function issueAndPersistTokens({ userId, email, role }) {
+  const tokens = issueTokenPair({ userId, email, role });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { refreshTokenHash: hashToken(tokens.refreshToken) },
+  });
+
+  return tokens;
+}
 
 // ─────────────────────────────────────────────────────────────
 // 1. Google Login (idToken flow)
@@ -29,7 +46,7 @@ export async function googleLogin(idToken) {
     },
   });
 
-  const token = issueTokenPair({
+  const token = await issueAndPersistTokens({
     userId: user.id,
     email:  user.email,
     role:   user.role,
@@ -67,7 +84,7 @@ export async function setExamType(userId, examTypeId) {
     where: { id: examTypeId, isActive: true },
   });
   if (!examType) {
-    throw new AppError("Invalid or inactive exam type", 404); 
+    throw new AppError("Invalid or inactive exam type", 404);
   }
 
   await prisma.user.update({ where: { id: userId }, data: { examTypeId } });
@@ -98,7 +115,7 @@ export async function sendMobileOtp(userId, mobile) {
   });
 
   const otp    = generateOtp();
-  const hashed = await hashOtp(otp);  
+  const hashed = await hashOtp(otp);
 
   await prisma.otpRecord.create({
     data: {
@@ -132,10 +149,10 @@ export async function verifyMobileOtp(userId, mobile, otp) {
   }
 
   if (isOtpExpired(record.expiresAt)) {
-    throw new AppError("OTP has expired — please request a new one", 410); // 410 Gone
+    throw new AppError("OTP has expired — please request a new one", 410);
   }
 
-  const isValid = await verifyOtp(otp, record.otp); 
+  const isValid = await verifyOtp(otp, record.otp);
   if (!isValid) {
     throw new AppError("Incorrect OTP", 401);
   }
@@ -150,7 +167,8 @@ export async function verifyMobileOtp(userId, mobile, otp) {
     data:  { mobile: normalised, mobileVerified: true },
   });
 
-  const tokens = issueTokenPair({
+  // ✅ Uses issueAndPersistTokens — refresh token hash saved to DB
+  const tokens = await issueAndPersistTokens({
     userId: updatedUser.id,
     email:  updatedUser.email,
     role:   updatedUser.role,
@@ -160,19 +178,52 @@ export async function verifyMobileOtp(userId, mobile, otp) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 5. Refresh access token (with rotation)
+// 5. Refresh access token (with rotation + reuse detection)
 // ─────────────────────────────────────────────────────────────
 
 export async function refreshAccessToken(refreshToken) {
+  // Step 1 — verify JWT signature + expiry
   let payload;
   try {
     payload = verifyRefreshToken(refreshToken);
   } catch {
-    throw new AppError("Invalid or expired refresh token", 401); // 401 Unauthorized
+    throw new AppError("Invalid or expired refresh token", 401);
   }
 
+  // Step 2 — look up the user
   const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-  if (!user) throw new AppError("User not found", 404);          // 404 Not Found
+  if (!user) throw new AppError("User not found", 404);
 
-  return issueTokenPair({ userId: user.id, email: user.email, role: user.role });
+  // Step 3 — compare hash against what's stored in DB
+  const incomingHash = hashToken(refreshToken);
+
+  if (user.refreshTokenHash !== incomingHash) {
+    // ⚠️ REUSE DETECTED — someone is replaying an old token.
+    // Nuke the session so both the attacker and the real user
+    // are forced to re-authenticate via Google login.
+    await prisma.user.update({
+      where: { id: user.id },
+      data:  { refreshTokenHash: null },
+    });
+
+    throw new AppError("Refresh token reuse detected — session revoked", 403);
+  }
+
+  // Step 4 — rotate: issue new pair and persist the new hash
+  return issueAndPersistTokens({
+    userId: user.id,
+    email:  user.email,
+    role:   user.role,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// 6. Logout — invalidate refresh token in DB
+// ─────────────────────────────────────────────────────────────
+
+export async function logoutUser(userId) {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { refreshTokenHash: null },
+  });
 }

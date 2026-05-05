@@ -10,6 +10,7 @@ import {
   refresh,
   logout,
 } from "./auth.controller.js";
+import { verifyAccessToken } from "../../utils/jwt.js";
 
 const router = Router();
 
@@ -64,12 +65,26 @@ const schemas = {
   }),
 };
 
+// ── Optional auth — tries to extract userId but doesn't block ─
+// Used by logout so it can invalidate the DB record if possible,
+// but still clears the cookie even if the access token is expired.
+
+function optionalAuth(req, _res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      req.user = verifyAccessToken(authHeader.slice(7));
+    }
+  } catch {
+    // Token expired or invalid — that's fine for logout
+  }
+  next();
+}
+
 // ── Routes ───────────────────────────────────────────────────
 
-// Frontend sends idToken → backend verifies → returns JWT
 router.post("/google", validate(schemas.googleAuth), googleAuth);
 
-// Onboarding — lock in exam type
 router.post(
   "/exam-type",
   requireAuth,
@@ -77,7 +92,6 @@ router.post(
   selectExamType,
 );
 
-// Onboarding — send OTP
 router.post(
   "/otp/send",
   requireAuth,
@@ -86,7 +100,6 @@ router.post(
   sendOtp,
 );
 
-// Onboarding — verify OTP
 router.post(
   "/otp/verify",
   requireAuth,
@@ -98,7 +111,7 @@ router.post(
 // Silent token refresh using httpOnly cookie
 router.post("/refresh", refresh);
 
-// Logout — clears cookie
-router.post("/logout", logout);
+// Logout — uses optionalAuth so it can invalidate DB if token is still valid
+router.post("/logout", optionalAuth, logout);
 
 export default router;
