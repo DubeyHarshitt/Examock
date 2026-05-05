@@ -1,40 +1,53 @@
 import axios from "axios";
+import type { AxiosRequestConfig } from "axios";
+import config from "../utils/config";
 
-// ── In-memory access token (never in localStorage) ───────────
+// ── Types ───────────────────────────────────────────────────
 
-let accessToken: string | null = null;
+type AccessToken = string | null;
 
-export const setAccessToken = (token: string | null) => {
+interface CustomRequest extends AxiosRequestConfig {
+  _retry?: boolean;
+}
+
+// ── In-memory token store ───────────────────────────────────
+
+let accessToken: AccessToken = null;
+
+export const setAccessToken = (token: AccessToken) => {
   accessToken = token;
 };
+
 export const getAccessToken = () => accessToken;
 
-// ── Axios instance ───────────────────────────────────────────
+// ── Axios instance ──────────────────────────────────────────
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api",
-  withCredentials: true, // sends httpOnly cookies on every request
+  baseURL: config.API_URL ?? "http://localhost:3000/api",
+  withCredentials: true, // send cookies
 });
 
-// ── Request interceptor — attach access token ────────────────
+// ── Request interceptor ─────────────────────────────────────
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ── Response interceptor — silent refresh on 401 ─────────────
+// ── Refresh Queue Logic ─────────────────────────────────────
 
 let isRefreshing = false;
-let failedQueue: Array<{
+
+let failedQueue: {
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
-}> = [];
+}[] = [];
 
-function processQueue(error: unknown, token: string | null = null) {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (token) {
       prom.resolve(token);
@@ -43,23 +56,28 @@ function processQueue(error: unknown, token: string | null = null) {
     }
   });
   failedQueue = [];
-}
+};
+
+// ── Response interceptor ────────────────────────────────────
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config;
+    const original = error.config as CustomRequest;
 
-    // Only attempt refresh on 401s, and only once per request
+    if (!original) return Promise.reject(error);
+
+    // Only handle 401 once
     if (error.response?.status !== 401 || original._retry) {
       return Promise.reject(error);
     }
 
-    // If we're already refreshing, queue this request
+    // ── If refresh already happening → queue request ──
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       }).then((token) => {
+        original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       });
@@ -69,25 +87,31 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // ✅ No token in the body — the httpOnly cookie is sent automatically
-      const { data } = await axios.post(
-        `${api.defaults.baseURL}/auth/refresh`,
-        null,
-        { withCredentials: true },
-      );
+      // 🔥 Call refresh endpoint
+      const { data } = await api.post("/auth/refresh");
 
       const newToken = data.accessToken;
+
+      // Save new token
       setAccessToken(newToken);
+
+      // Retry all queued requests
       processQueue(null, newToken);
 
+      // Retry original request
+      original.headers = original.headers || {};
       original.headers.Authorization = `Bearer ${newToken}`;
+
       return api(original);
     } catch (refreshError) {
       processQueue(refreshError, null);
       setAccessToken(null);
 
-      // Redirect to login — refresh token is dead
-      window.location.href = "/login";
+      // Redirect safely
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
