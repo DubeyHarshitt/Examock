@@ -1,4 +1,4 @@
-import prisma from "../../lib/prisma.js";
+import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
 import { ingestFile } from "../rag/pipelines/ingestion.pipeline.js";
 

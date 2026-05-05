@@ -24,7 +24,7 @@ app.use(cookieParser());
 // FIX: INTEGRATE with REDIS to make Horizontally scalable 
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15min
-    max: 10,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
 }));

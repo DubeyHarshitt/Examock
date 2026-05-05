@@ -95,7 +95,8 @@ export async function verifyOtp(req, res, next) {
 // ─────────────────────────────────────────────────────────────
 
 export async function refresh(req, res, next) {
-  const token = req.cookies?.refreshToken ?? req.body?.refreshToken;
+  // const token = req.cookies?.refreshToken ?? req.body?.refreshToken;
+  const token = req.cookies?.refreshToken; // Accept the token only from http Cookie
   if (!token) return res.status(401).json({ error: "Refresh token missing" });
 
   try {
@@ -115,7 +116,19 @@ export async function refresh(req, res, next) {
 // Clear the refresh token cookie
 // ─────────────────────────────────────────────────────────────
 
-export function logout(req, res) {
-  res.clearCookie("refreshToken");
-  res.json({ message: "Logged out successfully" });
+export async function logout(req, res, next) {
+  try {
+    // If the user is authenticated, wipe their stored hash
+    // If not (e.g., token expired), just clear the cookie — no big deal
+    if (req.user?.userId) {
+      await logoutUser(req.user.userId);
+    }
+
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    // Still clear the cookie even if DB update fails
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    next(err);
+  }
 }
