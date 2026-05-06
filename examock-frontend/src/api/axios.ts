@@ -47,7 +47,7 @@ let failedQueue: {
   reject: (err: unknown) => void;
 }[] = [];
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown, token: AccessToken) => {
   failedQueue.forEach((prom) => {
     if (token) {
       prom.resolve(token);
@@ -61,7 +61,9 @@ const processQueue = (error: unknown, token: string | null = null) => {
 // ── Response interceptor ────────────────────────────────────
 
 api.interceptors.response.use(
+  // Handles Success , response 200
   (response) => response,
+  
   async (error) => {
     const original = error.config as CustomRequest;
 

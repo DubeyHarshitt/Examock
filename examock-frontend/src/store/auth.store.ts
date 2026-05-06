@@ -31,22 +31,21 @@ interface AuthStore {
   isFullyOnboarded: () => boolean;
 }
 
+// Store Content
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   accessToken: null,
-  user:        null,
-  onboarding:  null,
+  user: null,
+  onboarding: null,
 
   setAuth: (token, user, onboarding) =>
     set({ accessToken: token, user, onboarding }),
 
-  setAccessToken: (token) =>
-    set({ accessToken: token }),
+  setAccessToken: (token) => set({ accessToken: token }),
 
-  setOnboarding: (onboarding) =>
-    set({ onboarding }),
+  setOnboarding: (onboarding) => set({ onboarding }),
 
-  logout: () =>
-    set({ accessToken: null, user: null, onboarding: null }),
+  logout: () => set({ accessToken: null, user: null, onboarding: null }),
 
   // Helpers used in ProtectedRoute and throughout the app
   isAuthenticated: () => !!get().accessToken,
@@ -54,8 +53,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isAdmin: () => get().user?.role === "ADMIN",
 
   isFullyOnboarded: () => {
-    const o = get().onboarding;
-    if (!o) return false;
-    return !o.needsExamSelection && !o.needsMobileVerification;
+    const onboarded = get().onboarding;
+    if (!onboarded) return false;
+    return !onboarded.needsExamSelection && !onboarded.needsMobileVerification;
   },
 }));

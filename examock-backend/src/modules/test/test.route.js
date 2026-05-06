@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { requireAuth, requireOnboarded } from "../auth/auth.middlewares.js"
+import { requireAuth, requireOnboarded } from "../auth/auth.middlewares.js";
 import {
   listTests,
   getTest,
@@ -21,8 +21,8 @@ router.use(requireAuth, requireOnboarded);
 
 const testActionLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max:      20,
-  message:  { error: "Too many requests. Please slow down." },
+  max: 20,
+  message: { error: "Too many requests. Please slow down." },
 });
 
 // ── Validation ───────────────────────────────────────────────
@@ -38,8 +38,8 @@ const validate = (schema) => (req, res, next) => {
 
 const schemas = {
   answer: z.object({
-    attemptId:      z.string().uuid("Invalid attempt ID"),     
-    questionId:     z.string().uuid("Invalid question ID"),
+    attemptId: z.string().uuid("Invalid attempt ID"),
+    questionId: z.string().uuid("Invalid question ID"),
     selectedOption: z.enum(["A", "B", "C", "D"]).nullable(),
   }),
 
@@ -51,29 +51,34 @@ const schemas = {
 // ── Routes ───────────────────────────────────────────────────
 
 // List all tests (CHAPTER + MODULE + FULL, free + paid)
-router.get("/",               listTests);
+router.get("/", listTests);
 
 // Single test details + access status
-router.get("/:id",            getTest);
+router.get("/:id", getTest);
 
 // Start or resume test session → returns attemptId
 // POST /tests/:id/start
-router.post("/:id/start",     testActionLimiter, startTestSession);
+router.post("/:id/start", testActionLimiter, startTestSession);
 
 // Get one question by index
 // GET /tests/:id/question?index=0&attemptId=uuid
-router.get("/:id/question",   fetchQuestion);
+router.get("/:id/question", fetchQuestion);
 
 // Save answer on every option select
 // POST /tests/:id/answer  { attemptId, questionId, selectedOption }
-router.post("/:id/answer",    validate(schemas.answer), answerQuestion);
+router.post("/:id/answer", validate(schemas.answer), answerQuestion);
 
 // Submit and score the test
 // POST /tests/:id/submit  { attemptId }
-router.post("/:id/submit",    testActionLimiter, validate(schemas.submit), submitTestSession);
+router.post(
+  "/:id/submit",
+  testActionLimiter,
+  validate(schemas.submit),
+  submitTestSession,
+);
 
 // Get result after completion
 // GET /tests/:id/result?attemptId=uuid
-router.get("/:id/result",     fetchResult);
+router.get("/:id/result", fetchResult);
 
 export default router;
