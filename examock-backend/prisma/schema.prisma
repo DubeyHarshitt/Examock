@@ -9,26 +9,26 @@ datasource db {
 }
 
 model User {
-  id                String              @id @default(uuid())
-  gmailId           String              @unique @map("gmail_id")
-  email             String              @unique
-  name              String?
-  avatarUrl         String?             @map("avatar_url")
-  mobile            String?             @unique
-  mobileVerified    Boolean             @default(false) @map("mobile_verified")
-  examTypeId        String?             @map("exam_type_id")
-  examDate          DateTime?           @map("exam_date") @db.Date
-  role              Role                @default(STUDENT)
-  refreshTokenHash  String?             @map("refresh_token_hash")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  doubtSessions     DoubtSession[]
-  otpRecords        OtpRecord[]
-  payments          Payment[]
-  testAttempts      TestAttempt[]
-  topicProgress     UserTopicProgress[]
-  uploadedNotes     Note[]              @relation("NoteUploader")
-  examType          ExamType?           @relation(fields: [examTypeId], references: [id])
+  id               String              @id @default(uuid())
+  gmailId          String              @unique @map("gmail_id")
+  email            String              @unique
+  name             String?
+  avatarUrl        String?             @map("avatar_url")
+  mobile           String?             @unique
+  mobileVerified   Boolean             @default(false) @map("mobile_verified")
+  examTypeId       String?             @map("exam_type_id")
+  examDate         DateTime?           @map("exam_date") @db.Date
+  role             Role                @default(STUDENT)
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  refreshTokenHash String?             @map("refresh_token_hash")
+  doubtSessions    DoubtSession[]
+  uploadedNotes    Note[]              @relation("NoteUploader")
+  otpRecords       OtpRecord[]
+  payments         Payment[]
+  testAttempts     TestAttempt[]
+  topicProgress    UserTopicProgress[]
+  examType         ExamType?           @relation(fields: [examTypeId], references: [id])
 
   @@map("users")
 }
@@ -56,10 +56,10 @@ model ExamType {
   isActive    Boolean     @default(true) @map("is_active")
   createdAt   DateTime    @default(now()) @map("created_at")
   mockTests   MockTest[]
+  notes       Note[]
   subjects    Subject[]
   users       User[]
   ytChannels  YtChannel[]
-  notes       Note[]
 
   @@map("exam_types")
 }
@@ -71,9 +71,9 @@ model Subject {
   orderIndex Int        @default(0) @map("order_index")
   createdAt  DateTime   @default(now()) @map("created_at")
   mockTests  MockTest[]
+  notes      Note[]
   examType   ExamType   @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
   topics     Topic[]
-  notes      Note[]
 
   @@index([examTypeId])
   @@map("subjects")
@@ -86,11 +86,11 @@ model Topic {
   orderIndex   Int                 @default(0) @map("order_index")
   createdAt    DateTime            @default(now()) @map("created_at")
   chapterTests MockTest[]          @relation("ChapterTestTopic")
+  notes        Note[]
   questions    Question[]
   subject      Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress UserTopicProgress[]
   videos       Video[]
-  notes        Note[]
 
   @@index([subjectId])
   @@map("topics")
@@ -276,11 +276,10 @@ model Note {
   uploadedBy String   @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
-
-  topic    Topic?   @relation(fields: [topicId], references: [id])
-  subject  Subject? @relation(fields: [subjectId], references: [id])
-  examType ExamType @relation(fields: [examTypeId], references: [id])
-  uploader User     @relation("NoteUploader", fields: [uploadedBy], references: [id])
+  examType   ExamType @relation(fields: [examTypeId], references: [id])
+  subject    Subject? @relation(fields: [subjectId], references: [id])
+  topic      Topic?   @relation(fields: [topicId], references: [id])
+  uploader   User     @relation("NoteUploader", fields: [uploadedBy], references: [id])
 
   @@index([topicId])
   @@index([subjectId])

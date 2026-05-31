@@ -1,3 +1,4 @@
+import prisma from "../../config/prisma.js";
 import {
   googleLogin,
   refreshAccessToken,
@@ -95,17 +96,28 @@ export async function verifyOtp(req, res, next) {
 // ─────────────────────────────────────────────────────────────
 
 export async function refresh(req, res, next) {
-  // const token = req.cookies?.refreshToken ?? req.body?.refreshToken;
-  const token = req.cookies?.refreshToken; // Accept the token only from http Cookie
+  const token = req.cookies?.refreshToken;
   if (!token) return res.status(401).json({ error: "Refresh token missing" });
 
   try {
     const result = await refreshAccessToken(token);
 
-    // Rotate — replace old cookie with new refresh token
     res.cookie("refreshToken", result.refreshToken, COOKIE_OPTIONS);
 
-    res.json({ accessToken: result.accessToken });
+    // Fetch user data to include in response (frontend needs this on init)
+    const user = await prisma.user.findUnique({
+      where: { id: result.userId },  // you'll need to return userId from refreshAccessToken
+      select: { id: true, email: true, name: true, avatarUrl: true, role: true, examTypeId: true, mobileVerified: true }
+    });
+
+    res.json({
+      accessToken: result.accessToken,
+      user,
+      onboarding: {
+        needsExamSelection: !user.examTypeId,
+        needsMobileVerification: !user.mobileVerified,
+      }
+    });
   } catch (err) {
     next(err);
   }

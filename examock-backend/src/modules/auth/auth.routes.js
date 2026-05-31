@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { requireAuth } from "./auth.middlewares.js";
+import { getExamTypes, requireAuth } from "./auth.middlewares.js";
 import {
   googleAuth,
   selectExamType,
@@ -81,9 +81,12 @@ function optionalAuth(req, _res, next) {
   next();
 }
 
+
 // ── Routes ───────────────────────────────────────────────────
 
 router.post("/google", validate(schemas.googleAuth), googleAuth);
+
+router.get("/exam-types", requireAuth, getExamTypes);
 
 router.post(
   "/exam-type",

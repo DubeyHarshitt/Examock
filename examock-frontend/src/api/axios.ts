@@ -23,7 +23,7 @@ export const getAccessToken = () => accessToken;
 // ── Axios instance ──────────────────────────────────────────
 
 const api = axios.create({
-  baseURL: config.API_URL ?? "http://localhost:3000/api",
+  baseURL: config.API_URL ?? "http://localhost:3000",
   withCredentials: true, // send cookies
 });
 
@@ -70,9 +70,13 @@ api.interceptors.response.use(
     if (!original) return Promise.reject(error);
 
     // Only handle 401 once
-    if (error.response?.status !== 401 || original._retry) {
-      return Promise.reject(error);
-    }
+    if (
+  error.response?.status !== 401 ||
+  original._retry ||
+  original.url?.includes("/auth/refresh")
+) {
+  return Promise.reject(error);
+}
 
     // ── If refresh already happening → queue request ──
     if (isRefreshing) {

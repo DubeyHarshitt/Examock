@@ -29,6 +29,14 @@ async function issueAndPersistTokens({ userId, email, role }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Helper — get exam type for a user 
+// ─────────────────────────────────────────────────────────────
+
+export const getAllExamTypes = async () => {
+  return prisma.examType.findMany({ orderBy: { createdAt: "asc" } });
+};
+
+// ─────────────────────────────────────────────────────────────
 // 1. Google Login (idToken flow)
 // ─────────────────────────────────────────────────────────────
 
@@ -210,11 +218,8 @@ export async function refreshAccessToken(refreshToken) {
   }
 
   // Step 4 — rotate: issue new pair and persist the new hash
-  return issueAndPersistTokens({
-    userId: user.id,
-    email:  user.email,
-    role:   user.role,
-  });
+  const tokens = await issueAndPersistTokens({ userId: user.id, email: user.email, role: user.role });
+  return { ...tokens, userId: user.id };
 }
 
 // ─────────────────────────────────────────────────────────────

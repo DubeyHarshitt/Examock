@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/auth.store";
 import { googleLogin } from "../../api/auth.api";
+import config from "../../utils/config";
 
 // Google Sign In button uses the Google Identity Services script
 // Add this to your index.html:
@@ -37,7 +38,7 @@ export default function LoginPage() {
       if (!window.google) return;
 
       window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        client_id: config.GOOGLE_CLIENT_ID,
         callback: handleGoogleCallback,
       });
 
