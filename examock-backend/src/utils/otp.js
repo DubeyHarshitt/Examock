@@ -7,7 +7,9 @@ const SALT_ROUNDS = 10;
 // Generate a random 6 digit OTP string eg. "873452"
 export function generateOtp() {
   const max = Math.pow(10, OTP_LENGTH);
-  return crypto.randomInt(0, max).toString().padStart(OTP_LENGTH, "0");
+  const otp =  crypto.randomInt(0, max).toString().padStart(OTP_LENGTH, "0");
+  console.log("Generated OTP:", otp); // For debugging, remove in production
+  return otp;
 }
 
 // Hashing the OTP before storing , should never stored raw

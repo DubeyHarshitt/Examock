@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useInitAuth } from "./hooks/useInitAuth";
+import { useInitAuth } from "./hooks/authHook/useInitAuth";
 
 // Auth
 import LoginPage from "./pages/auth/LoginPage";
-// import OnboardingPage from "./pages/auth/OnboardingPage";
+import OnboardingPage from "./pages/auth/OnboardingPage";
 
 // Student
-// import DashboardPage from "./pages/dashboard/DashboardPage";
+import DashboardPage from "./pages/dashboard/dashboardPage";
 // import SubjectListPage from "./pages/subjects/SubjectListPage";
 // import TopicListPage from "./pages/subjects/TopicListPage";
 // import VideoPage from "./pages/videos/VideoPage";
@@ -37,6 +37,10 @@ import ProtectedRoute from "./components/shared/ProtectedRoute";
 import AdminRoute from "./components/shared/AdminRoute";
 import OnboardingRoute from "./components/shared/OnboardingRoute";
 
+// UI Pages
+import Spinner from "./components/ui/Spinner";
+
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -51,7 +55,7 @@ export default function App() {
 
   const { loading } = useInitAuth();
 if (loading) return <div className="flex h-screen items-center justify-center">
-  {/* <Spinner /> */}
+  <Spinner />
 </div>
 
   return (
@@ -64,13 +68,13 @@ if (loading) return <div className="flex h-screen items-center justify-center">
 
           {/* ── Onboarding — auth required, not yet fully onboarded ── */}
           <Route element={<OnboardingRoute />}>
-            {/* <Route path="/onboarding" element={<OnboardingPage />} /> */}
+            <Route path="/onboarding" element={<OnboardingPage />} />
           </Route>
 
           {/* ── Student routes — auth + fully onboarded ───── */}
           <Route element={<ProtectedRoute />}>
-            {/* <Route path="/"               element={<DashboardPage />} />
-            <Route path="/subjects"       element={<SubjectListPage />} />
+            <Route path="/"               element={<DashboardPage />} />
+            {/* <Route path="/subjects"       element={<SubjectListPage />} />
             <Route path="/subjects/:subjectId/topics" element={<TopicListPage />} />
             <Route path="/topics/:topicId/videos"     element={<VideoPage />} />
             <Route path="/tests"          element={<TestListPage />} />

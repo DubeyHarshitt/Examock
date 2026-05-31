@@ -18,9 +18,9 @@ export interface LoginResponse {
   onboarding: Onboarding;
 }
 
-export interface ExamType {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-}
+// export interface ExamType {
+//   id: string;
+//   name: string;
+//   slug: string;
+//   description: string | null;
+// }
