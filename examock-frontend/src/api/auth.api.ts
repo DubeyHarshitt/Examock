@@ -1,5 +1,5 @@
 import api from "./axios";
-import type { LoginResponse, ExamType } from "../types/auth.types";
+import type { LoginResponse } from "../types/auth.types";
 
 export const googleLogin = async (idToken: string): Promise<LoginResponse> => {
   const { data } = await api.post("/auth/google", { idToken });

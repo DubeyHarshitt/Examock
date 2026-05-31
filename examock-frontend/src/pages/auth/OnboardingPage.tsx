@@ -13,7 +13,8 @@ type Step = "exam" | "mobile" | "otp";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const { onboarding, setOnboarding, user } = useAuthStore();
+  // const { onboarding, setOnboarding, user } = useAuthStore();
+  const { onboarding, setOnboarding } = useAuthStore();
 
   // Determine starting step from onboarding state
   const getInitialStep = (): Step => {
