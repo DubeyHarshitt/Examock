@@ -1,6 +1,10 @@
 import prisma from "../../config/prisma.js";
 import { verifyGoogleToken } from "./google.service.js";
-import { issueTokenPair, verifyRefreshToken, hashToken } from "../../utils/jwt.js";
+import {
+  issueTokenPair,
+  verifyRefreshToken,
+  hashToken,
+} from "../../utils/jwt.js";
 import {
   generateOtp,
   hashOtp,
@@ -22,14 +26,14 @@ async function issueAndPersistTokens({ userId, email, role }) {
 
   await prisma.user.update({
     where: { id: userId },
-    data:  { refreshTokenHash: hashToken(tokens.refreshToken) },
+    data: { refreshTokenHash: hashToken(tokens.refreshToken) },
   });
 
   return tokens;
 }
 
 // ─────────────────────────────────────────────────────────────
-// Helper — get exam type for a user 
+// Helper — get exam type for a user
 // ─────────────────────────────────────────────────────────────
 
 export const getAllExamTypes = async () => {
@@ -44,34 +48,34 @@ export async function googleLogin(idToken) {
   const payload = await verifyGoogleToken(idToken);
 
   const user = await prisma.user.upsert({
-    where:  { gmailId: payload.sub },
+    where: { gmailId: payload.sub },
     update: { name: payload.name, avatarUrl: payload.picture },
     create: {
-      gmailId:   payload.sub,
-      email:     payload.email,
-      name:      payload.name,
+      gmailId: payload.sub,
+      email: payload.email,
+      name: payload.name,
       avatarUrl: payload.picture,
     },
   });
 
   const token = await issueAndPersistTokens({
     userId: user.id,
-    email:  user.email,
-    role:   user.role,
+    email: user.email,
+    role: user.role,
   });
 
   return {
     token,
     user: {
-      id:         user.id,
-      email:      user.email,
-      name:       user.name,
-      avatarUrl:  user.avatarUrl,
-      role:       user.role,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
       examTypeId: user.examTypeId,
     },
     onboarding: {
-      needsExamSelection:      !user.examTypeId,
+      needsExamSelection: !user.examTypeId,
       needsMobileVerification: !user.mobileVerified,
     },
   };
@@ -119,17 +123,17 @@ export async function sendMobileOtp(userId, mobile) {
 
   await prisma.otpRecord.updateMany({
     where: { userId, verified: false },
-    data:  { verified: true },
+    data: { verified: true },
   });
 
-  const otp    = generateOtp();
+  const otp = generateOtp();
   const hashed = await hashOtp(otp);
 
   await prisma.otpRecord.create({
     data: {
       userId,
-      mobile:    normalised,
-      otp:       hashed,
+      mobile: normalised,
+      otp: hashed,
       expiresAt: otpExpiresAt(),
     },
   });
@@ -148,7 +152,7 @@ export async function verifyMobileOtp(userId, mobile, otp) {
   const normalised = mobile.replace(/^\+?91/, "").replace(/\D/g, "");
 
   const record = await prisma.otpRecord.findFirst({
-    where:   { userId, mobile: normalised, verified: false },
+    where: { userId, mobile: normalised, verified: false },
     orderBy: { createdAt: "desc" },
   });
 
@@ -167,19 +171,19 @@ export async function verifyMobileOtp(userId, mobile, otp) {
 
   await prisma.otpRecord.update({
     where: { id: record.id },
-    data:  { verified: true },
+    data: { verified: true },
   });
 
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data:  { mobile: normalised, mobileVerified: true },
+    data: { mobile: normalised, mobileVerified: true },
   });
 
   // ✅ Uses issueAndPersistTokens — refresh token hash saved to DB
   const tokens = await issueAndPersistTokens({
     userId: updatedUser.id,
-    email:  updatedUser.email,
-    role:   updatedUser.role,
+    email: updatedUser.email,
+    role: updatedUser.role,
   });
 
   return { message: "Mobile verified successfully", tokens };
@@ -211,14 +215,18 @@ export async function refreshAccessToken(refreshToken) {
     // are forced to re-authenticate via Google login.
     await prisma.user.update({
       where: { id: user.id },
-      data:  { refreshTokenHash: null },
+      data: { refreshTokenHash: null },
     });
 
     throw new AppError("Refresh token reuse detected — session revoked", 403);
   }
 
   // Step 4 — rotate: issue new pair and persist the new hash
-  const tokens = await issueAndPersistTokens({ userId: user.id, email: user.email, role: user.role });
+  const tokens = await issueAndPersistTokens({
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  });
   return { ...tokens, userId: user.id };
 }
 
@@ -229,6 +237,6 @@ export async function refreshAccessToken(refreshToken) {
 export async function logoutUser(userId) {
   await prisma.user.update({
     where: { id: userId },
-    data:  { refreshTokenHash: null },
+    data: { refreshTokenHash: null },
   });
 }

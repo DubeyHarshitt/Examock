@@ -74,6 +74,8 @@ export default function LoginPage() {
         result.onboarding.needsMobileVerification
       ) {
         navigate("/onboarding", { replace: true });
+      } else if(result.user.role === "ADMIN"){
+        navigate("/admin-dashboard", { replace: true });
       } else {
         navigate("/", { replace: true });
       }
