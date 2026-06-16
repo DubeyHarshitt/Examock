@@ -22,7 +22,7 @@ import DashboardPage from "./pages/dashboard/dashboardPage";
 // import UploadPage from "./pages/rag/UploadPage";
 
 // Admin
-// import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDashboard from "./pages/admin/adminDashboard";
 // import ExamTypesPage from "./pages/admin/ExamTypesPage";
 // import SubjectsPage from "./pages/admin/SubjectsPage";
 // import TopicsPage from "./pages/admin/TopicsPage";
@@ -40,11 +40,10 @@ import OnboardingRoute from "./components/shared/OnboardingRoute";
 // UI Pages
 import Spinner from "./components/ui/Spinner";
 
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,                // only retry once on failure
+      retry: 1, // only retry once on failure
       staleTime: 1000 * 60 * 5, // cache data for 5 minutes
       refetchOnWindowFocus: false,
     },
@@ -52,17 +51,18 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-
   const { loading } = useInitAuth();
-if (loading) return <div className="flex h-screen items-center justify-center">
-  <Spinner />
-</div>
+  if (loading)
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-
           {/* ── Public routes ─────────────────────────────── */}
           <Route path="/login" element={<LoginPage />} />
 
@@ -73,7 +73,7 @@ if (loading) return <div className="flex h-screen items-center justify-center">
 
           {/* ── Student routes — auth + fully onboarded ───── */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/"               element={<DashboardPage />} />
+            <Route path="/" element={<DashboardPage />} />
             {/* <Route path="/subjects"       element={<SubjectListPage />} />
             <Route path="/subjects/:subjectId/topics" element={<TopicListPage />} />
             <Route path="/topics/:topicId/videos"     element={<VideoPage />} />
@@ -90,8 +90,8 @@ if (loading) return <div className="flex h-screen items-center justify-center">
 
           {/* ── Admin routes — auth + admin role ──────────── */}
           <Route element={<AdminRoute />}>
-            {/* <Route path="/admin"                element={<AdminDashboard />} />
-            <Route path="/admin/exam-types"     element={<ExamTypesPage />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            {/* <Route path="/admin/exam-types"     element={<ExamTypesPage />} />
             <Route path="/admin/subjects"       element={<SubjectsPage />} />
             <Route path="/admin/topics"         element={<TopicsPage />} />
             <Route path="/admin/videos"         element={<VideosPage />} />
@@ -103,7 +103,6 @@ if (loading) return <div className="flex h-screen items-center justify-center">
 
           {/* ── Fallback ───────────────────────────────────── */}
           <Route path="*" element={<Navigate to="/" replace />} />
-
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

@@ -24,7 +24,6 @@ interface AuthStore {
   setAccessToken: (token: string) => void;
   setOnboarding: (onboarding: Onboarding) => void;
   logout: () => void;
-
   // Computed
   isAuthenticated: () => boolean;
   isAdmin: () => boolean;
@@ -51,6 +50,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isAuthenticated: () => !!get().accessToken,
 
   isAdmin: () => get().user?.role === "ADMIN",
+
 
   isFullyOnboarded: () => {
     const onboarded = get().onboarding;

@@ -18,7 +18,7 @@ const router = Router();
 
 const otpSendLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 3,
+  max: 5,
   message: { error: "Too many OTP requests. Please wait 10 minutes." },
 });
 
