@@ -20,7 +20,7 @@ export interface SubjectsSlice {
   fetchSubjects: (examTypeId?: string) => Promise<void>;
   createSubject: (data: CreateSubjectDto) => Promise<void>;
   updateSubject: (id: string, data: Partial<Subject>) => Promise<void>;
-  // deleteSubject: (id: string) => Promise<void>;
+  deleteSubject: (id: string) => Promise<void>;
 }
 
 export const createSubjectsSlice: StateCreator<

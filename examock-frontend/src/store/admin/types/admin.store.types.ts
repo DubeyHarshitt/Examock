@@ -1,4 +1,6 @@
 import type { SubjectsSlice } from "../slices/subjects.slice"
-// import type { TopicsSlice } from "./slices/topics.slice"; 
+import type { ExamTypesSlice } from "../slices/examTypes.slice";
 
-export type AdminStore = SubjectsSlice 
+export type AdminStore =
+  SubjectsSlice &
+  ExamTypesSlice;

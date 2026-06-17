@@ -9,10 +9,16 @@ export interface Subject {
 }
 
 export interface CreateSubjectDto {
-  id: string;
   name: string;
   examTypeId: string;
   orderIndex?: number;
 }
 
 export type UpdateSubjectDto = Partial<CreateSubjectDto>;
+
+export interface ExamType {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
