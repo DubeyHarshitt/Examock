@@ -157,7 +157,7 @@ const QuestionPicker = ({ test, onBack }: QuestionPickerProps) => {
               No questions added yet. Add some from the left.
             </p>
           ) : (
-            <div className="space-y-1.5 max-h-[28rem] overflow-y-auto">
+            <div className="space-y-1.5 max-h-112 overflow-y-auto">
               {currentMockTest.questions.map((tq, idx) => (
                 <div
                   key={tq.questionId}

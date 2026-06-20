@@ -113,7 +113,7 @@ const TopicsPanel = ({ subjectId, selectedTopicId, onSelectTopic }: TopicsPanelP
       </div>
 
       {/* Mode Status Block */}
-      <div className="md:col-span-2 p-4 flex flex-col justify-center items-center text-center bg-white min-h-[160px]">
+      <div className="md:col-span-2 p-4 flex flex-col justify-center items-center text-center bg-white min-h-40">
         <Folder size={32} className="text-indigo-500 mb-2 opacity-80" />
         <p className="text-sm font-semibold text-gray-800">
           {selectedTopicId ? "Topic Scope Locked" : "Full Syllabus Scope Engaged"}

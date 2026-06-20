@@ -265,7 +265,7 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
                 </div>
 
                 {/* Question Prompt */}
-                <div className="bg-gray-50 rounded-lg p-3 min-h-[50px] border border-gray-100 pr-16">
+                <div className="bg-gray-50 rounded-lg p-3 min-h-12.5 border border-gray-100 pr-16">
                   <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded mr-2">Q{qIdx + 1}.</span>
                   <p className="inline text-sm text-gray-800 font-medium whitespace-pre-wrap">{q.text}</p>
                 </div>
