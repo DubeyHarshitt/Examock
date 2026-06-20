@@ -169,6 +169,7 @@ export const getQuestions = async ({ topicId, page = 1, limit = 20 }) => {
 export const createQuestion = async (data) => {
   const {
     topicId,
+    subjectId,
     text,
     optionA,
     optionB,
@@ -272,6 +273,24 @@ export const getMockTests = async ({ examTypeId, page = 1, limit = 20 }) => {
   ]);
 
   return { tests, total, page: Number(page), limit: Number(limit) };
+};
+
+ 
+export const getMockTestDetail = async (id) => {
+  const test = await prisma.mockTest.findUnique({
+    where: { id },
+    include: {
+      examType: { select: { name: true } },
+      subject: { select: { name: true } },
+      topic: { select: { name: true } },
+      questions: {
+        include: { question: { include: { topic: { select: { name: true } } } } },
+        orderBy: { orderIndex: "asc" },
+      },
+    },
+  });
+  if (!test) throw new AppError("Mock test not found", 404);
+  return test;
 };
 
 export const createMockTest = async (data) => {

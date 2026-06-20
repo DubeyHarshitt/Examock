@@ -29,18 +29,6 @@ export const createTopic      = handle((req) => adminService.createTopic(req.bod
 export const updateTopic      = handle((req) => adminService.updateTopic(req.params.id, req.body));
 export const deleteTopic      = handle((req) => adminService.deleteTopic(req.params.id));
 
-// ── Videos ───────────────────────────────────────────────────
-export const listVideos       = handle((req) => adminService.getVideos(req.query.topicId));
-export const createVideo      = handle((req) => adminService.createVideo(req.body));
-export const updateVideo      = handle((req) => adminService.updateVideo(req.params.id, req.body));
-export const deleteVideo      = handle((req) => adminService.deleteVideo(req.params.id));
-
-// ── YT Channels ──────────────────────────────────────────────
-export const listYtChannels   = handle((req) => adminService.getYtChannels(req.query.examTypeId));
-export const createYtChannel  = handle((req) => adminService.createYtChannel(req.body));
-export const updateYtChannel  = handle((req) => adminService.updateYtChannel(req.params.id, req.body));
-export const deleteYtChannel  = handle((req) => adminService.deleteYtChannel(req.params.id));
-
 // ── Questions ────────────────────────────────────────────────
 export const listQuestions       = handle((req) => adminService.getQuestions(req.query));
 export const createQuestion      = handle((req) => adminService.createQuestion(req.body));
@@ -50,6 +38,7 @@ export const deleteQuestion      = handle((req) => adminService.deleteQuestion(r
 
 // ── Mock Tests ───────────────────────────────────────────────
 export const listMockTests    = handle((req) => adminService.getMockTests(req.query));
+export const getMockTestDetail = handle((req) => adminService.getMockTestDetail(req.params.id));
 export const createMockTest   = handle((req) => adminService.createMockTest(req.body));
 export const updateMockTest   = handle((req) => adminService.updateMockTest(req.params.id, req.body));
 export const deleteMockTest   = handle((req) => adminService.deleteMockTest(req.params.id));
@@ -81,6 +70,18 @@ export const createNote = async (req, res, next) => {
 
 export const updateNote = handle((req) => adminService.updateNote(req.params.id, req.body));
 export const deleteNote = handle((req) => adminService.deleteNote(req.params.id));
+
+// ── Videos ───────────────────────────────────────────────────
+export const listVideos       = handle((req) => adminService.getVideos(req.query.topicId));
+export const createVideo      = handle((req) => adminService.createVideo(req.body));
+export const updateVideo      = handle((req) => adminService.updateVideo(req.params.id, req.body));
+export const deleteVideo      = handle((req) => adminService.deleteVideo(req.params.id));
+
+// ── YT Channels ──────────────────────────────────────────────
+export const listYtChannels   = handle((req) => adminService.getYtChannels(req.query.examTypeId));
+export const createYtChannel  = handle((req) => adminService.createYtChannel(req.body));
+export const updateYtChannel  = handle((req) => adminService.updateYtChannel(req.params.id, req.body));
+export const deleteYtChannel  = handle((req) => adminService.deleteYtChannel(req.params.id));
 
 // ── Users ────────────────────────────────────────────────────
 export const listUsers         = handle((req) => adminService.getUsers(req.query));
