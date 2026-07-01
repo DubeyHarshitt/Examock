@@ -2,7 +2,7 @@
 CREATE TYPE "Role" AS ENUM ('STUDENT', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "TestType" AS ENUM ('CHAPTER', 'FULL');
+CREATE TYPE "TestType" AS ENUM ('CHAPTER', 'MODULE', 'FULL');
 
 -- CreateEnum
 CREATE TYPE "Difficulty" AS ENUM ('EASY', 'MEDIUM', 'HARD');
@@ -115,6 +115,7 @@ CREATE TABLE "mock_tests" (
     "duration_mins" INTEGER NOT NULL,
     "total_marks" INTEGER NOT NULL,
     "topic_id" TEXT,
+    "subject_id" TEXT,
     "instructions" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -311,6 +312,9 @@ ALTER TABLE "mock_tests" ADD CONSTRAINT "mock_tests_exam_type_id_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "mock_tests" ADD CONSTRAINT "mock_tests_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mock_tests" ADD CONSTRAINT "mock_tests_subject_id_fkey" FOREIGN KEY ("subject_id") REFERENCES "subjects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "questions" ADD CONSTRAINT "questions_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
