@@ -412,7 +412,6 @@ export const getNotes = async ({ examTypeId, topicId, subjectId, page = 1, limit
   return { notes, total, page: Number(page), limit: Number(limit) };
 };
 
-
 export const createNote = async ({
   examTypeId,
   topicId,

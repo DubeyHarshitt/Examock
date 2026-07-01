@@ -166,3 +166,26 @@ export interface TestQuestionWithDetail {
 export interface MockTestDetail extends MockTest {
   questions: TestQuestionWithDetail[];
 }
+
+// NOTES
+
+export type FileType = "PDF" | "DOC" | "DOCX" | "PPT" | "PPTX" | "IMAGE";
+export interface Note {
+  id: string;
+  topicId?: string | null;
+  subjectId?: string | null;
+  examTypeId: string;
+  title: string;
+  fileUrl: string;
+  fileType: FileType;
+  fileSizeMb?: number | null;
+  isFree: boolean;
+  isActive: boolean;
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface createNoteDto {
+  
+}

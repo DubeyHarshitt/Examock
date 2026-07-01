@@ -1,6 +1,6 @@
 // admin.api.ts
 import api from "./axios";
-import type { CreateExamTypeDto, createQuestionsDto, CreateSubjectDto, CreateTopicDto, GetQuestionsResponse, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
+import type { CreateExamTypeDto, CreateMockTestDto, createQuestionsDto, CreateSubjectDto, CreateTopicDto, GetQuestionsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -177,22 +177,12 @@ export const getMockTestDetailApi = async (id: string) => {
   return data;
 };
 
-export const createMockTestApi = async (body: {
-  examTypeId: string;
-  title: string;
-  type: "CHAPTER" | "MODULE" | "FULL";
-  isFree?: boolean;
-  durationMins: number;
-  totalMarks: number;
-  topicId?: string;
-  subjectId?: string;
-  instructions?: string;
-}) => {
+export const createMockTestApi = async (body: CreateMockTestDto) => {
   const { data } = await api.post("/admin/mock-tests", body);
   return data;
 };
 
-export const updateMockTestApi = async (id: string, body: object) => {
+export const updateMockTestApi = async (id: string, body: UpdateMockTestDto) => {
   const { data } = await api.patch(`/admin/mock-tests/${id}`, body);
   return data;
 };
