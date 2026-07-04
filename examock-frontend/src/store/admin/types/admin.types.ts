@@ -184,8 +184,44 @@ export interface Note {
   uploadedBy: string;
   createdAt: string;
   updatedAt: string;
+  // Prisma include fields (from getNotes → findMany with include)
+  topic?:    { name: string } | null;
+  subject?:  { name: string } | null;
+  examType?: { name: string };
+  uploader?: { name: string; email: string };
 }
 
-export interface createNoteDto {
-  
+// ─── DTOs ────────────────────────────────────────────────────────────────────
+
+export interface CreateNoteDto {
+  examTypeId: string;
+  topicId?: string;
+  subjectId?: string;
+  title: string;
+  file: File;          // multipart – converted to FormData in the slice
+  isFree: boolean;
+}
+
+export interface UpdateNoteDto {
+  title?: string;
+  isFree?: boolean;
+  isActive?: boolean;
+  topicId?: string;
+  subjectId?: string;
+}
+
+// ─── Response shapes ─────────────────────────────────────────────────────────
+export interface GetNotesResponse {
+  notes: Note[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface GetNotesFilters {
+  examTypeId?: string;
+  topicId?: string;
+  subjectId?: string;
+  page?: number;
+  limit?: number;
 }

@@ -20,8 +20,9 @@ pdf-parse @qdrant/js-client-rest multer dotenv
 **@langchain/openai**  
 → Provides OpenAI integration inside LangChain  
 → Used for:
-- Generating embeddings (`text-embedding-3-small`)
+- Generating embeddings (`text-embedding-3-small`) || Generating embeddings (`text-embedding-004`) 
 - (Optional) OpenAI LLM calls
+
 
 ---
 

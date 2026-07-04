@@ -10,21 +10,26 @@ import { AppError } from "../../../utils/AppError.js";
 // never pass both userId and examTypeId at the same time
 
 export const ingestFile = async (filePath, metadata = {}) => {
-  const buffer = fs.readFileSync(filePath);
-  const parsed = await pdfParse(buffer);
-  const rawText = parsed.text;
+  try {
+    const buffer = fs.readFileSync(filePath);
+    const parsed = await pdfParse(buffer);
 
-  if (!rawText.trim()) {
-    throw new AppError("PDF appears to be empty or unreadable.", 400);
+    if (!parsed.text.trim()) {
+      throw new AppError("PDF appears to be empty or unreadable.", 400);
+    }
+
+    const chunks = await createChunkText(parsed.text);
+    const vectors = await embedTexts(chunks);
+
+    await ensureCollection();
+    await storeChunks(chunks, vectors, metadata);
+
+    return {
+      chunksStored: chunks.length,
+    };
+  } finally {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
   }
-
-  const chunks  = await createChunkText(rawText);
-  const vectors = await embedTexts(chunks);
-
-  await ensureCollection();
-  await storeChunks(chunks, vectors, metadata);
-
-  fs.unlinkSync(filePath);
-
-  return { chunksStored: chunks.length };
 };

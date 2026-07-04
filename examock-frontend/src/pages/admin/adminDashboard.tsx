@@ -1,16 +1,16 @@
-// pages/admin/adminDashboard.tsx
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../../store/auth.store";
 import { useAdminStore } from "../../store/admin/admin.store";
-import { Settings, BookOpen, ListChecks } from "lucide-react";
+import { Settings, BookOpen, ListChecks, FileText } from "lucide-react";
 
 import ExamTypePanel from "./examTypes/examTypePannel";
 import SubjectsPanel from "./subjects/SubjectsPanel";
 import TopicsPanel from "./topicsAndQuestions/TopicsPanel";
 import QuestionForm from "./topicsAndQuestions/QuestionForm";
 import MockTestsPanel from "./mockTest/MockTestPannel";
+import NotesPanel from "./notesUpload/NotesPannel";
 
-type ContentTab = "questionBank" | "mockTests";
+type ContentTab = "questionBank" | "mockTests" | "notes";
 
 const AdminDashboard = () => {
   const user = useAuthStore((state) => state.user);
@@ -46,6 +46,12 @@ const AdminDashboard = () => {
     }
     setSelectedTopicId("");
   }, [subjects]);
+
+  const TABS: { key: ContentTab; label: string; icon: React.ReactNode }[] = [
+    { key: "questionBank", label: "Question bank", icon: <BookOpen size={14} /> },
+    { key: "mockTests",    label: "Mock tests",    icon: <ListChecks size={14} /> },
+    { key: "notes",        label: "Notes",         icon: <FileText size={14} /> },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -85,7 +91,9 @@ const AdminDashboard = () => {
           <button
             onClick={() => setIsManagingExamTypes(!isManagingExamTypes)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
-              isManagingExamTypes ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              isManagingExamTypes
+                ? "bg-gray-800 text-white border-gray-800"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
           >
             <Settings size={14} />
@@ -103,6 +111,7 @@ const AdminDashboard = () => {
 
             {subjects.length > 0 && (
               <div className="space-y-4">
+                {/* Subject selector */}
                 <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
                   <BookOpen size={16} className="text-gray-400" />
                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-2">Subject:</span>
@@ -134,34 +143,34 @@ const AdminDashboard = () => {
                       onSelectTopic={setSelectedTopicId}
                     />
 
-                    {/* Tabs: question bank (per-topic) vs mock tests (cross-topic) */}
+                    {/* Tab bar */}
                     <div className="flex items-center gap-2 border-b border-gray-200">
-                      <button
-                        onClick={() => setActiveTab("questionBank")}
-                        className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors ${
-                          activeTab === "questionBank"
-                            ? "border-indigo-600 text-indigo-700"
-                            : "border-transparent text-gray-400 hover:text-gray-600"
-                        }`}
-                      >
-                        <BookOpen size={14} /> Question bank
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("mockTests")}
-                        className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors ${
-                          activeTab === "mockTests"
-                            ? "border-indigo-600 text-indigo-700"
-                            : "border-transparent text-gray-400 hover:text-gray-600"
-                        }`}
-                      >
-                        <ListChecks size={14} /> Mock tests
-                      </button>
+                      {TABS.map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setActiveTab(key)}
+                          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors ${
+                            activeTab === key
+                              ? "border-indigo-600 text-indigo-700"
+                              : "border-transparent text-gray-400 hover:text-gray-600"
+                          }`}
+                        >
+                          {icon} {label}
+                        </button>
+                      ))}
                     </div>
 
+                    {/* Tab content */}
                     {activeTab === "questionBank" ? (
                       <QuestionForm topicId={selectedTopicId} />
-                    ) : (
+                    ) : activeTab === "mockTests" ? (
                       <MockTestsPanel
+                        examTypeId={selectedExamTypeId}
+                        subjectId={selectedSubjectId}
+                        topicId={selectedTopicId}
+                      />
+                    ) : (
+                      <NotesPanel
                         examTypeId={selectedExamTypeId}
                         subjectId={selectedSubjectId}
                         topicId={selectedTopicId}

@@ -1,5 +1,6 @@
 import * as adminService from "./admin.service.js";
 import { AppError } from "../../utils/AppError.js";
+import { mimeToEnum } from "../../config/utils.js";
 
 
 const handle = (fn) => async (req, res, next) => {
@@ -54,12 +55,12 @@ export const createNote = async (req, res, next) => {
   try {
     if (!req.file) throw new AppError("File is required", 400);
 
-    const result = await notesService.createNote({
+    const result = await adminService.createNote({
       ...req.body,
-      filePath:   req.file.path,
-      fileName:   req.file.originalname,
-      fileType:   req.body.fileType?.toUpperCase(),
-      uploadedBy: req.user.userId, 
+      filePath: req.file.path,
+      fileName: req.file.originalname,
+      fileType: mimeToEnum(req.file.mimetype),
+      uploadedBy: req.user.userId,
     });
 
     res.json({ success: true, ...result });

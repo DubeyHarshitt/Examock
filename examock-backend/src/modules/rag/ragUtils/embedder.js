@@ -1,32 +1,51 @@
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { GoogleGenAI } from "@google/genai";
 import config from "../../../config/config.js";
 import { AppError } from "../../../utils/AppError.js";
 
-const embedder = new OpenAIEmbeddings({
-  openAIApiKey: config.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small",
+const ai = new GoogleGenAI({
+  apiKey: config.GEMINI_API_KEY,
 });
 
 export const embedTexts = async (texts) => {
-  if (!Array.isArray(texts)) {
-    throw new AppError("embedTexts expects an array of strings", 400);
-  }
-
   try {
-    return await embedder.embedDocuments(texts);
+    const vectors = [];
+
+    for (const text of texts) {
+      const response = await ai.models.embedContent({
+        model: "gemini-embedding-001",
+        contents: text,
+      });
+
+      vectors.push(response.embeddings[0].values);
+    }
+
+    // console.log("Generated vectors:", vectors.length);
+    // console.log("Vector dimension:", vectors[0].length);
+
+    return vectors;
   } catch (err) {
-    throw new AppError("Failed to generate embeddings for documents", 500);
+    console.error(err);
+
+    throw new AppError(
+      "Failed to generate embeddings: " + err.message,
+      500
+    );
   }
 };
 
 export const embedQuery = async (query) => {
-  if (typeof query !== "string") {
-    throw new AppError("embedQuery expects a string", 400);
-  }
-
   try {
-    return await embedder.embedQuery(query);
+    const response = await ai.models.embedContent({
+      model: "gemini-embedding-001",
+      contents: query,
+    });
+
+    return response.embeddings[0].values;
   } catch (err) {
-    throw new AppError("Failed to generate embedding for query", 500);
+    console.error(err);
+    throw new AppError(
+      "Failed to generate query embedding: " + err.message,
+      500
+    );
   }
 };
