@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -268,9 +267,13 @@ model Note {
   subjectId  String?  @map("subject_id")
   examTypeId String   @map("exam_type_id")
   title      String
-  fileUrl    String   @map("file_url")
-  fileType   FileType @map("file_type")
-  fileSizeMb Float?   @map("file_size_mb")
+  filePath String
+  cloudinaryPublicId String?  @map("cloudinary_public_id") 
+  fileName String
+  fileType FileType
+  fileSizeMb Float?
+  embeddingStatus EmbeddingStatus @default(PENDING)
+  embeddingError String?
   isFree     Boolean  @default(false) @map("is_free")
   isActive   Boolean  @default(true) @map("is_active")
   uploadedBy String   @map("uploaded_by")
@@ -324,4 +327,11 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum EmbeddingStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
 }

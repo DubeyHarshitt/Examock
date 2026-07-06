@@ -69,6 +69,21 @@ if (!process.env.GEMINI_API_KEY){
   throw new Error("GEMINI Api Key is not defined")
 }
 
+if (!process.env.CLOUDINARY_CLOUD_NAME){
+  throw new Error("CLOUDINARY CLOUD NAME is not defined")
+}
+
+if (!process.env.CLOUDINARY_API_KEY){
+  throw new Error("CLOUDINARY API KEY is not defined")
+}
+
+if (!process.env.CLOUDINARY_API_SECRET){
+  throw new Error("CLOUDINARY API SECRET is not defined")
+}
+
+if (!process.env.DATABASE_URL){
+  throw new Error("DATABASE URL is not defined")
+}
 
 const config = {
   PORT: Number(process.env.PORT),
@@ -88,6 +103,10 @@ const config = {
   QDRANT_URL: process.env.QDRANT_URL,
   QDRANT_API_KEY: process.env.QDRANT_API_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  DATABASE_URL: process.env.DATABASE_URL,
 };
 
 export default config;

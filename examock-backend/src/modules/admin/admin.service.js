@@ -1,6 +1,9 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
+import { boss, QUEUE } from "../../config/queue.js";
+import cloudinary from "../../config/cloudinary.js";
 import { ingestFile } from "../rag/pipelines/ingestion.pipeline.js";
+import fs from "fs";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -390,15 +393,15 @@ export const getNotes = async ({ examTypeId, topicId, subjectId, page = 1, limit
 
   const where = {};
   if (examTypeId) where.examTypeId = examTypeId;
-  if (topicId)    where.topicId    = topicId;
-  if (subjectId)  where.subjectId  = subjectId;
+  if (topicId) where.topicId = topicId;
+  if (subjectId) where.subjectId = subjectId;
 
   const [notes, total] = await Promise.all([
     prisma.note.findMany({
       where,
       include: {
-        topic:    { select: { name: true } },
-        subject:  { select: { name: true } },
+        topic: { select: { name: true } },
+        subject: { select: { name: true } },
         examType: { select: { name: true } },
         uploader: { select: { name: true, email: true } },
       },
@@ -431,53 +434,69 @@ export const createNote = async ({
     );
   }
 
-  const validTypes = ["PDF"];
-  if (!validTypes.includes(fileType)) {
-    throw new AppError(
-      `fileType must be one of: ${validTypes}`,
-      400,
-    );
-  }
-
-  // Only ingest PDFs into Qdrant — other file types just get stored in DB
-  let chunksStored = 0;
-
-  if (fileType === "PDF") {
-    const ingested = await ingestFile(filePath, {
-      examTypeId, // ← admin tag, NOT userId
-      fileName,
+  let uploadResult;
+  try {
+    uploadResult = await cloudinary.uploader.upload(filePath, {
+      resource_type: "raw", // PDFs/docs — not "image" or "video"
+      folder: `examock/notes/${examTypeId}`,
+      public_id: fileName.replace(/\.[^/.]+$/, ""), // strip extension, Cloudinary adds its own
+      use_filename: true,
+      unique_filename: true,
     });
-    chunksStored = ingested.chunksStored;
-    // Note: ingestFile deletes the temp file after ingestion
+  } finally {
+    // Always clean up the local temp file, whether upload succeeded or not
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 
-  // Save metadata to Postgres
-  // If not PDF, fileUrl = filePath (swap for S3 URL in production)
   const note = await prisma.note.create({
     data: {
       examTypeId,
       topicId: topicId || null,
       subjectId: subjectId || null,
       title,
-      fileUrl: filePath, // replace with S3 URL when you add cloud storage
+      filePath: uploadResult.secure_url,
+      cloudinaryPublicId: uploadResult.public_id,
+      fileName,
       fileType,
       fileSizeMb: fileSizeMb ? parseFloat(fileSizeMb) : null,
       isFree: isFree === "true" || isFree === true,
       uploadedBy,
       isActive: true,
+      embeddingStatus: "PENDING",
     },
   });
 
-  return { note, chunksStored };
+  await boss.send(QUEUE.INGEST_NOTE, { noteId: note.id });
+
+  return note;
 };
 
 export const updateNote = async (id, data) => {
+  // Title/topic/subject/isFree edits don't touch Qdrant — just update the row.
+  // A file *replacement* should be its own endpoint (see note below).
   return prisma.note.update({ where: { id }, data });
 };
 
 export const deleteNote = async (id) => {
-  // Soft delete
-  return prisma.note.update({ where: { id }, data: { isActive: false } });
+  const note = await prisma.note.findUniqueOrThrow({ where: { id } });
+
+  await prisma.note.update({ where: { id }, data: { isActive: false } });
+  await boss.send(QUEUE.DELETE_NOTE_CHUNKS, { noteId: id });
+
+  if (note.cloudinaryPublicId) {
+    await cloudinary.uploader.destroy(note.cloudinaryPublicId, { resource_type: "raw" });
+  }
+};
+
+export const getNoteDownloadUrl = async (id) => {
+  const note = await prisma.note.findUniqueOrThrow({ where: { id } });
+
+  return cloudinary.utils.url(note.cloudinaryPublicId, {
+    resource_type: "raw",
+    type: "upload",
+    flags: "attachment",
+    sign_url: true, // uses your api_secret to sign — bypasses strict-transformation 400
+  });
 };
 
 

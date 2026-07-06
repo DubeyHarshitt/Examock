@@ -4,6 +4,9 @@ import cookieParser from "cookie-parser";
 import cors from "cors"
 import rateLimit from "express-rate-limit"
 
+// Register pg-boss workers (runs once on server startup)
+import "./src/modules/rag/workers/noteIngestion.worker.js";
+
 import authRoutes from "./src/modules/auth/auth.routes.js"
 import testRoutes from "./src/modules/test/test.route.js"
 import ragRoutes from "./src/modules/rag/rag.routes.js"
@@ -39,6 +42,21 @@ app.use("/api/test", testRoutes);
 app.use("/api/rag", ragRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/student", studentRoutes);
+
+// ── 404 handler ──────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
+// ── Global error handler — MUST be last, MUST have 4 args ─────
+app.use((err, req, res, next) => {
+  console.error("🔴 ERROR:", err); // full object/stack to your terminal
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
+
 
 app.listen(PORT, ()=>{
     console.log(`The server is running on Port: ${PORT}`)

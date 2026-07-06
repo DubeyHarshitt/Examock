@@ -25,6 +25,7 @@ import {
   getOverview, getTestAnalytics, getPaymentRecords,
   // Notifications
   listNotifications, broadcastNotification,
+  getNoteDownloadUrl,
 } from "./admin.controller.js";
 import { getMockTestDetail } from "./admin.service.js";
 
@@ -74,6 +75,7 @@ router.get("/notes",               listNotes);
 router.post("/notes",              upload.single("file"), createNote);
 router.patch("/notes/:id",         updateNote);
 router.delete("/notes/:id",        deleteNote);
+router.get("/notes/:id/download", getNoteDownloadUrl);
 
 // ── Videos ───────────────────────────────────────────────────
 router.get("/videos",              listVideos);         // ?topicId=

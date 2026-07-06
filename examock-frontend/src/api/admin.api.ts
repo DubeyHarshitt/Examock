@@ -254,6 +254,11 @@ export const deleteNoteApi = async (id: string) => {
   return data;
 };
 
+export const getNoteDownloadUrlApi = async (id: string) => {
+  const { data } = await api.get(`/admin/notes/${id}/download`);
+  return data.url as string;
+};
+
 // ── Users ────────────────────────────────────────────────────
 
 export const getUsersApi = async (filters?: {

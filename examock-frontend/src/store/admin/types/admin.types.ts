@@ -170,15 +170,20 @@ export interface MockTestDetail extends MockTest {
 // NOTES
 
 export type FileType = "PDF" | "DOC" | "DOCX" | "PPT" | "PPTX" | "IMAGE";
+export type EmbeddingStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
+
 export interface Note {
   id: string;
   topicId?: string | null;
   subjectId?: string | null;
   examTypeId: string;
   title: string;
-  fileUrl: string;
+  filePath: string;
+  fileName: string;
   fileType: FileType;
-  fileSizeMb?: number | null;
+  fileSizeMb?: number | null;  
+  embeddingStatus: EmbeddingStatus;
+  embeddingError?: string | null;
   isFree: boolean;
   isActive: boolean;
   uploadedBy: string;

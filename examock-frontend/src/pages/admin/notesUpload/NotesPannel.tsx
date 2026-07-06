@@ -11,9 +11,15 @@ import {
   X,
   Check,
   AlertCircle,
+  Download,
 } from "lucide-react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import type { Note, CreateNoteDto } from "../../../store/admin/types/admin.types";
+import type {
+  Note,
+  CreateNoteDto,
+} from "../../../store/admin/types/admin.types";
+// import { toCloudinaryDownloadUrl } from "../../../utils/cloudinary";
+import { getNoteDownloadUrlApi } from "../../../api/admin.api";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -49,7 +55,14 @@ interface UploadFormProps {
   loading: boolean;
 }
 
-function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading }: UploadFormProps) {
+function UploadForm({
+  examTypeId,
+  subjectId,
+  topicId,
+  onClose,
+  onSubmit,
+  loading,
+}: UploadFormProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [isFree, setIsFree] = useState(false);
@@ -75,8 +88,14 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) { setError("Title is required."); return; }
-    if (!file)         { setError("Please select a PDF file."); return; }
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    if (!file) {
+      setError("Please select a PDF file.");
+      return;
+    }
     setError("");
 
     await onSubmit({
@@ -94,7 +113,10 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-800">Upload note</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
           <X size={16} />
         </button>
       </div>
@@ -115,7 +137,10 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
 
       {/* File drop zone */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileRef.current?.click()}
@@ -123,8 +148,8 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
           dragOver
             ? "border-indigo-400 bg-indigo-50"
             : file
-            ? "border-green-300 bg-green-50"
-            : "border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40"
+              ? "border-green-300 bg-green-50"
+              : "border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40"
         }`}
       >
         <input
@@ -132,19 +157,25 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
           type="file"
           accept="application/pdf"
           className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+          }}
         />
         {file ? (
           <>
             <FileText size={24} className="text-green-500" />
             <p className="text-xs font-semibold text-green-700">{file.name}</p>
-            <p className="text-xs text-gray-400">{formatSize(file.size / (1024 * 1024))}</p>
+            <p className="text-xs text-gray-400">
+              {formatSize(file.size / (1024 * 1024))}
+            </p>
           </>
         ) : (
           <>
             <Upload size={24} className="text-gray-300" />
             <p className="text-xs font-medium text-gray-500">
-              Drop a PDF here, or <span className="text-indigo-600 font-semibold">browse</span>
+              Drop a PDF here, or{" "}
+              <span className="text-indigo-600 font-semibold">browse</span>
             </p>
             <p className="text-xs text-gray-400">PDF only · max 50 MB</p>
           </>
@@ -155,7 +186,9 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
       <div className="flex items-center justify-between px-1">
         <div>
           <p className="text-xs font-semibold text-gray-700">Free access</p>
-          <p className="text-xs text-gray-400">Students can view without a subscription</p>
+          <p className="text-xs text-gray-400">
+            Students can view without a subscription
+          </p>
         </div>
         <button
           onClick={() => setIsFree((v) => !v)}
@@ -190,7 +223,13 @@ function UploadForm({ examTypeId, subjectId, topicId, onClose, onSubmit, loading
           disabled={loading}
           className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-all"
         >
-          {loading ? "Uploading…" : <><Upload size={13} /> Upload</>}
+          {loading ? (
+            "Uploading…"
+          ) : (
+            <>
+              <Upload size={13} /> Upload
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -271,7 +310,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
   } = useAdminStore();
 
   const [showUpload, setShowUpload] = useState(false);
-  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(notesTotal / notesLimit));
@@ -314,7 +353,10 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
           )}
         </div>
         <button
-          onClick={() => { setShowUpload((v) => !v); setEditingId(null); }}
+          onClick={() => {
+            setShowUpload((v) => !v);
+            setEditingId(null);
+          }}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
             showUpload
               ? "bg-gray-800 text-white border-gray-800"
@@ -352,7 +394,10 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
           // Skeleton
           <div className="divide-y divide-gray-100">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse">
+              <div
+                key={i}
+                className="flex items-center gap-4 px-4 py-3 animate-pulse"
+              >
                 <div className="h-4 w-4 bg-gray-100 rounded" />
                 <div className="h-3 flex-1 bg-gray-100 rounded" />
                 <div className="h-3 w-12 bg-gray-100 rounded" />
@@ -372,19 +417,29 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Title</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    Title
+                  </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Topic</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    Topic
+                  </span>
                 </th>
                 <th className="px-4 py-2.5 text-center">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Access</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    Access
+                  </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Size</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    Size
+                  </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Added</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    Added
+                  </span>
                 </th>
                 <th className="px-4 py-2.5" />
               </tr>
@@ -407,9 +462,12 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                     {/* Title */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <FileText size={14} className="text-indigo-400 shrink-0" />
+                        <FileText
+                          size={14}
+                          className="text-indigo-400 shrink-0"
+                        />
                         <a
-                          href={note.fileUrl}
+                          href={note.filePath}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-medium text-gray-800 hover:text-indigo-600 transition-colors truncate max-w-[240px]"
@@ -448,14 +506,29 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
 
                     {/* Date */}
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-400">{formatDate(note.createdAt)}</span>
+                      <span className="text-xs text-gray-400">
+                        {formatDate(note.createdAt)}
+                      </span>
                     </td>
 
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => { setEditingId(note.id); setShowUpload(false); }}
+                          onClick={async () => {
+                            const url = await getNoteDownloadUrlApi(note.id);
+                            window.open(url, "_blank");
+                          }}
+                          className="p-1.5 rounded-md text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                          title="Download"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingId(note.id);
+                            setShowUpload(false);
+                          }}
                           className="p-1.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                           title="Edit"
                         >
@@ -472,7 +545,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                       </div>
                     </td>
                   </tr>
-                )
+                ),
               )}
             </tbody>
           </table>

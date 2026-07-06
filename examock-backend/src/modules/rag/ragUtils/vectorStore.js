@@ -12,7 +12,7 @@ const COLLECTION = "study_docs";
 const VECTOR_SIZE = 3072;
 
 export const ensureCollection = async () => {
-  await client.deleteCollection("study_docs");
+  // await client.deleteCollection("study_docs");
   try {
     const { collections } = await client.getCollections();
     const exists = collections.some((c) => c.name === COLLECTION);

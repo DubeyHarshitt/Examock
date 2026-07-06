@@ -49,21 +49,23 @@ export const removeQuestionFromTest = handle((req) => adminService.removeQuestio
 export const reorderTestQuestions  = handle((req) => adminService.reorderTestQuestions(req.params.id, req.body.questions));
 
 // ── Notes ────────────────────────────────────────────────────
-export const listNotes  = handle((req) => adminService.getNotes(req.query));
+
+export const listNotes = handle((req) => adminService.getNotes(req.query));
 
 export const createNote = async (req, res, next) => {
   try {
     if (!req.file) throw new AppError("File is required", 400);
 
-    const result = await adminService.createNote({
+    const note = await adminService.createNote({
       ...req.body,
       filePath: req.file.path,
       fileName: req.file.originalname,
       fileType: mimeToEnum(req.file.mimetype),
+      fileSizeMb: req.file.size / (1024 * 1024),
       uploadedBy: req.user.userId,
     });
 
-    res.json({ success: true, ...result });
+    res.json({ success: true, note }); // no chunksStored anymore — that happens async now
   } catch (err) {
     next(err);
   }
@@ -71,6 +73,10 @@ export const createNote = async (req, res, next) => {
 
 export const updateNote = handle((req) => adminService.updateNote(req.params.id, req.body));
 export const deleteNote = handle((req) => adminService.deleteNote(req.params.id));
+export const getNoteDownloadUrl = handle(async (req) => {
+  const url = await adminService.getNoteDownloadUrl(req.params.id);
+  return { url };
+});
 
 // ── Videos ───────────────────────────────────────────────────
 export const listVideos       = handle((req) => adminService.getVideos(req.query.topicId));

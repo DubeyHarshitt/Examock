@@ -241,34 +241,47 @@ export const getVideos = async ({ topicId, subjectId }) => {
 // 5. Notes — study materials for the student
 // ─────────────────────────────────────────────────────────────
 
-export const getNotes = async (userId, { topicId, subjectId }) => {
-  const examTypeId = await getUserExamTypeId(userId);
-
-  const where = {
-    examTypeId,
-    isActive: true,
-  };
-
-  // Optional filters
-  if (topicId)   where.topicId   = topicId;
-  if (subjectId) where.subjectId = subjectId;
-
-  const notes = await prisma.note.findMany({
-    where,
-    select: {
-      id: true,
-      title: true,
-      fileType: true,
-      fileSizeMb: true,
-      isFree: true,
-      createdAt: true,
-      topic:   { select: { name: true } },
-      subject: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
+export const getNotes = async (userId, { subjectId, topicId, isFree, page = 1, limit = 20 }) => {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { examTypeId: true },
   });
 
-  return notes;
+  if (!user.examTypeId) {
+    throw new AppError("Complete onboarding to view notes", 400);
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  // examTypeId is always the student's own — never trusted from query params
+  const where = { isActive: true, examTypeId: user.examTypeId };
+  if (subjectId) where.subjectId = subjectId;
+  if (topicId) where.topicId = topicId;
+  if (isFree !== undefined) where.isFree = isFree === "true" || isFree === true;
+
+  const [notes, total] = await Promise.all([
+    prisma.note.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        filePath: true,
+        fileName: true,
+        fileType: true,
+        fileSizeMb: true,
+        isFree: true,
+        createdAt: true,
+        topic: { select: { name: true } },
+        subject: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: Number(limit),
+    }),
+    prisma.note.count({ where }),
+  ]);
+
+  return { notes, total, page: Number(page), limit: Number(limit) };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -277,21 +290,26 @@ export const getNotes = async (userId, { topicId, subjectId }) => {
 
 export const getNoteById = async (id) => {
   const note = await prisma.note.findUnique({
-    where:  { id },
+    where: { id },
     select: {
       id: true,
       title: true,
-      fileUrl: true,   // frontend uses this to open/download
+      filePath: true, // fixed — was fileUrl, doesn't exist on the schema
+      fileName: true, // added — frontend needs this for the download filename
       fileType: true,
       fileSizeMb: true,
       isFree: true,
-      topic:   { select: { name: true } },
+      isActive: true, // needed below, not returned to client
+      examTypeId: true, // needed below, not returned to client
+      topic: { select: { name: true } },
       subject: { select: { name: true } },
     },
   });
 
   if (!note || !note.isActive) throw new AppError("Note not found", 404);
-  return note;
+
+  const { isActive, examTypeId, ...safeNote } = note;
+  return safeNote;
 };
 
 // ─────────────────────────────────────────────────────────────
