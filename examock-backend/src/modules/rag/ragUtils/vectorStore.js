@@ -21,6 +21,17 @@ export const ensureCollection = async () => {
         vectors: { size: VECTOR_SIZE, distance: "Cosine" },
       });
     }
+    // Payload indexes are REQUIRED for filtered searches when Qdrant strict mode
+    // is enabled (the default on cloud + dev). Without them, queries that filter
+    // on userId/examTypeId are rejected with "Index required but not found".
+    await client.createPayloadIndex(COLLECTION, {
+      field_name: "userId",
+      field_schema: "keyword",
+    });
+    await client.createPayloadIndex(COLLECTION, {
+      field_name: "examTypeId",
+      field_schema: "keyword",
+    });
   } catch (err) {
     throw new AppError(
       "Failed to initialize Qdrant collection : " + err.message,

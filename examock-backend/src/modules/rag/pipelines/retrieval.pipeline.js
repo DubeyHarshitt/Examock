@@ -46,7 +46,8 @@ export const answerQuestion = async (question, userId) => {
 
   // Generate answer
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    // gemini-2.5-flash was deprecated for new users; 3.x flash is the current line
+    model: "gemini-3.6-flash",
     contents: prompt,
   });
 
