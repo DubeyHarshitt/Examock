@@ -5,6 +5,7 @@ import {
   sendMobileOtp,
   setExamType,
   verifyMobileOtp,
+  logoutUser,
 } from "./auth.service.js";
 
 const COOKIE_OPTIONS = {
