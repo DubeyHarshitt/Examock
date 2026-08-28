@@ -25,6 +25,9 @@ import DashboardPage from "./pages/dashboard/dashboardPage";
 
 // Admin
 import AdminDashboard from "./pages/admin/adminDashboard";
+import UsersPanel from "./pages/admin/users/UsersPanel";
+import AnalyticsPanel from "./pages/admin/analytics/AnalyticsPanel";
+import NotificationsPanel from "./pages/admin/notifications/NotificationsPanel";
 // import ExamTypesPage from "./pages/admin/ExamTypesPage";
 // import SubjectsPage from "./pages/admin/SubjectsPage";
 // import TopicsPage from "./pages/admin/TopicsPage";
@@ -94,6 +97,9 @@ export default function App() {
             {/* ── Admin routes — auth + admin role ──────────── */}
             <Route element={<AdminRoute />}>
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UsersPanel />} />
+              <Route path="/admin/analytics" element={<AnalyticsPanel />} />
+              <Route path="/admin/notifications" element={<NotificationsPanel />} />
               {/* <Route path="/admin/exam-types"     element={<ExamTypesPage />} />
               <Route path="/admin/subjects"       element={<SubjectsPage />} />
               <Route path="/admin/topics"         element={<TopicsPage />} />

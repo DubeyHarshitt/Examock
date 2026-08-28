@@ -4,7 +4,7 @@ import type { AdminStore } from "../types/admin.store.types";
 import {
   getQuestionsApi,
   createQuestionApi,
-//   bulkCreateQuestionsApi,
+  bulkCreateQuestionsApi,
   updateQuestionApi,
   deleteQuestionApi,
 } from "../../../api/admin.api";
@@ -22,8 +22,9 @@ export interface QuestionsSlice {
 
   fetchQuestions: (topicId: string, page: number) => Promise<void>;
   createQuestion : (data: createQuestionsDto) => Promise<void>;
-    updateQuestion : (id: string, data: updateQuestionDto) => Promise<void>;
-    deleteQuestion: (id: string) => Promise<void>;
+  bulkCreateQuestions: (topicId: string, questions: createQuestionsDto[]) => Promise<void>;
+  updateQuestion : (id: string, data: updateQuestionDto) => Promise<void>;
+  deleteQuestion: (id: string) => Promise<void>;
 }
 
 export const createQuestionSlice: StateCreator<
@@ -31,7 +32,7 @@ export const createQuestionSlice: StateCreator<
   [],
   [],
   QuestionsSlice
-> = (set) => ({
+> = (set, get) => ({
   questions: [],
   questionsLoading: false,
   questionsError: null,
@@ -59,6 +60,22 @@ export const createQuestionSlice: StateCreator<
     } catch (error) {
       set({ questionsError: (error as Error).message });
       throw error; // Re-throw to inform local form components of execution blockers
+    }
+  },
+
+  bulkCreateQuestions: async (topicId, questions) => {
+    set({ questionsError: null, questionsLoading: true });
+    try {
+      // Attach the topicId to each question and send as bulk payload
+      const payload = questions.map((q) => ({ ...q, topicId }));
+      await bulkCreateQuestionsApi(payload);
+      // Backend returns { count }; re-fetch to show the new questions
+      await get().fetchQuestions(topicId, 1);
+    } catch (error) {
+      set({ questionsError: (error as Error).message });
+      throw error;
+    } finally {
+      set({ questionsLoading: false });
     }
   },
 

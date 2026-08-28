@@ -10,7 +10,7 @@
 > - ⏳ **Phase 1 — Student Core:** not started
 > - ⏳ **Phase 2 — Test Engine:** not started
 > - ⏳ **Phase 3 — Progress, RAG & Payments:** not started
-> - ⏳ **Phase 4 — Admin completeness + polish:** not started
+> - ✅ **Phase 4 — Admin completeness + polish: COMPLETE** (videos, channels, users, analytics, bulk questions, notifications — see §7)
 
 ---
 
@@ -36,8 +36,8 @@
 
 The **backend is complete** — every feature in the brief is backed by a working API (auth, exams, subjects, topics, videos, mock tests, questions, test-taking engine, notes/RAG, admin CRUD, analytics, notifications). The **frontend is roughly 40% complete**:
 
-- ✅ **Done:** Google login, onboarding wizard (exam selection + mobile OTP), and most of the **admin content-management suite** (exam types, subjects, topics, questions, mock tests, notes).
-- 🟡 **Scaffolded but empty:** Admin dashboard shell; `users.slice` / `analytics.slice` are empty stubs; no UI for admin analytics, users, videos, channels, or notifications.
+- ✅ **Done:** Google login, onboarding wizard (exam selection + mobile OTP), and the complete **admin suite** — content management (exam types, subjects, topics, questions, mock tests, notes) plus videos, YouTube channels, users, analytics, bulk question import, and notifications.
+- 🟡 **Scaffolded but empty:** `test.store.ts` is implemented but unused (no engine page yet).
 - ❌ **Not built at all (student-facing):** The entire student experience — dashboard, subject/topic browsing, video playlists, test listing/detail, **test engine (timer + navigation + submit)** **, result page, notes viewer, YouTube channels page, progress tracking, AI doubt-solving chat, and RAG PDF upload.**
 
 This plan defines exactly what to build, in what order, and against which APIs.
@@ -127,23 +127,26 @@ All endpoints verified against the backend source. Base URL (frontend): `VITE_AP
 ### ✅ Fully built & functional
 - **Auth:** Google login (LoginPage), session restore (`useInitAuth` + axios refresh-queue), route guards (ProtectedRoute/AdminRoute/OnboardingRoute), logout.
 - **Onboarding:** 3-step wizard (exam type → mobile → OTP) with mutations & resend.
-- **Admin content management** (all wired to real APIs):
+- **Admin suite — content management** (all wired to real APIs):
   - Exam Types CRUD (form + list)
   - Subjects CRUD (form + list + delete modal)
   - Topics CRUD (inline edit)
-  - Question bank CRUD (QuestionForm)
+  - Question bank CRUD (QuestionForm) + **bulk import** (`POST /admin/questions/bulk`)
   - Mock Tests CRUD + `QuestionPicker` (add/remove/reorder), badges, counts
   - Notes upload/manage (drag-drop PDF, free/paid toggle, inline edit, pagination)
+- **Admin suite — operations & analytics**:
+  - Videos CRUD (Videos tab, topic-scoped)
+  - YouTube channels CRUD (Channels toggle, exam-type-scoped)
+  - Users panel (search + pagination + detail modal + reset exam type)
+  - Analytics dashboard (overview KPIs, per-test bars, payments table w/ filters)
+  - Notifications (broadcast form + sent list)
 
 ### 🟡 Partial / scaffolded
-- **Admin dashboard shell** (`adminDashboard.tsx`) — exam/subject/topic pill selector + 3 tabs (Question bank / Mock tests / Notes). Functional but missing analytics, users, videos, channels, notifications.
 - **`test.store.ts`** — the entire test-engine client state (attemptId, answers map, currentIndex) is **already implemented but unused** (no engine page yet).
-- **API layer is largely complete** for all modules (auth, admin, student, test, rag) — just needs the `/api` prefix bugs fixed.
+- **API layer is largely complete** for all modules (auth, admin, student, test, rag).
 
 ### ❌ Not built (empty `*.slice.ts` or missing pages)
-- **Empty stubs:** `store/admin/slices/users.slice.ts`, `store/admin/slices/analytics.slice.ts`.
 - **All student pages** (imports commented out in `App.tsx`): dashboard (real one), subjects, topics, videos, tests, test detail, **test engine**, test result, notes, channels, progress, chat, upload.
-- **Admin pages:** videos, channels, bulk questions, users, analytics, notifications.
 
 ---
 
@@ -282,15 +285,19 @@ Backend models `Payment` but has **no order-create / verification webhook endpoi
 
 ---
 
-### Phase 4 — Admin completeness + polish
+### Phase 4 — Admin completeness + polish (✅ COMPLETE)
 
 Complete the missing admin surfaces (APIs all exist):
-1. **Videos panel** (`/admin/videos` CRUD) — create `videos.slice.ts`, wire `getVideosApi/create/update/delete`.
-2. **YouTube channels panel** (`/admin/yt-channels` CRUD) — `ytChannels.slice`.
-3. **Users panel** (`/admin/users`) — implement empty `users.slice.ts`; list w/ search + pagination, view detail (progress/attempts/payments), reset exam type.
-4. **Analytics dashboard** (implement empty `analytics.slice.ts`): overview cards (users, attempts, revenue, tests, questions), per-test analytics, payments table w/ filters. **Add a chart library** (e.g., Recharts) for visualization.
-5. **Questions bulk-create UI** — paste/import and use `POST /admin/questions/bulk` (API + fn already present).
-6. **Notifications** — `/admin/notifications`: broadcast form (title/body/examType) + list of sent broadcasts (DB-backed; real-time FCM is a backend TODO).
+1. ✅ **Videos panel** (admin Videos tab, topic-scoped CRUD) — `videos.slice.ts` wired to `getVideosApi/create/update/delete`, `VideosPanel.tsx`, added as a "Videos" tab in the admin dashboard.
+2. ✅ **YouTube channels panel** (exam-type-scoped CRUD) — `ytChannels.slice.ts` + `YtChannelsPanel.tsx`, exposed via a "Channels" toggle on the admin dashboard.
+3. ✅ **Users panel** (`/admin/users`) — `users.slice.ts` implemented; list w/ search + pagination, detail modal (progress/attempts/payments), reset exam type.
+4. ✅ **Analytics dashboard** (`/admin/analytics`) — `analytics.slice.ts` implemented; overview cards (users, attempts, revenue, tests, questions), per-test analytics bars, payments table w/ pagination + status filter.
+5. ✅ **Questions bulk-create UI** — collapsible "Bulk import" in `QuestionForm.tsx` using `POST /admin/questions/bulk` (pipe-delimited format with validation).
+6. ✅ **Notifications** (`/admin/notifications`) — `notifications.slice.ts` + `NotificationsPanel.tsx`: broadcast form (title/body/examType) + list of sent broadcasts (DB-backed; real-time FCM remains a backend TODO).
+
+Also wired: routes in `App.tsx` (`/admin/users`, `/admin/analytics`, `/admin/notifications`) behind `AdminRoute`, plus AppShell admin nav + dashboard quick links.
+
+> **Note:** Analytics visualization uses lightweight CSS-based bars (no chart library added, per plan suggestion of Recharts — optional future add).
 
 ### Final polish (all phases)
 - Responsive audit on mobile/tablet/desktop.
@@ -321,17 +328,17 @@ Complete the missing admin surfaces (APIs all exist):
 - [ ] `rag/UploadPage.tsx` `/upload`
 
 ### New admin pages (`src/pages/admin/`)
-- [ ] `VideosPage.tsx` (or add as tab in adminDashboard)
-- [ ] `YtChannelsPanel.tsx`
-- [ ] `UsersPage.tsx`
-- [ ] `AnalyticsPage.tsx`
-- [ ] `NotificationsPanel.tsx`
+- [x] `VideosPanel.tsx` (added as a tab in adminDashboard)
+- [x] `YtChannelsPanel.tsx`
+- [x] `UsersPanel.tsx`
+- [x] `AnalyticsPanel.tsx`
+- [x] `NotificationsPanel.tsx`
 
 ### Store slices (`src/store/admin/slices/`)
-- [ ] `videos.slice.ts` (new)
-- [ ] `ytChannels.slice.ts` (new)
-- [ ] `users.slice.ts` (implement stub)
-- [ ] `analytics.slice.ts` (implement stub)
+- [x] `videos.slice.ts` (new)
+- [x] `ytChannels.slice.ts` (new)
+- [x] `users.slice.ts` (implemented)
+- [x] `analytics.slice.ts` (implemented)
 - [ ] optional `student.slice.ts` (progress/dashboard cache)
 
 ### Types (`src/types/`) & api (`src/api/`) (✅ Phase 0)
@@ -351,7 +358,7 @@ Complete the missing admin surfaces (APIs all exist):
 
 ### Routing (`src/App.tsx`)
 - [ ] Uncomment & wire all student routes inside `ProtectedRoute`
-- [ ] Add admin videos/channels/users/analytics/notifications routes
+- [x] Add admin videos/channels/users/analytics/notifications routes
 
 ---
 

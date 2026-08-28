@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../../store/auth.store";
 import { useAdminStore } from "../../store/admin/admin.store";
-import { Settings, BookOpen, ListChecks, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  Settings,
+  BookOpen,
+  ListChecks,
+  FileText,
+  MonitorPlay,
+  Users,
+  BarChart3,
+  Bell,
+} from "lucide-react";
 
 import ExamTypePanel from "./examTypes/examTypePannel";
 import SubjectsPanel from "./subjects/SubjectsPanel";
@@ -9,8 +19,10 @@ import TopicsPanel from "./topicsAndQuestions/TopicsPanel";
 import QuestionForm from "./topicsAndQuestions/QuestionForm";
 import MockTestsPanel from "./mockTest/MockTestPannel";
 import NotesPanel from "./notesUpload/NotesPannel";
+import VideosPanel from "./videos/VideosPanel";
+import YtChannelsPanel from "./channels/YtChannelsPanel";
 
-type ContentTab = "questionBank" | "mockTests" | "notes";
+type ContentTab = "questionBank" | "mockTests" | "notes" | "videos";
 
 const AdminDashboard = () => {
   const user = useAuthStore((state) => state.user);
@@ -20,6 +32,7 @@ const AdminDashboard = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
   const [isManagingExamTypes, setIsManagingExamTypes] = useState<boolean>(false);
+  const [isManagingChannels, setIsManagingChannels] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ContentTab>("questionBank");
 
   useEffect(() => {
@@ -51,7 +64,15 @@ const AdminDashboard = () => {
     { key: "questionBank", label: "Question bank", icon: <BookOpen size={14} /> },
     { key: "mockTests",    label: "Mock tests",    icon: <ListChecks size={14} /> },
     { key: "notes",        label: "Notes",         icon: <FileText size={14} /> },
+    { key: "videos",       label: "Videos",        icon: <MonitorPlay size={14} /> },
   ];
+
+  // Link to the exam-type selector button so it applies the selection immediately
+  const handleExamTypeSelect = (id: string) => {
+    setSelectedExamTypeId(id);
+    setIsManagingExamTypes(false);
+    setIsManagingChannels(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -60,8 +81,28 @@ const AdminDashboard = () => {
           <h1 className="text-base font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-xs text-gray-500 mt-0.5">Welcome back, {user?.name}</p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
-          {user?.name?.[0]?.toUpperCase() ?? "A"}
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/users"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+          >
+            <Users size={13} /> Users
+          </Link>
+          <Link
+            to="/admin/analytics"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+          >
+            <BarChart3 size={13} /> Analytics
+          </Link>
+          <Link
+            to="/admin/notifications"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+          >
+            <Bell size={13} /> Notify
+          </Link>
+          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+            {user?.name?.[0]?.toUpperCase() ?? "A"}
+          </div>
         </div>
       </header>
 
@@ -73,12 +114,9 @@ const AdminDashboard = () => {
             {examTypes.map((et) => (
               <button
                 key={et.id}
-                onClick={() => {
-                  setSelectedExamTypeId(et.id);
-                  setIsManagingExamTypes(false);
-                }}
+                onClick={() => handleExamTypeSelect(et.id)}
                 className={`px-4 py-1.5 text-sm font-semibold rounded-full border transition-all ${
-                  selectedExamTypeId === et.id && !isManagingExamTypes
+                  selectedExamTypeId === et.id && !isManagingExamTypes && !isManagingChannels
                     ? "bg-indigo-600 border-indigo-600 text-white"
                     : "bg-white border-gray-300 text-gray-600 hover:border-indigo-400"
                 }`}
@@ -88,20 +126,44 @@ const AdminDashboard = () => {
             ))}
           </div>
 
-          <button
-            onClick={() => setIsManagingExamTypes(!isManagingExamTypes)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
-              isManagingExamTypes
-                ? "bg-gray-800 text-white border-gray-800"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            <Settings size={14} />
-            {isManagingExamTypes ? "Close configuration" : "Configure exam types"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setIsManagingChannels(!isManagingChannels);
+                setIsManagingExamTypes(false);
+                if (!isManagingChannels) setSelectedExamTypeId(examTypes[0]?.id ?? "");
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
+                isManagingChannels
+                  ? "bg-gray-800 text-white border-gray-800"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <MonitorPlay size={14} />
+              {isManagingChannels ? "Close channels" : "Channels"}
+            </button>
+            <button
+              onClick={() => {
+                setIsManagingExamTypes(!isManagingExamTypes);
+                setIsManagingChannels(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all ${
+                isManagingExamTypes
+                  ? "bg-gray-800 text-white border-gray-800"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <Settings size={14} />
+              {isManagingExamTypes ? "Close configuration" : "Configure exam types"}
+            </button>
+          </div>
         </div>
 
-        {isManagingExamTypes ? (
+        {isManagingChannels && selectedExamTypeId ? (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <YtChannelsPanel examTypeId={selectedExamTypeId} />
+          </div>
+        ) : isManagingExamTypes ? (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <ExamTypePanel />
           </div>
@@ -169,12 +231,14 @@ const AdminDashboard = () => {
                         subjectId={selectedSubjectId}
                         topicId={selectedTopicId}
                       />
-                    ) : (
+                    ) : activeTab === "notes" ? (
                       <NotesPanel
                         examTypeId={selectedExamTypeId}
                         subjectId={selectedSubjectId}
                         topicId={selectedTopicId}
                       />
+                    ) : (
+                      <VideosPanel topicId={selectedTopicId} />
                     )}
                   </>
                 )}

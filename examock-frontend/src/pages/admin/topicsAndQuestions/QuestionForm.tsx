@@ -1,7 +1,18 @@
 // pages/admin/questions/component/QuestionForm.tsx
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import { Eye, CheckCircle, Trash2, Edit3, XCircle } from "lucide-react";
+import type { createQuestionsDto, Questions } from "../../../store/admin/types/admin.types";
+import {
+  Eye,
+  CheckCircle,
+  Trash2,
+  Edit3,
+  XCircle,
+  Upload,
+  FileUp,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 interface QuestionFormProps {
   topicId: string; // Required — every question belongs to exactly one topic
@@ -26,6 +37,7 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
     questions,
     fetchQuestions, // Make sure to call this to sync data
     createQuestion,
+    bulkCreateQuestions,
     updateQuestion, // Added for edit capabilities
     deleteQuestion, // Added for deletion capabilities
     questionsError,
@@ -40,6 +52,12 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
 
   // Track if we are editing an existing question
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+
+  // Bulk import states
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
   // Sync / Fetch questions whenever the topic changes.
   // getQuestions on the backend only accepts topicId, so that's all we pass.
@@ -119,6 +137,71 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
     }
   };
 
+  /**
+   * Parse the bulk textarea into question DTOs.
+   * Expected format — one question per line, fields separated by `|`:
+   *   Question text | Option A | Option B | Option C | Option D | A|D|C|B (correct letter) | Explanation (optional)
+   * Correct letter is the 6th field. Anything after position 6 is explanation.
+   */
+  const parseBulkQuestions = (): createQuestionsDto[] => {
+    const lines = bulkText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) {
+      setBulkError("Paste at least one question.");
+      return [];
+    }
+
+    const parsed: createQuestionsDto[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const parts = lines[i].split("|").map((p) => p.trim());
+      if (parts.length < 6) {
+        setBulkError(`Line ${i + 1} is invalid: expected at least 6 fields separated by "|".`);
+        return [];
+      }
+      const [qtext, optA, optB, optC, optD, correct] = parts;
+      const correctLetter = correct.toUpperCase();
+      if (!["A", "B", "C", "D"].includes(correctLetter)) {
+        setBulkError(`Line ${i + 1}: correct option must be A, B, C, or D (got "${correct}").`);
+        return [];
+      }
+      if (!qtext || !optA || !optB || !optC || !optD) {
+        setBulkError(`Line ${i + 1}: question text and all 4 options are required.`);
+        return [];
+      }
+      const explanation = parts.length > 6 ? parts.slice(6).join("|").trim() : undefined;
+      parsed.push({
+        text: qtext,
+        optionA: optA,
+        optionB: optB,
+        optionC: optC,
+        optionD: optD,
+        correctOption: correctLetter as "A" | "B" | "C" | "D",
+        ...(explanation ? { explanation } : {}),
+      });
+    }
+    return parsed;
+  };
+
+  const handleBulkImport = async () => {
+    setBulkError(null);
+    if (!topicId) return;
+    const parsed = parseBulkQuestions();
+    if (parsed.length === 0) return;
+
+    setIsBulkSubmitting(true);
+    try {
+      await bulkCreateQuestions(topicId, parsed);
+      setBulkText("");
+      setShowBulkImport(false);
+    } catch (err) {
+      setBulkError((err as Error).message || "Bulk import failed.");
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
   // The store's fetchQuestions(topicId) already scopes the request server-side,
   // so `questions` should already be this topic's pool. No client-side
   // re-filtering needed (and the old undefined-comparison filter never matched).
@@ -137,7 +220,56 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start bg-gray-50 border border-gray-200 rounded-xl p-5">
     
     {/* Left Column: Form Controls */}
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-5 rounded-lg border border-gray-200 shadow-sm h-fit sticky top-6">
+    <div className="space-y-4">
+      {/* Bulk import — collapsible */}
+      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+        <button
+          type="button"
+          onClick={() => {
+            setShowBulkImport(!showBulkImport);
+            setBulkError(null);
+          }}
+          className="w-full flex items-center justify-between text-sm font-bold text-gray-800 uppercase tracking-wide"
+        >
+          <span className="flex items-center gap-2">
+            <Upload size={16} className="text-indigo-600" /> Bulk import questions
+          </span>
+          {showBulkImport ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+        </button>
+
+        {showBulkImport && (
+          <div className="mt-4 space-y-3">
+            <textarea
+              rows={6}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={'One question per line, fields separated by "|":\nQuestion text | Option A | Option B | Option C | Option D | A|B|C|D | Explanation (optional)'}
+              className="w-full text-xs p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-y font-mono"
+            />
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Correct answer is the 6th field (A/B/C/D). Explanation is optional (7th field onward). Example:
+              <span className="block mt-1 bg-gray-50 border border-gray-100 rounded p-2 font-mono text-gray-500">
+                2 + 2 equals? | 3 | 4 | 5 | 6 | B | Basic arithmetic
+              </span>
+            </p>
+            {bulkError && (
+              <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">{bulkError}</p>
+            )}
+            <button
+              type="button"
+              disabled={isBulkSubmitting}
+              onClick={handleBulkImport}
+              className="w-full flex items-center justify-center gap-2 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg font-semibold text-sm shadow-sm transition-colors"
+            >
+              <FileUp size={15} />
+              {isBulkSubmitting ? "Importing..." : `Import ${bulkText.split("\n").filter((l) => l.trim()).length} questions`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Single question form */}
+      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-5 rounded-lg border border-gray-200 shadow-sm h-fit sticky top-6">
       <div className="flex justify-between items-center border-b border-gray-100 pb-2">
         <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
           {editingQuestionId ? "Modify question" : "Create new question"}
@@ -220,6 +352,7 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
         {isSubmitting ? "Saving..." : editingQuestionId ? "Save changes" : "Add question to bank"}
       </button>
     </form>
+    </div>{/* /Left Column */}
 
     {/* Right Column: Live Data Bank Display (Updatable / Deletable) */}
     {/* Added sticky top-6 here to keep both sides balanced, preventing weird overlapping when scrolling */}
@@ -238,7 +371,7 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
         </div>
       ) : (
         <div className="space-y-6 divide-y divide-gray-100">
-          {activeQuestions.map((q: any, qIdx: number) => {
+          {activeQuestions.map((q: Questions, qIdx: number) => {
             const itemOptions = [q.optionA, q.optionB, q.optionC, q.optionD];
             const correctLetter = q.correctOption;
 

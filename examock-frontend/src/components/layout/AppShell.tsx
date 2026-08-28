@@ -19,6 +19,7 @@ import {
   ChevronRight,
   MessageCircle,
   FolderOpen,
+  Bell,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { logout } from "../../api/auth.api";
@@ -51,6 +52,7 @@ const adminNav: NavItem[] = [
   { to: "/admin-dashboard", label: "Content", icon: <LayoutDashboard className="w-4 h-4" />, end: true },
   { to: "/admin/users", label: "Users", icon: <Users className="w-4 h-4" /> },
   { to: "/admin/analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
+  { to: "/admin/notifications", label: "Notify", icon: <Bell className="w-4 h-4" /> },
 ];
 
 export function AppShell({ children, section }: AppShellProps) {

@@ -17,6 +17,7 @@ import {
   // Mock Tests
   listMockTests, createMockTest, updateMockTest, deleteMockTest,
   addQuestionToTest, removeQuestionFromTest, reorderTestQuestions,
+  getMockTestDetail,
   // Notes
   listNotes, createNote, updateNote, deleteNote,
   // Users
@@ -27,7 +28,6 @@ import {
   listNotifications, broadcastNotification,
   getNoteDownloadUrl,
 } from "./admin.controller.js";
-import { getMockTestDetail } from "./admin.service.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
