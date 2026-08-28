@@ -390,10 +390,14 @@ These are needed for full feature parity; most are backend-side (out of scope fo
 1. **Razorpay flow missing** — backend has `Payment` model + `isPaid` checks but no order-create / verify-webhook endpoints. **Needed by Phase 3C.**
 2. **~~`logoutUser` import bug~~ ✅ FIXED (backend)** — `auth.controller.js` now imports and calls `logoutUser` correctly.
 3. **~~No `dev`/`start` script~~ ✅ FIXED (backend)** — `package.json` now has `dev: node --watch index.js` and `start: node index.js`.
-4. **DoubtSession has no API** — model exists but no endpoint for chat history persistence (RAG chat is stateless `POST /rag/chat`).
-5. **Notifications are DB-only** — no FCM/WebSocket push (backend TODO). Admin UI can persist; live push needs backend work.
-6. **Note ingestion** is PDF-only (other file types marked FAILED) — acceptable per brief (content is PDF study material).
-7. **Backend note**: `OPENAI_API_KEY`/`langchain`/`fast-check` appear unused — clean up later.
+4. **~~RAG infra (Qdrant + Gemini)~~ ✅ VERIFIED OPERATIONAL** — the RAG chat/upload path now works end-to-end:
+   - `QDRANT_URL` pointed at the working cloud cluster (`e346d947-...sa-east-1-0.aws.cloud.qdrant.io`); collection `study_docs` auto-created.
+   - **Payload indexes** created on `userId` + `examTypeId` — required for filtered searches under Qdrant strict mode (otherwise chat errors "Index required but not found"). Backend `ensureCollection()` now creates these automatically.
+   - **Gemini model** updated `gemini-2.5-flash → gemini-3.6-flash` (2.5-flash is 404 for new users) in `retrieval.pipeline.js`; embedding model `gemini-embedding-001` (3072-dim, matches collection) confirmed working.
+5. **DoubtSession has no API** — model exists but no endpoint for chat history persistence (RAG chat is stateless `POST /rag/chat`).
+6. **Notifications are DB-only** — no FCM/WebSocket push (backend TODO). Admin UI can persist; live push needs backend work.
+7. **Note ingestion** is PDF-only (other file types marked FAILED) — acceptable per brief (content is PDF study material).
+8. **Backend note**: `OPENAI_API_KEY`/`langchain`/`fast-check` appear unused — clean up later.
 
 ---
 

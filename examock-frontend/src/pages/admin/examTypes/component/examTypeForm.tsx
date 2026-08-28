@@ -66,14 +66,14 @@ const ExamTypeForm: React.FC<ExamTypeFormProps> = ({ editingExamType, clearSelec
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">
-        {editingExamType ? '⚙️ Update Exam Type' : '➕ Create New Exam Type'}
+    <div className="card-surface p-5">
+      <h3 className="text-sm font-bold text-slate-900 mb-4">
+        {editingExamType ? 'Update Exam Type' : 'Create New Exam Type'}
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Name *</label>
             <input
               type="text"
               name="name"
@@ -81,11 +81,11 @@ const ExamTypeForm: React.FC<ExamTypeFormProps> = ({ editingExamType, clearSelec
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g., Scholastic Assessment Test"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Slug *</label>
             <input
               type="text"
               name="slug"
@@ -93,29 +93,29 @@ const ExamTypeForm: React.FC<ExamTypeFormProps> = ({ editingExamType, clearSelec
               value={formData.slug}
               onChange={handleChange}
               placeholder="e.g., sat-exam"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-50"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all bg-slate-50"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Description</label>
           <textarea
             name="description"
             rows={3}
             value={formData.description}
             onChange={handleChange}
             placeholder="Provide a brief explanation of this testing structure..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all"
           />
         </div>
 
-        <div className="flex justify-end space-x-2 pt-2">
+        <div className="flex justify-end gap-2 pt-2">
           {editingExamType && (
             <button
               type="button"
               onClick={clearSelection}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
@@ -123,7 +123,7 @@ const ExamTypeForm: React.FC<ExamTypeFormProps> = ({ editingExamType, clearSelec
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors disabled:opacity-50"
           >
             {isSubmitting ? 'Saving...' : editingExamType ? 'Update Type' : 'Create Type'}
           </button>

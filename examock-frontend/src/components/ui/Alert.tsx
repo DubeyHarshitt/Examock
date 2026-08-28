@@ -17,12 +17,12 @@ const styles: Record<AlertVariant, { box: string; icon: ReactNode }> = {
     icon: <XCircle className="w-4 h-4 text-red-500" />,
   },
   success: {
-    box: "bg-green-50 border-green-200 text-green-700",
-    icon: <CheckCircle2 className="w-4 h-4 text-green-500" />,
+    box: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
   },
   info: {
-    box: "bg-blue-50 border-blue-200 text-blue-700",
-    icon: <Info className="w-4 h-4 text-blue-500" />,
+    box: "bg-sky-50 border-sky-200 text-sky-700",
+    icon: <Info className="w-4 h-4 text-sky-500" />,
   },
   warning: {
     box: "bg-amber-50 border-amber-200 text-amber-700",

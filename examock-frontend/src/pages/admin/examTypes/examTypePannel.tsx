@@ -17,12 +17,12 @@ const ExamTypePanel = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 sm:p-5">
       <div className="mb-5">
-        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
           Exam Types Configuration
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           Create, update, or remove comprehensive testing tracks here.
         </p>
       </div>

@@ -110,12 +110,12 @@ function UploadForm({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-gray-800">Upload note</h3>
+        <h3 className="text-sm font-bold text-slate-800">Upload note</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-slate-400 hover:text-slate-600 transition-colors"
         >
           <X size={16} />
         </button>
@@ -123,7 +123,7 @@ function UploadForm({
 
       {/* Title */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
           Title
         </label>
         <input
@@ -131,7 +131,7 @@ function UploadForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Algebra Basics"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all"
+          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all"
         />
       </div>
 
@@ -146,10 +146,10 @@ function UploadForm({
         onClick={() => fileRef.current?.click()}
         className={`relative flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-8 cursor-pointer transition-all ${
           dragOver
-            ? "border-indigo-400 bg-indigo-50"
+            ? "border-brand-400 bg-brand-50"
             : file
               ? "border-green-300 bg-green-50"
-              : "border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40"
+              : "border-slate-200 bg-slate-50 hover:border-brand-300 hover:bg-brand-50/40"
         }`}
       >
         <input
@@ -166,18 +166,18 @@ function UploadForm({
           <>
             <FileText size={24} className="text-green-500" />
             <p className="text-xs font-semibold text-green-700">{file.name}</p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               {formatSize(file.size / (1024 * 1024))}
             </p>
           </>
         ) : (
           <>
-            <Upload size={24} className="text-gray-300" />
-            <p className="text-xs font-medium text-gray-500">
+            <Upload size={24} className="text-slate-300" />
+            <p className="text-xs font-medium text-slate-500">
               Drop a PDF here, or{" "}
-              <span className="text-indigo-600 font-semibold">browse</span>
+              <span className="text-brand-600 font-semibold">browse</span>
             </p>
-            <p className="text-xs text-gray-400">PDF only · max 50 MB</p>
+            <p className="text-xs text-slate-400">PDF only · max 50 MB</p>
           </>
         )}
       </div>
@@ -185,15 +185,15 @@ function UploadForm({
       {/* isFree toggle */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-xs font-semibold text-gray-700">Free access</p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs font-semibold text-slate-700">Free access</p>
+          <p className="text-xs text-slate-400">
             Students can view without a subscription
           </p>
         </div>
         <button
           onClick={() => setIsFree((v) => !v)}
           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            isFree ? "bg-indigo-600" : "bg-gray-200"
+            isFree ? "bg-brand-600" : "bg-slate-200"
           }`}
         >
           <span
@@ -214,14 +214,14 @@ function UploadForm({
       <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onClose}
-          className="px-4 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+          className="px-4 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-all"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-60 transition-all"
         >
           {loading ? (
             "Uploading…"
@@ -250,13 +250,13 @@ function EditRow({ note, onSave, onCancel, loading }: EditRowProps) {
   const [isFree, setIsFree] = useState(note.isFree);
 
   return (
-    <tr className="bg-indigo-50/40">
+    <tr className="bg-brand-50/40">
       <td className="px-4 py-3" colSpan={2}>
         <input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full px-2 py-1 text-sm border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full px-2 py-1 text-sm border border-brand-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-300"
         />
       </td>
       <td className="px-4 py-3 text-center">
@@ -265,7 +265,7 @@ function EditRow({ note, onSave, onCancel, loading }: EditRowProps) {
           className={`px-2 py-0.5 rounded-full text-xs font-bold transition-colors ${
             isFree
               ? "bg-green-100 text-green-700 hover:bg-green-200"
-              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
           }`}
         >
           {isFree ? "Free" : "Paid"}
@@ -283,7 +283,7 @@ function EditRow({ note, onSave, onCancel, loading }: EditRowProps) {
           </button>
           <button
             onClick={onCancel}
-            className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 transition-colors"
           >
             <X size={14} />
           </button>
@@ -338,34 +338,29 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <FileText size={16} className="text-gray-400" />
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            Notes
-          </span>
-          {notesTotal > 0 && (
-            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-              {notesTotal}
-            </span>
-          )}
+          <FileText size={16} className="text-brand-500" />
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Study notes</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {notesTotal} note{notesTotal !== 1 ? "s" : ""} uploaded
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => {
-            setShowUpload((v) => !v);
-            setEditingId(null);
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
-            showUpload
-              ? "bg-gray-800 text-white border-gray-800"
-              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-          }`}
-        >
-          <Upload size={13} />
-          {showUpload ? "Cancel" : "Upload note"}
-        </button>
+        {!showUpload && (
+          <button
+            onClick={() => {
+              setShowUpload(true);
+              setEditingId(null);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition-colors"
+          >
+            <Upload size={14} /> Upload note
+          </button>
+        )}
       </div>
 
       {/* Upload form */}
@@ -389,62 +384,62 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {notesLoading && notes.length === 0 ? (
           // Skeleton
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
                 className="flex items-center gap-4 px-4 py-3 animate-pulse"
               >
-                <div className="h-4 w-4 bg-gray-100 rounded" />
-                <div className="h-3 flex-1 bg-gray-100 rounded" />
-                <div className="h-3 w-12 bg-gray-100 rounded" />
-                <div className="h-3 w-16 bg-gray-100 rounded" />
-                <div className="h-3 w-20 bg-gray-100 rounded" />
+                <div className="h-4 w-4 bg-slate-100 rounded" />
+                <div className="h-3 flex-1 bg-slate-100 rounded" />
+                <div className="h-3 w-12 bg-slate-100 rounded" />
+                <div className="h-3 w-16 bg-slate-100 rounded" />
+                <div className="h-3 w-20 bg-slate-100 rounded" />
               </div>
             ))}
           </div>
         ) : notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-            <FileText size={28} className="text-gray-200" />
-            <p className="text-sm font-semibold text-gray-400">No notes yet</p>
-            <p className="text-xs text-gray-300">Upload a PDF to get started</p>
+            <FileText size={28} className="text-slate-200" />
+            <p className="text-sm font-semibold text-slate-400">No notes yet</p>
+            <p className="text-xs text-slate-300">Upload a PDF to get started</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
+              <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                     Title
                   </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                     Topic
                   </span>
                 </th>
                 <th className="px-4 py-2.5 text-center">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                     Access
                   </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                     Size
                   </span>
                 </th>
                 <th className="px-4 py-2.5 text-left">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                     Added
                   </span>
                 </th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-50">
               {notes.map((note) =>
                 editingId === note.id ? (
                   <EditRow
@@ -457,20 +452,20 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                 ) : (
                   <tr
                     key={note.id}
-                    className="hover:bg-gray-50/60 transition-colors group"
+                    className="hover:bg-slate-50/60 transition-colors group"
                   >
                     {/* Title */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <FileText
                           size={14}
-                          className="text-indigo-400 shrink-0"
+                          className="text-brand-400 shrink-0"
                         />
                         <a
                           href={note.filePath}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-gray-800 hover:text-indigo-600 transition-colors truncate max-w-[240px]"
+                          className="text-sm font-medium text-slate-800 hover:text-brand-600 transition-colors truncate max-w-[240px]"
                         >
                           {note.title}
                         </a>
@@ -479,7 +474,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
 
                     {/* Topic / subject */}
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400">
                         {note.topic?.name ?? note.subject?.name ?? "—"}
                       </span>
                     </td>
@@ -499,14 +494,14 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
 
                     {/* Size */}
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400">
                         {formatSize(note.fileSizeMb)}
                       </span>
                     </td>
 
                     {/* Date */}
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400">
                         {formatDate(note.createdAt)}
                       </span>
                     </td>
@@ -519,7 +514,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                             const url = await getNoteDownloadUrlApi(note.id);
                             window.open(url, "_blank");
                           }}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors"
                           title="Download"
                         >
                           <Download size={14} />
@@ -529,7 +524,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                             setEditingId(note.id);
                             setShowUpload(false);
                           }}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                           title="Edit"
                         >
                           <PencilLine size={14} />
@@ -537,7 +532,7 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
                         <button
                           onClick={() => handleDelete(note.id)}
                           disabled={deletingId === note.id}
-                          className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                           title="Delete"
                         >
                           <Trash2 size={14} />
@@ -553,22 +548,22 @@ const NotesPanel = ({ examTypeId, subjectId, topicId }: NotesPanelProps) => {
 
         {/* Pagination footer */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/60">
-            <span className="text-xs text-gray-400">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/60">
+            <span className="text-xs text-slate-400">
               Page {notesPage} of {totalPages} · {notesTotal} notes
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handlePageChange(notesPage - 1)}
                 disabled={notesPage === 1 || notesLoading}
-                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={() => handlePageChange(notesPage + 1)}
                 disabled={notesPage === totalPages || notesLoading}
-                className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40 transition-colors"
               >
                 <ChevronRight size={14} />
               </button>

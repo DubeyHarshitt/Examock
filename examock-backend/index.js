@@ -24,13 +24,18 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Global rate limit: 10 request per 15 min per IP
+// Global rate limit: guards against runaway traffic, but generous enough that
+// normal UX (multi-panel loads, token refresh, dev reloads) never trips it.
+// skipSuccessfulRequests -> only FAILED attempts count toward the window, so a
+// brief flurry of bad requests can't lock a healthy user out of login/refresh.
 // FIX: INTEGRATE with REDIS to make Horizontally scalable 
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15min
-    max: 100,
+    max: 600,
     standardHeaders: true,
     legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: { error: "Too many requests. Please try again in a few minutes." },
 }));
 
 app.get("/health",(_req, res)=> {

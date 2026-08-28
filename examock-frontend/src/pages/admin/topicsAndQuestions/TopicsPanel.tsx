@@ -1,7 +1,10 @@
-// pages/admin/topics/TopicsPanel.tsx
+// pages/admin/topicsAndQuestions/TopicsPanel.tsx
+// Manage (create / edit / delete) the topics that belong to a subject.
+// Selecting a topic scopes the content tools (questions, tests, notes) to it.
+
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import { Pencil, Trash2, Plus, Folder } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, FolderOpen } from "lucide-react";
 
 interface TopicsPanelProps {
   subjectId: string;
@@ -28,109 +31,172 @@ const TopicsPanel = ({ subjectId, selectedTopicId, onSelectTopic }: TopicsPanelP
     setNewTopicName("");
   };
 
-  const handleUpdate = async (id: string) => {
+  const handleSaveEdit = async (id: string) => {
     if (!editingName.trim()) return;
     await updateTopic(id, { name: editingName.trim() });
     setEditingId(null);
   };
 
-  if (!subjectId) return <div className="text-sm text-gray-400 text-center py-6">Select a subject first to view topics</div>;
+  if (!subjectId)
+    return (
+      <div className="text-sm text-slate-400 text-center py-6">
+        Select a subject first to view topics
+      </div>
+    );
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-200">
-      {/* Topic List and Creator */}
-      <div className="md:col-span-1 p-4 bg-gray-50/50">
-        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Topics Management</h3>
-        
-        <form onSubmit={handleCreate} className="flex gap-2 mb-4">
+    <div className="card-surface overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <FolderOpen size={16} className="text-brand-500" />
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Topics</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {topics.length} topic{topics.length !== 1 ? "s" : ""} · pick one to scope questions, tests & notes
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-medium text-slate-500">
+          {selectedTopicId ? "Topic selected" : "No topic (full subject)"}
+        </span>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {topicError && (
+          <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 font-medium">
+            {topicError}
+          </div>
+        )}
+
+        {/* Add topic */}
+        <form onSubmit={handleCreate} className="flex gap-2">
           <input
             type="text"
-            placeholder="New Topic name..."
+            placeholder="Add a new topic…"
             value={newTopicName}
             onChange={(e) => setNewTopicName(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            className="flex-1 px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 bg-white"
           />
-          <button type="submit" className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-            <Plus size={16} />
+          <button
+            type="submit"
+            disabled={!newTopicName.trim()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50"
+          >
+            <Plus size={15} /> Add
           </button>
         </form>
 
-        {topicError && <p className="text-xs text-red-500 mb-2">{topicError}</p>}
-
-        <div className="space-y-1.5 max-h-64 overflow-y-auto">
-          {topicLoading && topics.length === 0 ? (
-            <div className="text-xs text-gray-400 py-2">Loading...</div>
-          ) : topics.length === 0 ? (
-            <div className="text-xs text-gray-400 py-4 text-center">No structural sub-topics.</div>
-          ) : (
-            topics.map((topic) => (
-              <div
-                key={topic.id}
-                onClick={() => onSelectTopic(topic.id)}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all border text-xs font-medium ${
-                  selectedTopicId === topic.id
-                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {editingId === topic.id ? (
-                  <input
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onBlur={() => handleUpdate(topic.id)}
-                    className="w-full bg-white px-1 border border-indigo-400 rounded focus:outline-none"
-                    autoFocus
-                  />
-                ) : (
-                  <span className="truncate">{topic.name}</span>
-                )}
-
-                <div className="flex gap-1 opacity-60 hover:opacity-100 ml-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingId(topic.id);
-                      setEditingName(topic.name);
-                    }}
-                    className="p-1 text-gray-500 hover:text-indigo-600 rounded"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if(confirm("Delete topic?")) deleteTopic(topic.id);
-                    }}
-                    className="p-1 text-gray-500 hover:text-red-600 rounded"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Mode Status Block */}
-      <div className="md:col-span-2 p-4 flex flex-col justify-center items-center text-center bg-white min-h-40">
-        <Folder size={32} className="text-indigo-500 mb-2 opacity-80" />
-        <p className="text-sm font-semibold text-gray-800">
-          {selectedTopicId ? "Topic Scope Locked" : "Full Syllabus Scope Engaged"}
-        </p>
-        <p className="text-xs text-gray-400 mt-1 max-w-sm">
-          {selectedTopicId 
-            ? "Questions created now will belong precisely to this micro-topic unit."
-            : "No topic selected. Questions created will default to a Subject-wide Full Syllabus target profile."}
-        </p>
-        {selectedTopicId && (
-          <button 
-            onClick={() => onSelectTopic("")}
-            className="mt-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-3 py-1 rounded-full transition-colors"
-          >
-            Switch to Full Syllabus Mode
-          </button>
+        {/* Topic list */}
+        {topicLoading && topics.length === 0 ? (
+          <div className="text-sm text-slate-400 text-center py-8">Loading topics…</div>
+        ) : topics.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <FolderOpen size={28} className="text-slate-300 mb-2" />
+            <p className="text-sm font-medium text-slate-500">No topics yet</p>
+            <p className="text-xs text-slate-400 mt-1">Add your first topic above.</p>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {topics.map((topic) => {
+              const isActive = selectedTopicId === topic.id;
+              const isEditing = editingId === topic.id;
+              return (
+                <li
+                  key={topic.id}
+                  onClick={() => !isEditing && onSelectTopic(topic.id)}
+                  className={`group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl cursor-pointer border transition-all text-sm font-medium ${
+                    isActive
+                      ? "bg-brand-50 border-brand-200 text-brand-700"
+                      : "bg-slate-50/60 border-slate-100 text-slate-700 hover:border-brand-200"
+                  }`}
+                >
+                  {isEditing ? (
+                    <>
+                      <input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEdit(topic.id);
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="flex-1 min-w-0 bg-white px-2 py-1 text-sm border border-brand-400 rounded-lg focus:outline-none"
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveEdit(topic.id);
+                          }}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md"
+                          title="Save"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(null);
+                          }}
+                          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-md"
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="truncate">{topic.name}</span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(topic.id);
+                            setEditingName(topic.name);
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-brand-600 rounded-md"
+                          title="Edit topic"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Delete this topic?")) deleteTopic(topic.id);
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-red-600 rounded-md"
+                          title="Delete topic"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
+
+        {/* Scope hint */}
+        <p className="text-xs text-slate-400 border-t border-slate-100 pt-3">
+          {selectedTopicId
+            ? "Content you create below will be scoped to the selected topic."
+            : "No topic selected — content will apply to the whole subject."}{" "}
+          <button
+            type="button"
+            onClick={() => onSelectTopic("")}
+            className="font-semibold text-brand-600 hover:underline"
+          >
+            Clear topic selection
+          </button>
+        </p>
       </div>
     </div>
   );

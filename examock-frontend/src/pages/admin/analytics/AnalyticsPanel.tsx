@@ -11,12 +11,10 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  BarChart3,
 } from "lucide-react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import { AppShell } from "../../../components/layout/AppShell";
+import { AdminLayout } from "../../../components/layout/AdminLayout";
 import {
-  PageHeader,
   Card,
   Badge,
   Alert,
@@ -38,10 +36,10 @@ function formatDate(iso: string) {
 }
 
 const statusStyles: Record<PaymentStatus, string> = {
-  PAID: "bg-green-50 text-green-700 border-green-200",
+  PAID: "bg-emerald-50 text-emerald-700 border-emerald-200",
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
   FAILED: "bg-red-50 text-red-700 border-red-200",
-  REFUNDED: "bg-gray-100 text-gray-600 border-gray-200",
+  REFUNDED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 const typeBadge: Record<string, BadgeVariantLike> = {
@@ -95,31 +93,25 @@ export function AnalyticsPanel() {
 
   const kpis = overview
     ? [
-        { label: "Total users", value: overview.totalUsers, icon: <UsersIcon className="w-5 h-5" />, color: "from-indigo-500 to-indigo-600" },
-        { label: "Total attempts", value: overview.totalAttempts, icon: <FileText className="w-5 h-5" />, color: "from-blue-500 to-blue-600" },
-        { label: "Completed", value: overview.completedAttempts, icon: <CheckCircle2 className="w-5 h-5" />, color: "from-green-500 to-green-600" },
-        { label: "Revenue", value: formatRupees(overview.totalRevenueRupees * 100), icon: <IndianRupee className="w-5 h-5" />, color: "from-amber-500 to-amber-600" },
-        { label: "Active tests", value: overview.totalTests, icon: <ListChecks className="w-5 h-5" />, color: "from-purple-500 to-purple-600" },
-        { label: "Questions", value: overview.totalQuestions, icon: <HelpCircle className="w-5 h-5" />, color: "from-rose-500 to-rose-600" },
+        { label: "Total users", value: overview.totalUsers, icon: <UsersIcon className="w-5 h-5" />, color: "from-brand-500 to-brand-700" },
+        { label: "Total attempts", value: overview.totalAttempts, icon: <FileText className="w-5 h-5" />, color: "from-sky-500 to-sky-700" },
+        { label: "Completed", value: overview.completedAttempts, icon: <CheckCircle2 className="w-5 h-5" />, color: "from-emerald-500 to-emerald-700" },
+        { label: "Revenue", value: formatRupees(overview.totalRevenueRupees * 100), icon: <IndianRupee className="w-5 h-5" />, color: "from-amber-500 to-amber-700" },
+        { label: "Active tests", value: overview.totalTests, icon: <ListChecks className="w-5 h-5" />, color: "from-fuchsia-500 to-fuchsia-700" },
+        { label: "Questions", value: overview.totalQuestions, icon: <HelpCircle className="w-5 h-5" />, color: "from-rose-500 to-rose-700" },
       ]
     : [];
 
   return (
-    <AppShell section="admin">
+    <AdminLayout title="Analytics" subtitle="Platform-wide overview and per-test performance">
       <div className="space-y-6">
-        <PageHeader
-          title="Analytics"
-          subtitle="Platform-wide overview and per-test performance"
-          action={<BarChart3 className="w-5 h-5 text-gray-300" />}
-        />
-
         {analyticsError && <Alert variant="error">{analyticsError}</Alert>}
 
         {/* KPI cards */}
         {overviewLoading || !overview ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
+              <Skeleton key={i} className="h-[104px] rounded-xl" />
             ))}
           </div>
         ) : (
@@ -127,17 +119,17 @@ export function AnalyticsPanel() {
             {kpis.map((k) => (
               <div
                 key={k.label}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4"
+                className="card-surface card-surface-hover p-4"
               >
                 <div
-                  className={`w-9 h-9 rounded-lg bg-gradient-to-br ${k.color} text-white flex items-center justify-center mb-3`}
+                  className={`w-9 h-9 rounded-lg bg-gradient-to-br ${k.color} text-white flex items-center justify-center mb-3 shadow-sm`}
                 >
                   {k.icon}
                 </div>
-                <p className="text-xl font-bold text-gray-900 leading-tight">
+                <p className="text-xl font-bold text-slate-900 leading-tight">
                   {typeof k.value === "number" ? k.value.toLocaleString("en-IN") : k.value}
                 </p>
-                <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mt-0.5">
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide mt-0.5">
                   {k.label}
                 </p>
               </div>
@@ -172,26 +164,26 @@ export function AnalyticsPanel() {
                   <li key={t.id}>
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium text-gray-800 truncate">
+                        <span className="text-sm font-medium text-slate-800 truncate">
                           {t.title}
                         </span>
                         <Badge variant={typeBadge[t.type] ?? "default"}>{t.type}</Badge>
                       </div>
-                      <span className="text-xs text-gray-500 shrink-0">
+                      <span className="text-xs text-slate-500 shrink-0">
                         {t.completedAttempts}/{t.totalAttempts} completed · avg{" "}
-                        <span className="font-semibold text-gray-700">
+                        <span className="font-semibold text-slate-700">
                           {t.averageScore}%
                         </span>
                       </span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           width > 60
-                            ? "bg-green-500"
+                            ? "bg-emerald-500"
                             : width > 30
                               ? "bg-amber-500"
-                              : "bg-gray-300"
+                              : "bg-slate-300"
                         }`}
                         style={{ width: `${width}%` }}
                       />
@@ -208,15 +200,15 @@ export function AnalyticsPanel() {
           title="Payments"
           subtitle={`${paymentsTotal} total`}
           action={
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               {(["", "PAID", "PENDING", "FAILED", "REFUNDED"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => handleStatusFilter(s)}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md border transition-colors ${
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
                     paymentsStatus === s
-                      ? "bg-indigo-600 border-indigo-600 text-white"
-                      : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                      ? "bg-brand-600 border-brand-600 text-white"
+                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                   }`}
                 >
                   {s || "All"}
@@ -234,31 +226,31 @@ export function AnalyticsPanel() {
             <div className="overflow-x-auto -mx-5 px-5">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-slate-100">
                     {["User", "Test", "Amount", "Status", "Date"].map((h) => (
                       <th key={h} className="px-2 py-2 text-left">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                           {h}
                         </span>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-slate-50">
                   {payments.map((p) => (
                     <tr key={p.id}>
                       <td className="px-2 py-2.5">
-                        <p className="text-sm text-gray-800 truncate max-w-[180px]">
+                        <p className="text-sm text-slate-800 truncate max-w-[180px]">
                           {p.user?.name ?? "Unknown"}
                         </p>
-                        <p className="text-xs text-gray-400 truncate max-w-[180px]">
+                        <p className="text-xs text-slate-400 truncate max-w-[180px]">
                           {p.user?.email}
                         </p>
                       </td>
-                      <td className="px-2 py-2.5 text-xs text-gray-600">
+                      <td className="px-2 py-2.5 text-xs text-slate-600">
                         {p.mockTest?.title ?? "—"}
                       </td>
-                      <td className="px-2 py-2.5 text-xs font-semibold text-gray-700">
+                      <td className="px-2 py-2.5 text-xs font-semibold text-slate-700">
                         {formatRupees(p.amountPaise)}
                       </td>
                       <td className="px-2 py-2.5">
@@ -268,7 +260,7 @@ export function AnalyticsPanel() {
                           {p.status}
                         </span>
                       </td>
-                      <td className="px-2 py-2.5 text-xs text-gray-400">
+                      <td className="px-2 py-2.5 text-xs text-slate-400">
                         {formatDate(p.createdAt)}
                       </td>
                     </tr>
@@ -279,22 +271,22 @@ export function AnalyticsPanel() {
           )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
-              <span className="text-xs text-gray-400">
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100">
+              <span className="text-xs text-slate-400">
                 Page {paymentsPage} of {totalPages}
               </span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handlePage(paymentsPage - 1)}
                   disabled={paymentsPage === 1}
-                  className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={() => handlePage(paymentsPage + 1)}
                   disabled={paymentsPage === totalPages}
-                  className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40"
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -303,7 +295,7 @@ export function AnalyticsPanel() {
           )}
         </Card>
       </div>
-    </AppShell>
+    </AdminLayout>
   );
 }
 

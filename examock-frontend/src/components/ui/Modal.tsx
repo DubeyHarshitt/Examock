@@ -56,22 +56,22 @@ export function Modal({
       {/* Panel */}
       <div
         className={cn(
-          "relative bg-white rounded-xl shadow-xl w-full",
+          "relative bg-white rounded-2xl shadow-xl w-full",
           sizeClasses[size]
         )}
       >
         {title && (
           <div className="flex items-start justify-between gap-3 px-6 pt-5">
             <div>
-              <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+              <h3 className="text-base font-bold text-slate-900">{title}</h3>
               {description && (
-                <p className="text-xs text-gray-500 mt-1">{description}</p>
+                <p className="text-xs text-slate-500 mt-1">{description}</p>
               )}
             </div>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-slate-400 hover:text-slate-600 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

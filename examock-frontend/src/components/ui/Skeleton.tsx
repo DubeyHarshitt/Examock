@@ -8,7 +8,7 @@ interface SkeletonProps {
 /** Animated placeholder block for loading states. */
 export function Skeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn("animate-pulse rounded-md bg-gray-200", className)} />
+    <div className={cn("animate-pulse rounded-md bg-slate-200/70", className)} />
   );
 }
 
@@ -20,10 +20,7 @@ interface SkeletonCardProps {
 export function SkeletonCard({ className }: SkeletonCardProps) {
   return (
     <div
-      className={cn(
-        "bg-white rounded-xl border border-gray-200 p-5 space-y-3",
-        className
-      )}
+      className={cn("card-surface p-5 space-y-3", className)}
     >
       <Skeleton className="h-4 w-1/2" />
       <Skeleton className="h-3 w-full" />

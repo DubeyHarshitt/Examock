@@ -21,7 +21,7 @@ const MockTestList = ({ tests, loading, onEdit, onDelete, onOpenBuilder }: MockT
     return (
       <div className="space-y-2">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+          <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -31,7 +31,7 @@ const MockTestList = ({ tests, loading, onEdit, onDelete, onOpenBuilder }: MockT
 
   if (activeTests.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+      <div className="flex flex-col items-center justify-center py-12 text-slate-400">
         <ListChecks size={40} className="mb-3 opacity-40" />
         <p className="text-sm font-medium">No mock tests yet</p>
         <p className="text-xs mt-1">Create one above to start adding questions</p>
@@ -44,21 +44,21 @@ const MockTestList = ({ tests, loading, onEdit, onDelete, onOpenBuilder }: MockT
       {activeTests.map((test) => (
         <li
           key={test.id}
-          className="flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all group"
+          className="flex items-center justify-between px-4 py-3 bg-slate-50/60 border border-slate-100 rounded-xl hover:border-brand-200 hover:bg-brand-50/30 transition-all group"
         >
           <button onClick={() => onOpenBuilder(test)} className="flex-1 text-left">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-800">{test.title}</p>
-              <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">
+              <p className="text-sm font-semibold text-slate-800">{test.title}</p>
+              <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">
                 {TYPE_LABEL[test.type]}
               </span>
               {test.isFree && (
-                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">
                   Free
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+            <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
               <span className="flex items-center gap-1">
                 <Clock size={11} /> {test.durationMins} mins
               </span>
@@ -70,14 +70,14 @@ const MockTestList = ({ tests, loading, onEdit, onDelete, onOpenBuilder }: MockT
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEdit(test)}
-              className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+              className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors"
               title="Edit test details"
             >
               <Pencil size={15} />
             </button>
             <button
               onClick={() => onDelete(test.id)}
-              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
               title="Delete test"
             >
               <Trash2 size={15} />

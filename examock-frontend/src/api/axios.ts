@@ -43,20 +43,51 @@ api.interceptors.request.use((config) => {
 let isRefreshing = false;
 
 let failedQueue: {
-  resolve: (token: string) => void;
+  resolve: (payload: any) => void;
   reject: (err: unknown) => void;
 }[] = [];
 
-const processQueue = (error: unknown, token: AccessToken) => {
+const processQueue = (error: unknown, payload: any) => {
   failedQueue.forEach((prom) => {
-    if (token) {
-      prom.resolve(token);
+    if (payload) {
+      prom.resolve(payload);
     } else {
       prom.reject(error);
     }
   });
   failedQueue = [];
 };
+
+/**
+ * Exchange the refresh (httpOnly) cookie for a fresh access token.
+ * Returns the full /auth/refresh payload ({ accessToken, user, onboarding }).
+ * Deduped: if a refresh is already in-flight, callers wait on the same promise
+ * instead of firing a second /auth/refresh request. This is the single source
+ * of truth used by both the response interceptor (on 401) and useInitAuth (on
+ * app boot), so we never hammer the endpoint with concurrent calls.
+ */
+export async function refreshAccessToken(): Promise<any> {
+  if (isRefreshing) {
+    // Someone else is refreshing — wait for it and get the payload.
+    return new Promise<any>((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const { data } = await api.post("/auth/refresh");
+    setAccessToken(data.accessToken);
+    processQueue(null, data);
+    return data;
+  } catch (err) {
+    setAccessToken(null);
+    processQueue(err, null);
+    throw err;
+  } finally {
+    isRefreshing = false;
+  }
+}
 
 // ── Response interceptor ────────────────────────────────────
 
@@ -80,29 +111,21 @@ api.interceptors.response.use(
 
     // ── If refresh already happening → queue request ──
     if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
+      return new Promise<any>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
-      }).then((token) => {
+      }).then((payload) => {
         original.headers = original.headers || {};
-        original.headers.Authorization = `Bearer ${token}`;
+        original.headers.Authorization = `Bearer ${payload.accessToken}`;
         return api(original);
       });
     }
 
     original._retry = true;
-    isRefreshing = true;
 
     try {
-      // 🔥 Call refresh endpoint
-      const { data } = await api.post("/auth/refresh");
-
+      // 🔥 Call refresh endpoint (deduped)
+      const data = await refreshAccessToken();
       const newToken = data.accessToken;
-
-      // Save new token
-      setAccessToken(newToken);
-
-      // Retry all queued requests
-      processQueue(null, newToken);
 
       // Retry original request
       original.headers = original.headers || {};
@@ -110,17 +133,12 @@ api.interceptors.response.use(
 
       return api(original);
     } catch (refreshError) {
-      processQueue(refreshError, null);
-      setAccessToken(null);
-
       // Redirect safely
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
 
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   },
 );

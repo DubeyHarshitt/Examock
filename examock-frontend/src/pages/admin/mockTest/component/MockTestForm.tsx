@@ -92,25 +92,25 @@ const MockTestForm = ({ examTypeId, subjectId, topicId, editingTest, onDone }: M
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-2">
+    <form onSubmit={handleSubmit} className="space-y-4 bg-slate-50/60 p-5 rounded-xl border border-slate-100">
+      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-2">
         {isEditing ? "Edit mock test" : "Create mock test"}
       </h3>
 
       <div>
-        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Title *</label>
+        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Title *</label>
         <input
           type="text"
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Mechanics Chapter Test"
-          className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+          className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Test type *</label>
+        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Test type *</label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {TEST_TYPES.map((t) => (
             <button
@@ -119,12 +119,12 @@ const MockTestForm = ({ examTypeId, subjectId, topicId, editingTest, onDone }: M
               onClick={() => setType(t.value)}
               className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${
                 type === t.value
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "bg-brand-50 border-brand-300 text-brand-700"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
               }`}
             >
               <p className="font-bold">{t.label}</p>
-              <p className="text-gray-400 mt-0.5">{t.helper}</p>
+              <p className="text-slate-400 mt-0.5">{t.helper}</p>
             </button>
           ))}
         </div>
@@ -134,46 +134,46 @@ const MockTestForm = ({ examTypeId, subjectId, topicId, editingTest, onDone }: M
           </p>
         )}
         {type === "CHAPTER" && topicId && (
-          <p className="text-xs text-gray-400 mt-2">Will be scoped to the currently selected topic.</p>
+          <p className="text-xs text-slate-400 mt-2">Will be scoped to the currently selected topic.</p>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Duration (mins) *</label>
+          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Duration (mins) *</label>
           <input
             type="number"
             required
             min={1}
             value={durationMins}
             onChange={(e) => setDurationMins(Number(e.target.value))}
-            className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Total marks *</label>
+          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Total marks *</label>
           <input
             type="number"
             required
             min={1}
             value={totalMarks}
             onChange={(e) => setTotalMarks(Number(e.target.value))}
-            className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Instructions (optional)</label>
+        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Instructions (optional)</label>
         <textarea
           rows={2}
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
-          className="w-full text-sm p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+          className="w-full text-sm p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"
         />
       </div>
 
-      <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
         <input type="checkbox" checked={isFree} onChange={(e) => setIsFree(e.target.checked)} />
         Free test (no payment required)
       </label>
@@ -188,7 +188,7 @@ const MockTestForm = ({ examTypeId, subjectId, topicId, editingTest, onDone }: M
         <button
           type="submit"
           disabled={submitting || (type === "CHAPTER" && !topicId)}
-          className="flex-1 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          className="flex-1 py-2 text-sm font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
         >
           {submitting ? "Saving..." : isEditing ? "Save changes" : "Create test"}
         </button>
@@ -196,7 +196,7 @@ const MockTestForm = ({ examTypeId, subjectId, topicId, editingTest, onDone }: M
           <button
             type="button"
             onClick={onDone}
-            className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
           >
             Cancel
           </button>
