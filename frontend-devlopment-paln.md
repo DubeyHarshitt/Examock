@@ -7,9 +7,9 @@
 >
 > ### 🚧 Build Progress
 > - ✅ **Phase 0 — Foundations: COMPLETE** (API fixes, types, shared UI, nav shell — see §7)
-> - ⏳ **Phase 1 — Student Core:** not started
-> - ⏳ **Phase 2 — Test Engine:** not started
-> - ⏳ **Phase 3 — Progress, RAG & Payments:** not started
+> - ✅ **Phase 1 — Student Core: COMPLETE** (dashboard, subjects, topics, videos, notes, channels — see §7)
+> - ✅ **Phase 2 — Test Engine: COMPLETE** (test list, detail, engine, result — see §7)
+> - 🟡 **Phase 3 — Progress, RAG & Payments:** mostly complete — Progress + RAG (chat/upload) built; **Razorpay payment gate deferred** (backend lacks `order/create` endpoints)
 > - ✅ **Phase 4 — Admin completeness + polish: COMPLETE** (videos, channels, users, analytics, bulk questions, notifications — see §7)
 
 ---
@@ -34,11 +34,13 @@
 
 ## 1. TL;DR
 
-The **backend is complete** — every feature in the brief is backed by a working API (auth, exams, subjects, topics, videos, mock tests, questions, test-taking engine, notes/RAG, admin CRUD, analytics, notifications). The **frontend is roughly 40% complete**:
+The **backend is complete** — every feature in the brief is backed by a working API (auth, exams, subjects, topics, videos, mock tests, questions, test-taking engine, notes/RAG, admin CRUD, analytics, notifications). The **frontend is ~95% complete** (only the Razorpay purchase flow is deferred, pending backend work):
 
-- ✅ **Done:** Google login, onboarding wizard (exam selection + mobile OTP), and the complete **admin suite** — content management (exam types, subjects, topics, questions, mock tests, notes) plus videos, YouTube channels, users, analytics, bulk question import, and notifications.
-- 🟡 **Scaffolded but empty:** `test.store.ts` is implemented but unused (no engine page yet).
-- ❌ **Not built at all (student-facing):** The entire student experience — dashboard, subject/topic browsing, video playlists, test listing/detail, **test engine (timer + navigation + submit)** **, result page, notes viewer, YouTube channels page, progress tracking, AI doubt-solving chat, and RAG PDF upload.**
+- ✅ **Done:** Google login, onboarding wizard (exam selection + mobile OTP), the **complete admin suite** — content management (exam types, subjects, topics, questions, mock tests, notes) plus videos, YouTube channels, users, analytics, bulk question import, and notifications.
+- ✅ **Done (student core):** The full student browsing experience — dashboard, subject/topic browsing, video playlists, notes viewer, YouTube channels page.
+- ✅ **Done (test engine):** Test list, test detail, the full **test engine** (start/resume, countdown timer, navigation + palette, auto-save, mark-for-review, submit), and the result/review page.
+- ✅ **Done (progress & RAG):** Progress overview + per-topic detail + study-planner widget, **AI doubt-solving chat** (with sources), and **RAG PDF upload**.
+- 🟡 **Not built:** The **Razorpay purchase/payment flow is deferred** (backend has no `order/create` / verify endpoints yet); paid-test gating currently surfaces only the "purchase / upgrade" prompt.
 
 This plan defines exactly what to build, in what order, and against which APIs.
 
@@ -142,11 +144,33 @@ All endpoints verified against the backend source. Base URL (frontend): `VITE_AP
   - Notifications (broadcast form + sent list)
 
 ### 🟡 Partial / scaffolded
-- **`test.store.ts`** — the entire test-engine client state (attemptId, answers map, currentIndex) is **already implemented but unused** (no engine page yet).
+- **`test.store.ts`** — the test-engine client state (attemptId, answers map, currentIndex) is implemented **and consumed by the engine** (`TestEnginePage.tsx`).
 - **API layer is largely complete** for all modules (auth, admin, student, test, rag).
+- **`student.slice.ts`** — optional cache slice intentionally **not added**; server state is handled via React Query (`useStudentData`) instead.
 
-### ❌ Not built (empty `*.slice.ts` or missing pages)
-- **All student pages** (imports commented out in `App.tsx`): dashboard (real one), subjects, topics, videos, tests, test detail, **test engine**, test result, notes, channels, progress, chat, upload.
+### ✅ Student core — built & wired (Phase 1)
+- **Dashboard** (`/`) — real dashboard via `useDashboard`: summary cards, quick links, recent attempts feed (score/percentile), suggested weak topics.
+- **Subjects** (`/subjects`) — `GET /student/subjects` card grid.
+- **Topics** (`/subjects/:subjectId/topics`) — `GET /student/topics?subjectId=` with per-topic progress bars.
+- **Videos** (`/topics/:topicId/videos`) — embedded YouTube playlist + local "watched" toggle via progress.
+- **Notes** (`/notes`) — paginated, filter by subject, free/paid states, open/download file.
+- **Channels** (`/channels`) — recommended-channel grid + `YtSubscribeButton` (`g-ytsubscribe` widget).
+
+### ✅ Test engine — built & wired (Phase 2)
+- **Test list** (`/tests`) — `GET /test` with badges, free/paid status, duration/marks.
+- **Test detail** (`/tests/:id`) — instructions, marks scheme, `hasAccess` gating + premium-purchase prompt.
+- **Test engine** (`/tests/:id/take`) — JEE/NEET-style console: start/resume, countdown timer (auto-expire), question palette (answered/not-answered/not-visited/marked-for-review + legend), Save & Next / Clear / Mark for Review / Next-Prev / Submit-with-confirm, per-option auto-save, 410/403 handling.
+- **Test result** (`/tests/:id/result`) — score, percentile, time taken, per-question review.
+
+### ✅ Progress & RAG — built & wired (Phase 3)
+- **Progress** (`/progress`) — `GET /student/progress` grouped by subject: summary cards, per-topic completion bars (color-coded), stats, and a client-side **Study Planner** widget with weak-area recommendations.
+- **Topic progress** (`/progress/:topicId`) — `GET /student/progress/:topicId`: stats, quick actions (watch videos / take a test), last 5 attempts.
+- **AI chat** (`/chat`) — chat UI with typing indicator, suggested prompts, and source-file chips; `POST /rag/chat`.
+- **RAG upload** (`/upload`) — drag-drop PDF upload with progress + success state; `POST /rag/ingest`.
+- RAG hooks added in `src/hooks/rag/useRag.ts` (React Query mutations).
+
+### ❌ Deferred
+- **Payments** (Razorpay) — backend has no `order/create` + verify endpoints; paid-test gating shows only a "purchase / upgrade" prompt for now. See §9.
 
 ---
 
@@ -154,13 +178,13 @@ All endpoints verified against the backend source. Base URL (frontend): `VITE_AP
 
 Before (or while) building features, address these — they block correctness:
 
-1. **🔴 Double `/api` prefix bug** — `student.api.ts`, `test.api.ts`, `rag.api.ts` hardcode `/api/...` while Axios `baseURL` is already `http://localhost:3000/api`. Every student/test/rag call would hit `.../api/api/...` and 404. **Fix:** remove the `/api` prefix from those three files so they read `/student/...`, `/test/...`, `/rag/...` (matching `auth.api.ts`/`admin.api.ts`).
+1. **~~Double `/api` prefix bug~~ ✅ FIXED** — `student.api.ts`, `test.api.ts`, `rag.api.ts` had `/api/...` hardcoded while Axios `baseURL` already ends in `/api` (would hit `.../api/api/...`). Prefix removed from all three.
 
-2. **🔴 `VITE_GOOGLE_CLIENT_SECRET` in frontend `.env`** — Google OAuth client secrets must NEVER ship to the browser. Remove it; frontend only needs `VITE_GOOGLE_CLIENT_ID` (the secret is used only server-side in the backend).
+2. **~~`VITE_GOOGLE_CLIENT_SECRET` in frontend `.env`~~ ✅ FIXED** — removed; only `VITE_GOOGLE_CLIENT_ID` (+ `VITE_API_URL`) remain. Secret is used server-side only.
 
-3. **🔴 Backend logout bug (backend-side)** — `auth.controller.js` calls `logoutUser(...)` but imports only `{ googleLogin, refreshAccessToken, sendMobileOtp, setExamType, verifyMobileOtp }` from `auth.service.js`. This would throw `ReferenceError`. **Fix on backend:** import `logoutUser` too. (Flagged here for awareness — frontend already has a client-side logout fallback.)
+3. **~~Backend logout bug~~ ✅ FIXED (backend)** — `auth.controller.js` now imports `logoutUser`.
 
-4. **🟡 No `npm run dev` / start script in backend** — `package.json` has no `dev`/`start` script. Not a frontend issue, but deployment/demo will need one.
+4. **~~No `npm run dev` / start script in backend~~ ✅ FIXED** — added `dev` + `start` scripts.
 
 5. **🟡 Form library unused** — `react-hook-form`, `@hookform/resolvers`, and `zod` are installed but every form uses manual `useState`. Decide the convention (recommend adopting RHF + zod for the many student forms to come, or keep manual for consistency — pick one and stay consistent).
 
@@ -208,10 +232,10 @@ Order is dependency-driven: fix foundations → core student browsing → test e
 
 ---
 
-### Phase 1 — Student Core (browsing content)
+### Phase 1 — Student Core (✅ COMPLETE)
 **Goal:** The main content-surfacing experience. Backs dashboard, subjects, topics, videos, notes, channels.
 
-#### 1A. Student Dashboard (`/`) — replace placeholder
+#### 1A. Student Dashboard (`/`) — ✅ replace placeholder (real dashboard built)
 Use `GET /api/student/dashboard`.
 - Header with user info + exam type + logout; route admins to admin dash.
 - **Summary cards:** exam type, subjects count, recent activity, suggested topics.
@@ -232,11 +256,11 @@ Use `GET /api/student/dashboard`.
 #### 1D. YouTube channels page
 - `/channels` — `GET /student/yt-channels`: grid of recommended channels (logo + name) with **YouTube Subscribe button** embed per channel (per the brief's channel-subscription UX).
 
-**Exit criteria:** A student can browse their full syllabus: subjects → topics → videos, view notes, and see recommended channels, with real data from the backend.
+**Exit criteria (met):** A student can browse their full syllabus: subjects → topics → videos, view notes, and see recommended channels, with real data from the backend.
 
 ---
 
-### Phase 2 — Test Engine (the core financial/engagement feature)
+### Phase 2 — Test Engine (✅ COMPLETE) (the core financial/engagement feature)
 
 #### 2A. Test list & detail
 - `/tests` — `GET /test`: list tests for the exam type with type badges (CHAPTER/MODULE/FULL), free/paid status, duration, marks, `isPaid`/`hasAccess`.
@@ -259,29 +283,26 @@ Use `test.store.ts` (already implemented!) + `test.api.ts`.
 - Review each question (question + your answer + correct answer + explanation).
 - Buttons: retry (if applicable), view suggestions based on weak areas.
 
-**Exit criteria:** End-to-end test flow works — start/resume, timer, navigate, save answers, submit, view full review + percentile.
+**Exit criteria (met):** End-to-end test flow works — start/resume, timer, navigate, save answers, submit, view full review + percentile. The engine renders a JEE/NEET/CET-style console with palette, mark-for-review, auto-save, and 410/403 handling.
 
 ---
 
-### Phase 3 — Progress, RAG (AI), & Payments
+### Phase 3 — Progress, RAG (AI), & Payments (🟡 mostly complete)
 
-#### 3A. Progress & study planner
-- `/progress` — `GET /student/progress` grouped by subject: per-topic completion %, best score, attempts, videos watched.
-- `/progress/:topicId` — `GET /student/progress/:topicId`: topic detail + last 5 attempts + totals.
-- **Study planner widget:** compute a suggested allocation from exam date, completed topics, and scores (client-side heuristic using backend data).
-- **AI suggestions:** call the existing suggestion logic / surface weak-topic recommendations (can reuse dashboard `suggestedTopics` + RAG chat for explanations).
+#### 3A. Progress & study planner — ✅ done
+- `/progress` — `GET /student/progress` grouped by subject: per-topic completion bars, best score, attempts, videos watched. (`ProgressPage.tsx`)
+- `/progress/:topicId` — `GET /student/progress/:topicId`: topic detail + last 5 attempts + totals. (`TopicProgressPage.tsx`)
+- **Study planner widget:** client-side heuristic combining weak-topic count, avg best score, and completion. ✅
+- **AI suggestions:** surfaced via the study-planner recommendation + "Ask AI about these" link to chat. ✅
 
-#### 3B. AI doubt-solving (RAG)
-- `/chat` — `GET/POST /rag/chat`: chat UI (message list, input, streaming-friendly) asking `{ question }` → show `answer` + `sources` (file names). Add typing indicator + persistence (local or via DoubtSession — backend models `doubt_sessions`, currently no dedicated API; see gaps).
-- `/upload` — POST `/rag/ingest` (PDF upload) with progress, success toast, and "chat about your notes" entry point.
+#### 3B. AI doubt-solving (RAG) — ✅ done
+- `/chat` — `ChatPage.tsx`: chat UI (message list, input, typing indicator, suggested prompts), `POST /rag/chat`, shows `answer` + `sources` (file-name chips). Persistence is in-memory only (backend has no DoubtSession API — see §9).
+- `/upload` — `UploadPage.tsx`: drag-drop `POST /rag/ingest` (PDF) with progress, success toast, "chat about it" entry point.
 
-#### 3C. Payments (Razorpay)
-Backend models `Payment` but has **no order-create / verification webhook endpoints** implemented (only `isPaid`/`hasAccess` checks). Options:
-- **Short-term:** When a paid test is locked, show the "purchase" gate; if `isPaid`, unlock.
-- **Requires backend work** to create a Razorpay order and verify. Record this as a backend dependency (see [§9](#9-known-backend-gaps)).
-- Frontend: Razorpay checkout modal (`razorpay.checkout`) integration once order/verification endpoints exist.
+#### 3C. Payments (Razorpay) — ⏳ deferred
+Backend models `Payment` but has **no order-create / verification webhook endpoints** (only `isPaid`/`hasAccess` checks). **Deferred by decision** — paid-test gating currently surfaces a "purchase / upgrade" prompt only. Needs backend work + `razorpay.checkout` integration later.
 
-**Exit criteria:** Weak-topic suggestions visible; AI chat answers from ingested docs; paid test gating & (once backend ready) purchase flow works.
+**Exit criteria (met, minus payments):** Weak-topic suggestions visible; AI chat answers from ingested docs; paid-test gating UI in place (purchase flow deferred pending backend).
 
 ---
 
@@ -313,19 +334,19 @@ Also wired: routes in `App.tsx` (`/admin/users`, `/admin/analytics`, `/admin/not
 ## 8. File-by-File Build Checklist
 
 ### New student pages (`src/pages/`)
-- [ ] `dashboard/DashboardPage.tsx` — replace placeholder (real dashboard)
-- [ ] `subjects/SubjectListPage.tsx` `/subjects`
-- [ ] `subjects/TopicListPage.tsx` `/subjects/:subjectId/topics`
-- [ ] `videos/VideoPage.tsx` `/topics/:topicId/videos`
-- [ ] `tests/TestListPage.tsx` `/tests`
-- [ ] `tests/TestDetailPage.tsx` `/tests/:id`
-- [ ] `tests/TestEnginePage.tsx` `/tests/:id/take` ★ core
-- [ ] `tests/TestResultPage.tsx` `/tests/:id/result`
-- [ ] `notes/NotesPage.tsx` `/notes`
-- [ ] `channels/ChannelsPage.tsx` `/channels`
-- [ ] `progress/ProgressPage.tsx` `/progress` (+ `/progress/:topicId`)
-- [ ] `rag/ChatPage.tsx` `/chat`
-- [ ] `rag/UploadPage.tsx` `/upload`
+- [x] `dashboard/DashboardPage.tsx` — real dashboard (✅ replaced placeholder)
+- [x] `subjects/SubjectListPage.tsx` `/subjects`
+- [x] `subjects/TopicListPage.tsx` `/subjects/:subjectId/topics`
+- [x] `videos/VideoPage.tsx` `/topics/:topicId/videos`
+- [x] `tests/TestListPage.tsx` `/tests`
+- [x] `tests/TestDetailPage.tsx` `/tests/:id`
+- [x] `tests/TestEnginePage.tsx` `/tests/:id/take` ★ core (JEE/NEET/CET console)
+- [x] `tests/TestResultPage.tsx` `/tests/:id/result`
+- [x] `notes/NotesPage.tsx` `/notes`
+- [x] `channels/ChannelsPage.tsx` `/channels` (+ `YtSubscribeButton` component)
+- [x] `progress/ProgressPage.tsx` `/progress` (✅ + `TopicProgressPage.tsx` for `/progress/:topicId`)
+- [x] `rag/ChatPage.tsx` `/chat`
+- [x] `rag/UploadPage.tsx` `/upload`
 
 ### New admin pages (`src/pages/admin/`)
 - [x] `VideosPanel.tsx` (added as a tab in adminDashboard)
@@ -339,7 +360,7 @@ Also wired: routes in `App.tsx` (`/admin/users`, `/admin/analytics`, `/admin/not
 - [x] `ytChannels.slice.ts` (new)
 - [x] `users.slice.ts` (implemented)
 - [x] `analytics.slice.ts` (implemented)
-- [ ] optional `student.slice.ts` (progress/dashboard cache)
+- [ ] optional `student.slice.ts` (progress/dashboard cache) — *not added; React Query caches server state via `useStudentData`.*
 
 ### Types (`src/types/`) & api (`src/api/`) (✅ Phase 0)
 - [x] Add `student.types.ts`, `test.types.ts`, `rag.types.ts`, `admin.types.ts` (analytics/users)
@@ -353,11 +374,11 @@ Also wired: routes in `App.tsx` (`/admin/users`, `/admin/analytics`, `/admin/not
 - [x] Form primitives (`Field`, `TextInput`, `Select`, `TextArea`) via `src/components/ui/form/`
 - [x] `src/utils/cn.ts` utility, `src/components/ui/index.ts` barrel
 - [x] `ToastProvider` + `useToast()` wired into `App.tsx`
-- [ ] Test palette/navigation components in engine  *(Phase 2)*
-- [ ] Razorpay checkout modal  *(Phase 3)*
+- [x] Test palette/navigation components in engine  *(✅ built in `TestEnginePage.tsx` — palette grid, legend, Save&Next / Clear / Mark-for-Review / Submit)*
+- [x] Razorpay checkout modal  *(⏳ deferred — requires backend `order/create`)*
 
 ### Routing (`src/App.tsx`)
-- [ ] Uncomment & wire all student routes inside `ProtectedRoute`
+- [x] Uncomment & wire all student routes inside `ProtectedRoute` (dashboard, subjects, topics, videos, tests, test detail, take, result, notes, channels, **progress, progress/:topicId, chat, upload**) + `ErrorBoundary` wrapper around `<Routes>`
 - [x] Add admin videos/channels/users/analytics/notifications routes
 
 ---
@@ -367,8 +388,8 @@ Also wired: routes in `App.tsx` (`/admin/users`, `/admin/analytics`, `/admin/not
 These are needed for full feature parity; most are backend-side (out of scope for frontend but should be tracked):
 
 1. **Razorpay flow missing** — backend has `Payment` model + `isPaid` checks but no order-create / verify-webhook endpoints. **Needed by Phase 3C.**
-2. **`logoutUser` import bug** in `auth.controller.js` (throws at logout). Frontend has a fallback; still fix backend.
-3. **No `dev`/`start` script** in backend `package.json`.
+2. **~~`logoutUser` import bug~~ ✅ FIXED (backend)** — `auth.controller.js` now imports and calls `logoutUser` correctly.
+3. **~~No `dev`/`start` script~~ ✅ FIXED (backend)** — `package.json` now has `dev: node --watch index.js` and `start: node index.js`.
 4. **DoubtSession has no API** — model exists but no endpoint for chat history persistence (RAG chat is stateless `POST /rag/chat`).
 5. **Notifications are DB-only** — no FCM/WebSocket push (backend TODO). Admin UI can persist; live push needs backend work.
 6. **Note ingestion** is PDF-only (other file types marked FAILED) — acceptable per brief (content is PDF study material).
@@ -378,10 +399,10 @@ These are needed for full feature parity; most are backend-side (out of scope fo
 
 ## 10. Suggested Work Order (summary)
 
-1. **Phase 0** — fix API prefixes, env security, types, shared UI/shell. *(1–2 days)*
-2. **Phase 1** — dashboard, subjects/topics/videos, notes viewer, channels page. *(4–6 days)*
-3. **Phase 2** — test list/detail, **test engine** (reuse `test.store.ts`), result/review. *(5–8 days, highest priority)*
-4. **Phase 3** — progress + planner + AI suggestions, RAG chat + upload, Razorpay gating. *(4–6 days)*
-5. **Phase 4** — admin videos/channels/users/analytics/bulk-questions/notifications + responsive polish. *(4–6 days)*
+1. **Phase 0** — fix API prefixes, env security, types, shared UI/shell. ✅ *COMPLETE*
+2. **Phase 1** — dashboard, subjects/topics/videos, notes viewer, channels page. ✅ *COMPLETE*
+3. **Phase 2** — test list/detail, **test engine** (reuse `test.store.ts`), result/review. ✅ *COMPLETE*
+4. **Phase 3** — progress + planner + AI suggestions, RAG chat + upload, Razorpay gating. 🟡 *Progress + RAG done; Razorpay deferred (backend dep)*
+5. **Phase 4** — admin videos/channels/users/analytics/bulk-questions/notifications + responsive polish. ✅ *COMPLETE*
 
-**Total estimate: ~3–4 weeks** for a solo developer working full-time, with the test engine being the largest single item.
+**Status:** Phases 0, 1, 2, 4 complete; **Phase 3** progress + RAG complete — only the **Razorpay purchase flow** is deferred (pending backend `order/create` + verify endpoints).
