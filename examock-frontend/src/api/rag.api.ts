@@ -4,7 +4,7 @@ export const uploadPdf = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const { data } = await api.post("/api/rag/ingest", formData, {
+  const { data } = await api.post("/rag/ingest", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -13,6 +13,6 @@ export const uploadPdf = async (file: File) => {
 };
 
 export const askQuestion = async (question: string) => {
-  const { data } = await api.post("/api/rag/chat", { question });
+  const { data } = await api.post("/rag/chat", { question });
   return data;
 };
