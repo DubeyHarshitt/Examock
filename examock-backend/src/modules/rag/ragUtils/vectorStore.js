@@ -9,9 +9,10 @@ const client = new QdrantClient({
 });
 
 const COLLECTION = "study_docs";
-const VECTOR_SIZE = 1536;
+const VECTOR_SIZE = 3072;
 
 export const ensureCollection = async () => {
+  // await client.deleteCollection("study_docs");
   try {
     const { collections } = await client.getCollections();
     const exists = collections.some((c) => c.name === COLLECTION);
@@ -21,7 +22,10 @@ export const ensureCollection = async () => {
       });
     }
   } catch (err) {
-    throw new AppError("Failed to initialize Qdrant collection", 500);
+    throw new AppError(
+      "Failed to initialize Qdrant collection : " + err.message,
+      500,
+    );
   }
 };
 
@@ -39,21 +43,36 @@ export const storeChunks = async (chunks, vectors, metadata = {}) => {
       vector: vectors[i],
       payload: {
         text,
-        userId:     metadata.userId     || null, // student upload
+        userId: metadata.userId || null, // student upload
         examTypeId: metadata.examTypeId || null, // admin upload
-        fileName:   metadata.fileName   || null,
+        fileName: metadata.fileName || null,
       },
     }));
+
+    // console.log("Vector length:", vectors[0].length);
+    // console.log("Chunks:", chunks.length);
+
     await client.upsert(COLLECTION, { points });
   } catch (err) {
-    throw new AppError("Failed to store embeddings in Qdrant", 500);
+    console.error("Qdrant Error:", err);
+
+    if (err.response) {
+      console.error(err.response.data);
+    }
+
+    throw err;
   }
 };
 
 // userId      = the student's own uploaded notes
 // examTypeId  = admin notes shared with all students of that exam type
 // Both are searched together so student sees everything relevant
-export const searchSimilar = async (queryVector, userId, examTypeId, topK = 5) => {
+export const searchSimilar = async (
+  queryVector,
+  userId,
+  examTypeId,
+  topK = 5,
+) => {
   if (!Array.isArray(queryVector)) {
     throw new AppError("Query vector must be an array", 400);
   }
@@ -68,9 +87,8 @@ export const searchSimilar = async (queryVector, userId, examTypeId, topK = 5) =
     shouldConditions.push({ key: "examTypeId", match: { value: examTypeId } });
   }
 
-  const filter = shouldConditions.length > 0
-    ? { should: shouldConditions }
-    : undefined;
+  const filter =
+    shouldConditions.length > 0 ? { should: shouldConditions } : undefined;
 
   try {
     const results = await client.search(COLLECTION, {
@@ -80,7 +98,7 @@ export const searchSimilar = async (queryVector, userId, examTypeId, topK = 5) =
     });
 
     return results.map((r) => ({
-      text:     r.payload.text,
+      text: r.payload.text,
       fileName: r.payload.fileName,
     }));
   } catch (err) {

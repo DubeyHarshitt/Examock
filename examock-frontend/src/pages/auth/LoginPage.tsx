@@ -110,7 +110,7 @@ export default function LoginPage() {
             "Progress tracking & analytics",
           ].map((feature) => (
             <div key={feature} className="flex items-center gap-3">
-              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                 <svg
                   className="w-3 h-3 text-green-600"
                   fill="currentColor"

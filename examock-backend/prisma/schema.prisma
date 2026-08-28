@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -94,35 +93,6 @@ model Topic {
 
   @@index([subjectId])
   @@map("topics")
-}
-
-model Video {
-  id          String   @id @default(uuid())
-  topicId     String   @map("topic_id")
-  youtubeId   String   @map("youtube_id")
-  title       String
-  durationSec Int?     @map("duration_sec")
-  orderIndex  Int      @default(0) @map("order_index")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  @@index([topicId])
-  @@map("videos")
-}
-
-model YtChannel {
-  id          String   @id @default(uuid())
-  examTypeId  String   @map("exam_type_id")
-  channelId   String   @map("channel_id")
-  channelName String   @map("channel_name")
-  logoUrl     String?  @map("logo_url")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  examType    ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
-
-  @@index([examTypeId])
-  @@map("yt_channels")
 }
 
 model MockTest {
@@ -250,6 +220,35 @@ model DoubtSession {
   @@map("doubt_sessions")
 }
 
+model Video {
+  id          String   @id @default(uuid())
+  topicId     String   @map("topic_id")
+  youtubeId   String   @map("youtube_id")
+  title       String
+  durationSec Int?     @map("duration_sec")
+  orderIndex  Int      @default(0) @map("order_index")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@map("videos")
+}
+
+model YtChannel {
+  id          String   @id @default(uuid())
+  examTypeId  String   @map("exam_type_id")
+  channelId   String   @map("channel_id")
+  channelName String   @map("channel_name")
+  logoUrl     String?  @map("logo_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  examType    ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+
+  @@index([examTypeId])
+  @@map("yt_channels")
+}
+
 model Notification {
   id         String    @id @default(uuid())
   examTypeId String?   @map("exam_type_id")
@@ -268,9 +267,13 @@ model Note {
   subjectId  String?  @map("subject_id")
   examTypeId String   @map("exam_type_id")
   title      String
-  fileUrl    String   @map("file_url")
-  fileType   FileType @map("file_type")
-  fileSizeMb Float?   @map("file_size_mb")
+  filePath String
+  cloudinaryPublicId String?  @map("cloudinary_public_id") 
+  fileName String
+  fileType FileType
+  fileSizeMb Float?
+  embeddingStatus EmbeddingStatus @default(PENDING)
+  embeddingError String?
   isFree     Boolean  @default(false) @map("is_free")
   isActive   Boolean  @default(true) @map("is_active")
   uploadedBy String   @map("uploaded_by")
@@ -324,4 +327,11 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum EmbeddingStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
 }

@@ -1,5 +1,6 @@
 import * as adminService from "./admin.service.js";
 import { AppError } from "../../utils/AppError.js";
+import { mimeToEnum } from "../../config/utils.js";
 
 
 const handle = (fn) => async (req, res, next) => {
@@ -29,6 +30,54 @@ export const createTopic      = handle((req) => adminService.createTopic(req.bod
 export const updateTopic      = handle((req) => adminService.updateTopic(req.params.id, req.body));
 export const deleteTopic      = handle((req) => adminService.deleteTopic(req.params.id));
 
+// ── Questions ────────────────────────────────────────────────
+export const listQuestions       = handle((req) => adminService.getQuestions(req.query));
+export const createQuestion      = handle((req) => adminService.createQuestion(req.body));
+export const bulkCreateQuestions = handle((req) => adminService.bulkCreateQuestions(req.body.questions));
+export const updateQuestion      = handle((req) => adminService.updateQuestion(req.params.id, req.body));
+export const deleteQuestion      = handle((req) => adminService.deleteQuestion(req.params.id));
+
+// ── Mock Tests ───────────────────────────────────────────────
+export const listMockTests    = handle((req) => adminService.getMockTests(req.query));
+export const getMockTestDetail = handle((req) => adminService.getMockTestDetail(req.params.id));
+export const createMockTest   = handle((req) => adminService.createMockTest(req.body));
+export const updateMockTest   = handle((req) => adminService.updateMockTest(req.params.id, req.body));
+export const deleteMockTest   = handle((req) => adminService.deleteMockTest(req.params.id));
+
+export const addQuestionToTest     = handle((req) => adminService.addQuestionToTest(req.params.id, req.body.questionId, req.body.orderIndex));
+export const removeQuestionFromTest = handle((req) => adminService.removeQuestionFromTest(req.params.id, req.params.qid));
+export const reorderTestQuestions  = handle((req) => adminService.reorderTestQuestions(req.params.id, req.body.questions));
+
+// ── Notes ────────────────────────────────────────────────────
+
+export const listNotes = handle((req) => adminService.getNotes(req.query));
+
+export const createNote = async (req, res, next) => {
+  try {
+    if (!req.file) throw new AppError("File is required", 400);
+
+    const note = await adminService.createNote({
+      ...req.body,
+      filePath: req.file.path,
+      fileName: req.file.originalname,
+      fileType: mimeToEnum(req.file.mimetype),
+      fileSizeMb: req.file.size / (1024 * 1024),
+      uploadedBy: req.user.userId,
+    });
+
+    res.json({ success: true, note }); // no chunksStored anymore — that happens async now
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateNote = handle((req) => adminService.updateNote(req.params.id, req.body));
+export const deleteNote = handle((req) => adminService.deleteNote(req.params.id));
+export const getNoteDownloadUrl = handle(async (req) => {
+  const url = await adminService.getNoteDownloadUrl(req.params.id);
+  return { url };
+});
+
 // ── Videos ───────────────────────────────────────────────────
 export const listVideos       = handle((req) => adminService.getVideos(req.query.topicId));
 export const createVideo      = handle((req) => adminService.createVideo(req.body));
@@ -40,47 +89,6 @@ export const listYtChannels   = handle((req) => adminService.getYtChannels(req.q
 export const createYtChannel  = handle((req) => adminService.createYtChannel(req.body));
 export const updateYtChannel  = handle((req) => adminService.updateYtChannel(req.params.id, req.body));
 export const deleteYtChannel  = handle((req) => adminService.deleteYtChannel(req.params.id));
-
-// ── Questions ────────────────────────────────────────────────
-export const listQuestions       = handle((req) => adminService.getQuestions(req.query));
-export const createQuestion      = handle((req) => adminService.createQuestion(req.body));
-export const bulkCreateQuestions = handle((req) => adminService.bulkCreateQuestions(req.body.questions));
-export const updateQuestion      = handle((req) => adminService.updateQuestion(req.params.id, req.body));
-export const deleteQuestion      = handle((req) => adminService.deleteQuestion(req.params.id));
-
-// ── Mock Tests ───────────────────────────────────────────────
-export const listMockTests    = handle((req) => adminService.getMockTests(req.query));
-export const createMockTest   = handle((req) => adminService.createMockTest(req.body));
-export const updateMockTest   = handle((req) => adminService.updateMockTest(req.params.id, req.body));
-export const deleteMockTest   = handle((req) => adminService.deleteMockTest(req.params.id));
-
-export const addQuestionToTest     = handle((req) => adminService.addQuestionToTest(req.params.id, req.body.questionId, req.body.orderIndex));
-export const removeQuestionFromTest = handle((req) => adminService.removeQuestionFromTest(req.params.id, req.params.qid));
-export const reorderTestQuestions  = handle((req) => adminService.reorderTestQuestions(req.params.id, req.body.questions));
-
-// ── Notes ────────────────────────────────────────────────────
-export const listNotes  = handle((req) => adminService.getNotes(req.query));
-
-export const createNote = async (req, res, next) => {
-  try {
-    if (!req.file) throw new AppError("File is required", 400);
-
-    const result = await notesService.createNote({
-      ...req.body,
-      filePath:   req.file.path,
-      fileName:   req.file.originalname,
-      fileType:   req.body.fileType?.toUpperCase(),
-      uploadedBy: req.user.userId, 
-    });
-
-    res.json({ success: true, ...result });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const updateNote = handle((req) => adminService.updateNote(req.params.id, req.body));
-export const deleteNote = handle((req) => adminService.deleteNote(req.params.id));
 
 // ── Users ────────────────────────────────────────────────────
 export const listUsers         = handle((req) => adminService.getUsers(req.query));

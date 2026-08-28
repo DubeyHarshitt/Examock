@@ -25,7 +25,9 @@ import {
   getOverview, getTestAnalytics, getPaymentRecords,
   // Notifications
   listNotifications, broadcastNotification,
+  getNoteDownloadUrl,
 } from "./admin.controller.js";
+import { getMockTestDetail } from "./admin.service.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -51,18 +53,6 @@ router.post("/topics",             createTopic);
 router.patch("/topics/:id",        updateTopic);
 router.delete("/topics/:id",       deleteTopic);
 
-// ── Videos ───────────────────────────────────────────────────
-router.get("/videos",              listVideos);         // ?topicId=
-router.post("/videos",             createVideo);
-router.patch("/videos/:id",        updateVideo);
-router.delete("/videos/:id",       deleteVideo);
-
-// ── YouTube Channels ─────────────────────────────────────────
-router.get("/yt-channels",         listYtChannels);     // ?examTypeId=
-router.post("/yt-channels",        createYtChannel);
-router.patch("/yt-channels/:id",   updateYtChannel);
-router.delete("/yt-channels/:id",  deleteYtChannel);
-
 // ── Questions ────────────────────────────────────────────────
 router.get("/questions",           listQuestions);      // ?topicId= &page= &limit=
 router.post("/questions",          createQuestion);
@@ -72,6 +62,7 @@ router.delete("/questions/:id",    deleteQuestion);
 
 // ── Mock Tests ───────────────────────────────────────────────
 router.get("/mock-tests",                              listMockTests);
+router.get("/mock-tests/:id",                           getMockTestDetail);
 router.post("/mock-tests",                             createMockTest);
 router.patch("/mock-tests/:id",                        updateMockTest);
 router.delete("/mock-tests/:id",                       deleteMockTest);
@@ -84,6 +75,19 @@ router.get("/notes",               listNotes);
 router.post("/notes",              upload.single("file"), createNote);
 router.patch("/notes/:id",         updateNote);
 router.delete("/notes/:id",        deleteNote);
+router.get("/notes/:id/download", getNoteDownloadUrl);
+
+// ── Videos ───────────────────────────────────────────────────
+router.get("/videos",              listVideos);         // ?topicId=
+router.post("/videos",             createVideo);
+router.patch("/videos/:id",        updateVideo);
+router.delete("/videos/:id",       deleteVideo);
+
+// ── YouTube Channels ─────────────────────────────────────────
+router.get("/yt-channels",         listYtChannels);     // ?examTypeId=
+router.post("/yt-channels",        createYtChannel);
+router.patch("/yt-channels/:id",   updateYtChannel);
+router.delete("/yt-channels/:id",  deleteYtChannel);
 
 // ── Users ────────────────────────────────────────────────────
 router.get("/users",               listUsers);          // ?examTypeId= &page= &limit=
