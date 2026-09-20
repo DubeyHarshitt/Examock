@@ -51,7 +51,22 @@ export async function googleAuth(req, res, next) {
 export async function selectExamType(req, res, next) {
   try {
     const examType = await setExamType(req.user.userId, req.body.examTypeId);
-    res.json({ message: "Exam type set successfully", examType });
+
+    // Return the fresh onboarding state so the frontend knows whether OTP
+    // is still needed (true for new accounts, false for existing users).
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { emailVerified: true },
+    });
+
+    res.json({
+      message: "Exam type set successfully",
+      examType,
+      onboarding: {
+        needsExamSelection: false,
+        needsEmailVerification: !user.emailVerified,
+      },
+    });
   } catch (err) {
     next(err);
   }

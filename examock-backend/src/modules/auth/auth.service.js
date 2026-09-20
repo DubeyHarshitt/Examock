@@ -48,16 +48,31 @@ export const getAllExamTypes = async () => {
 export async function googleLogin(idToken) {
   const payload = await verifyGoogleToken(idToken);
 
-  const user = await prisma.user.upsert({
+  // Google's idToken already proves the user owns this email, so existing
+  // users are marked email-verified and can sign in directly. Only brand-new
+  // accounts (emailVerified defaults to false) go through the OTP step.
+  const existing = await prisma.user.findUnique({
     where: { gmailId: payload.sub },
-    update: { name: payload.name, avatarUrl: payload.picture },
-    create: {
-      gmailId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      avatarUrl: payload.picture,
-    },
   });
+
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: payload.name,
+          avatarUrl: payload.picture,
+          emailVerified: true, // Google verified this email for us
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          gmailId: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          avatarUrl: payload.picture,
+          // emailVerified stays false → new accounts must verify via OTP
+        },
+      });
 
   const token = await issueAndPersistTokens({
     userId: user.id,
@@ -88,6 +103,17 @@ export async function googleLogin(idToken) {
 
 export async function setExamType(userId, examTypeId) {
   const user = await prisma.user.findFirstOrThrow({ where: { id: userId } });
+
+  // Idempotent: if the exam type is already set to THIS SAME value — e.g. the
+  // first request succeeded but the response was lost, or the button was
+  // double-clicked during onboarding — treat it as a successful no-op instead
+  // of failing. The lock still applies if a *different* exam type is sent.
+  if (user.examTypeId && user.examTypeId === examTypeId) {
+    const existing = await prisma.examType.findFirst({
+      where: { id: examTypeId, isActive: true },
+    });
+    if (existing) return existing;
+  }
 
   if (user.examTypeId) {
     throw new AppError("Exam type is already set and cannot be changed", 400);
