@@ -1,8 +1,9 @@
 // src/pages/progress/ProgressPage.tsx
-// Student progress overview — topic completion across all subjects.
+// Student progress overview — topic completion across all subjects, an overall
+// readiness ring, count-up summary stats, a study-planner widget, and
+// color-coded per-subject topic rows.
 // Fetches GET /student/progress (grouped by subject) plus the dashboard's
-// suggested weak topics, and renders a study-planner-style allocation widget
-// using a client-side heuristic (exam date + per-topic completion + scores).
+// suggested weak topics.
 
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -19,11 +20,11 @@ import {
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
-import { Card } from "../../components/ui";
-import { Badge } from "../../components/ui";
-import { EmptyState } from "../../components/ui";
+import { Card, Badge, StatCard, ProgressRing, Reveal, EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useProgress, useDashboard } from "../../hooks/student/useStudentData";
+import { cn } from "../../utils/cn";
+import { subjectHue, type SubjectHue } from "../../utils/subjectColor";
 import type {
   SubjectProgressGroup,
   TopicProgressRow,
@@ -65,16 +66,22 @@ export default function ProgressPage() {
 
   const suggested = dash.data?.suggestedTopics ?? [];
 
+  const readiness =
+    allTopics.length === 0
+      ? 0
+      : Math.round((totals.topicsDone / allTopics.length) * 100);
+
   if (isLoading) {
     return (
       <AppShell section="student">
         <div className="space-y-6">
-          <SkeletonCard />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+          <SkeletonCard className="h-40" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
+          <SkeletonCard />
         </div>
       </AppShell>
     );
@@ -96,48 +103,96 @@ export default function ProgressPage() {
     <AppShell section="student">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Your Progress</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900">
+            Your Progress
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
             Track topic mastery, test attempts, and videos watched
           </p>
         </div>
         <Link
           to="/chat"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
         >
           <Smartphone className="w-4 h-4" /> Ask AI about these
         </Link>
       </div>
 
+      {/* ── Readiness hero ─────────────────────────────────── */}
+      <Reveal>
+        <div className="mt-6 card-surface p-6 flex flex-col sm:flex-row items-center gap-6">
+          <ProgressRing value={readiness} size={124} stroke={11} className="shrink-0">
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                {readiness}%
+              </p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide">
+                Ready
+              </p>
+            </div>
+          </ProgressRing>
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="font-display text-lg font-extrabold text-slate-900">
+              Overall preparedness
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
+              {readiness >= 70
+                ? "Great momentum — keep the pace! Targeted revision will push you further."
+                : readiness >= 40
+                  ? "Good work — a steady test rhythm will close the gap."
+                  : "Let's build momentum with a few chapter-wise tests."}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
+              <Badge variant="success">
+                <CheckCircle2 className="w-3 h-3" />
+                {totals.topicsDone} topics with a score
+              </Badge>
+              <Badge variant="primary">{allTopics.length} total topics</Badge>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
       {/* ── Summary cards ────────────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+          delay={60}
           label="Topics with a score"
           value={totals.topicsDone}
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          tile="bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
         />
         <StatCard
-          icon={<Target className="w-5 h-5 text-indigo-600" />}
+          delay={120}
           label="Avg best score"
-          value={`${avgBest}%`}
+          value={avgBest}
+          suffix="%"
+          icon={<Target className="w-5 h-5" />}
+          tile="bg-gradient-to-br from-brand-500 to-brand-700 text-white"
         />
         <StatCard
-          icon={<BarChart3 className="w-5 h-5 text-amber-600" />}
+          delay={180}
           label="Total attempts"
           value={totals.attempts}
+          icon={<BarChart3 className="w-5 h-5" />}
+          tile="bg-gradient-to-br from-sky-500 to-blue-600 text-white"
         />
         <StatCard
-          icon={<ListVideo className="w-5 h-5 text-rose-600" />}
+          delay={240}
           label="Videos watched"
           value={totals.videos}
+          icon={<ListVideo className="w-5 h-5" />}
+          tile="bg-gradient-to-br from-rose-500 to-pink-600 text-white"
         />
       </div>
 
       {/* ── Study planner widget ─────────────────────────────── */}
-      <StudyPlanner
-        suggestedCount={suggested.length}
-        stats={{ avgBest, topicsDone: totals.topicsDone, totalTopics: allTopics.length }}
-      />
+      <Reveal delay={200}>
+        <StudyPlanner
+          suggestedCount={suggested.length}
+          stats={{ avgBest, topicsDone: totals.topicsDone, totalTopics: allTopics.length }}
+        />
+      </Reveal>
 
       {/* ── Progress by subject ──────────────────────────────── */}
       {groups.length === 0 && allTopics.length === 0 ? (
@@ -145,11 +200,11 @@ export default function ProgressPage() {
           <EmptyState
             title="No progress yet"
             description="Attempt a mock test or watch videos to start building your progress."
-            icon={<BarChart3 className="w-6 h-6 text-gray-400" />}
+            icon={<BarChart3 className="w-6 h-6 text-slate-400" />}
             action={
               <Link
                 to="/tests"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700"
               >
                 Take a test
               </Link>
@@ -158,19 +213,28 @@ export default function ProgressPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-6">
-          {groups.map((group) => (
-            <Card
-              key={group.subjectId}
-              title={group.subjectName}
-              subtitle={`${group.topics.length} topic${group.topics.length !== 1 ? "s" : ""}`}
-            >
-              <div className="space-y-4">
-                {group.topics.map((topic) => (
-                  <TopicRow key={topic.topicId} topic={topic} />
-                ))}
-              </div>
-            </Card>
-          ))}
+          {groups.map((group, gi) => {
+            const hue = subjectHue(group.subjectName);
+            return (
+              <Reveal key={group.subjectId} delay={gi * 60}>
+                <Card
+                  title={
+                    <span className="flex items-center gap-2">
+                      <span className={cn("w-2.5 h-2.5 rounded-full", hue.dot)} />
+                      {group.subjectName}
+                    </span>
+                  }
+                  subtitle={`${group.topics.length} topic${group.topics.length !== 1 ? "s" : ""}`}
+                >
+                  <div className="space-y-4">
+                    {group.topics.map((topic) => (
+                      <TopicRow key={topic.topicId} topic={topic} hue={hue} />
+                    ))}
+                  </div>
+                </Card>
+              </Reveal>
+            );
+          })}
         </div>
       )}
     </AppShell>
@@ -179,25 +243,26 @@ export default function ProgressPage() {
 
 // ── Topic progress row with a completion bar ─────────────────────
 
-function TopicRow({ topic }: { topic: TopicProgressRow }) {
+function TopicRow({ topic, hue }: { topic: TopicProgressRow; hue: SubjectHue }) {
   const pct =
     topic.bestScore != null
       ? Math.max(0, Math.min(100, Math.round(topic.bestScore)))
       : 0;
-  const color =
-    pct >= 75 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-rose-500";
 
   return (
     <Link
       to={`/progress/${topic.topicId}`}
-      className="block rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors"
+      className={cn(
+        "group block rounded-xl border border-slate-200 p-4 transition-colors",
+        hue.hoverBorder
+      )}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">
+          <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-brand-700 transition-colors">
             {topic.topicName}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
               <BarChart3 className="w-3 h-3" />
               {topic.attemptCount} attempt{topic.attemptCount !== 1 ? "s" : ""}
@@ -218,41 +283,17 @@ function TopicRow({ topic }: { topic: TopicProgressRow }) {
           <Badge variant={pct >= 75 ? "success" : pct >= 40 ? "warning" : "danger"}>
             {topic.bestScore != null ? `${pct}%` : "No score"}
           </Badge>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-brand-500 transition-colors" />
         </div>
       </div>
       {/* Progress bar */}
-      <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+      <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
         <div
-          className={`h-full rounded-full ${color} transition-all`}
+          className={cn("h-full rounded-full transition-all", hue.bar)}
           style={{ width: `${pct}%` }}
         />
       </div>
     </Link>
-  );
-}
-
-// ── Stat card ───────────────────────────────────────────────────
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-        <p className="text-xs text-gray-500">{label}</p>
-      </div>
-    </div>
   );
 }
 
@@ -283,19 +324,19 @@ function StudyPlanner({
       title="Study Planner"
       subtitle="A suggested focus based on your activity"
       action={
-        <span className="flex items-center gap-1 text-xs font-semibold text-indigo-600">
+        <span className="flex items-center gap-1 text-xs font-semibold text-brand-600">
           <TrendingUp className="w-3 h-3" /> {readiness}% ready
         </span>
       }
     >
-      <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+      <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all"
           style={{ width: `${readiness}%` }}
         />
       </div>
-      <p className="mt-3 text-sm text-gray-700 flex items-start gap-2">
-        <Target className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+      <p className="mt-3 text-sm text-slate-700 flex items-start gap-2">
+        <Target className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
         {recommendation}
       </p>
     </Card>

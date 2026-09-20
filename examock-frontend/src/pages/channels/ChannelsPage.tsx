@@ -74,20 +74,22 @@ export default function ChannelsPage() {
               }) => (
                 <div
                   key={channel.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow"
+                  className="card-surface card-surface-hover p-5 flex flex-col items-center text-center hover:-translate-y-0.5"
                 >
                   {channel.logoUrl ? (
-                    <img
-                      src={channel.logoUrl}
-                      alt={channel.channelName}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
+                    <div className="p-[3px] rounded-full bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 shadow-sm">
+                      <img
+                        src={channel.logoUrl}
+                        alt={channel.channelName}
+                        className="w-16 h-16 rounded-full object-cover ring-4 ring-white"
+                      />
+                    </div>
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-                      <MonitorPlay className="w-7 h-7 text-red-500" />
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-sm">
+                      <MonitorPlay className="w-7 h-7 text-white" />
                     </div>
                   )}
-                  <h3 className="mt-3 text-sm font-bold text-gray-900">
+                  <h3 className="mt-3 text-sm font-bold text-slate-900">
                     {channel.channelName}
                   </h3>
 

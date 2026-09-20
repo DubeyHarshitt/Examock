@@ -18,6 +18,15 @@ export interface LoginResponse {
   onboarding: Onboarding;
 }
 
+export interface SelectExamTypeResponse {
+  message: string;
+  examType: {
+    id: string;
+    name: string;
+  };
+  onboarding: Onboarding;
+}
+
 // export interface ExamType {
 //   id: string;
 //   name: string;

@@ -71,7 +71,7 @@ export default function UploadPage() {
         </div>
         <Link
           to="/chat"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
         >
           <MessageCircle className="w-4 h-4" /> Ask AI your doubts
         </Link>
@@ -99,8 +99,8 @@ export default function UploadPage() {
           className={cn(
             "flex flex-col items-center justify-center text-center p-10 rounded-2xl border-2 border-dashed transition-colors",
             dragOver
-              ? "border-indigo-400 bg-indigo-50"
-              : "border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 cursor-pointer"
+              ? "border-brand-400 bg-brand-50"
+              : "border-slate-300 bg-white hover:border-brand-300 hover:bg-brand-50/40 cursor-pointer"
           )}
         >
           <input
@@ -110,8 +110,8 @@ export default function UploadPage() {
             className="hidden"
             onChange={(e) => acceptFile(e.target.files?.[0] ?? undefined)}
           />
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center">
-            <UploadCloud className="w-7 h-7 text-indigo-600" />
+          <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center">
+            <UploadCloud className="w-7 h-7 text-brand-600" />
           </div>
           <p className="mt-4 text-sm font-semibold text-gray-900">
             {file ? file.name : "Drag & drop your PDF here"}
@@ -176,7 +176,7 @@ export default function UploadPage() {
               action={
                 <Link
                   to="/chat"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700"
                 >
                   <MessageCircle className="w-4 h-4" /> Ask about it
                 </Link>
@@ -198,12 +198,12 @@ export default function UploadPage() {
 
 function StepCard({ step, title, desc }: { step: number; title: string; desc: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+    <div className="card-surface p-4">
+      <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">
         {step}
       </div>
-      <p className="mt-3 text-sm font-semibold text-gray-900">{title}</p>
-      <p className="text-xs text-gray-500 mt-1">{desc}</p>
+      <p className="mt-3 text-sm font-semibold text-slate-900">{title}</p>
+      <p className="text-xs text-slate-500 mt-1">{desc}</p>
     </div>
   );
 }

@@ -53,7 +53,7 @@ export default function VideoPage() {
         action={
           <Link
             to="/subjects"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-indigo-600"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-brand-600"
           >
             <ArrowLeft className="w-3 h-3" /> All subjects
           </Link>
@@ -81,7 +81,7 @@ export default function VideoPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* ── Main player ─────────────────────────────────── */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="card-surface overflow-hidden">
                 <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
                   <iframe
                     className="absolute inset-0 w-full h-full"
@@ -107,7 +107,7 @@ export default function VideoPage() {
             </div>
 
             {/* ── Playlist sidebar ────────────────────────────── */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="card-surface p-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
                 Playlist ({videos.length})
               </h3>
@@ -121,8 +121,8 @@ export default function VideoPage() {
                       onClick={() => toggleWatched(video.id)}
                       className={`w-full flex items-start gap-2 p-2 rounded-lg text-left transition-colors ${
                         isCurrent
-                          ? "bg-indigo-50 ring-1 ring-indigo-200"
-                          : "hover:bg-gray-50"
+                          ? "bg-brand-50 ring-1 ring-brand-200"
+                          : "hover:bg-slate-50"
                       }`}
                     >
                       <span className="w-6 h-6 shrink-0 rounded-full text-xs font-bold text-gray-500 bg-gray-100 flex items-center justify-center">

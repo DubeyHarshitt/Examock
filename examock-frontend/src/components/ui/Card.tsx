@@ -6,8 +6,8 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   /** Optional header area rendered above the body */
-  title?: string;
-  subtitle?: string;
+  title?: ReactNode;
+  subtitle?: ReactNode;
   action?: ReactNode;
 }
 

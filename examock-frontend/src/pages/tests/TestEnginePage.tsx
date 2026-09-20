@@ -56,11 +56,11 @@ function cellStatus(opts: {
 }
 
 const CELL_STYLES: Record<CellStatus, string> = {
-  answered: "bg-green-500 text-white border-green-500",
-  notAnswered: "bg-red-400 text-white border-red-400",
-  notVisited: "bg-white text-gray-500 border-gray-300",
-  marked: "bg-purple-500 text-white border-purple-500",
-  current: "ring-2 ring-indigo-500 bg-indigo-100 text-indigo-700 border-indigo-300",
+  answered: "bg-emerald-500 text-white border-emerald-500",
+  notAnswered: "bg-rose-400 text-white border-rose-400",
+  notVisited: "bg-white text-slate-500 border-slate-300",
+  marked: "bg-amber-400 text-white border-amber-400",
+  current: "ring-2 ring-brand-500 bg-brand-50 text-brand-700 border-brand-400",
 };
 
 export default function TestEnginePage() {
@@ -262,10 +262,10 @@ export default function TestEnginePage() {
   // ── Loading + not started ───────────────────────────────────
   if (starting || !attemptId || (questionLoading && !currentQuestion)) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-sm text-gray-500">
+          <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+          <p className="text-sm text-slate-500">
             {starting ? "Starting test…" : "Loading question…"}
           </p>
         </div>
@@ -275,16 +275,16 @@ export default function TestEnginePage() {
 
   if (!q) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-sm text-gray-500">Question not available.</p>
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <p className="text-sm text-slate-500">Question not available.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-surface">
       {/* ═══════════ Top header bar ═══════════ */}
-      <header className="sticky top-0 z-30 bg-[#1f4e78] text-white shadow">
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-brand-800 via-brand-700 to-brand-600 text-white shadow">
         <div className="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold shrink-0">
@@ -332,13 +332,13 @@ export default function TestEnginePage() {
       {/* ═══════════ Main exam body ═══════════ */}
       <div className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6">
         {/* ── LEFT: Question area ────────────────────────────── */}
-        <div className="bg-white border-2 border-gray-300 rounded-md shadow-sm flex flex-col">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-card flex flex-col">
           {/* Section bar */}
-          <div className="bg-gray-100 border-b border-gray-300 px-5 py-2.5 flex items-center justify-between">
-            <span className="text-sm font-bold text-[#1f4e78]">
+          <div className="bg-brand-50/70 border-b border-brand-100 px-5 py-2.5 flex items-center justify-between rounded-t-xl">
+            <span className="text-sm font-bold text-brand-700">
               Section A — MCQ
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-slate-500">
               Question No. {currentIndex + 1} of {totalQuestions}
             </span>
           </div>
@@ -362,7 +362,7 @@ export default function TestEnginePage() {
                   {[0, 1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-4 p-3 rounded-lg border-2 border-gray-200 bg-white"
+                      className="flex items-start gap-4 p-3 rounded-lg border border-slate-200 bg-white"
                     >
                       <Skeleton className="mt-1 h-7 w-7 shrink-0 rounded-full" />
                       <div className="space-y-2 flex-1 pt-1.5">
@@ -377,10 +377,10 @@ export default function TestEnginePage() {
               <>
                 {/* Question text */}
                 <div className="flex gap-3">
-                  <span className="shrink-0 w-8 h-8 rounded-full bg-[#1f4e78] text-white flex items-center justify-center text-sm font-bold">
+                  <span className="shrink-0 w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold">
                     {currentIndex + 1}
                   </span>
-                  <p className="text-lg font-semibold text-gray-900 leading-relaxed">
+                  <p className="text-lg font-semibold text-slate-900 leading-relaxed">
                     {q.text}
                   </p>
                 </div>
@@ -398,23 +398,23 @@ export default function TestEnginePage() {
                         className={cn(
                           "w-full flex items-start gap-4 p-3 rounded-lg border-2 text-left transition-colors",
                           selected
-                            ? "border-[#1f4e78] bg-indigo-50"
-                            : "border-gray-200 bg-white hover:border-gray-400"
+                            ? "border-brand-500 bg-brand-50"
+                            : "border-slate-200 bg-white hover:border-brand-300"
                         )}
                       >
                         <span
                           className={cn(
                             "mt-0.5 w-7 h-7 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-bold",
                             selected
-                              ? "border-[#1f4e78] bg-[#1f4e78] text-white"
-                              : "border-gray-400 text-gray-500"
+                              ? "border-brand-600 bg-brand-600 text-white"
+                              : "border-slate-400 text-slate-500"
                           )}
                         >
                           {opt}
                         </span>
-                        <span className="text-base text-gray-800">{text}</span>
+                        <span className="text-base text-slate-800">{text}</span>
                         {selected && (
-                          <CheckCircle2 className="ml-auto w-5 h-5 text-[#1f4e78] shrink-0 mt-0.5" />
+                          <CheckCircle2 className="ml-auto w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
                         )}
                       </button>
                     );
@@ -422,7 +422,7 @@ export default function TestEnginePage() {
                 </div>
 
                 {/* Marks footnote */}
-                <p className="mt-6 text-xs text-gray-400">
+                <p className="mt-6 text-xs text-slate-400">
                   Marks: +{q.marks}
                   {q.negMarks > 0 ? ` / -${q.negMarks}` : " (no negative marks)"} •{" "}
                   {saved
@@ -439,24 +439,24 @@ export default function TestEnginePage() {
         {/* ── RIGHT: Candidate / palette / actions ───────────── */}
         <div className="space-y-4">
           {/* Candidate info + timer */}
-          <div className="bg-white border-2 border-gray-300 rounded-md shadow-sm p-4">
+          <div className="card-surface p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1f4e78] flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold">
                 {user?.name?.[0]?.toUpperCase() ?? "E"}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">
+                <p className="text-sm font-bold text-slate-900 truncate">
                   {user?.name ?? "Candidate"}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-xs text-gray-500">Time Remaining</span>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Time Remaining</span>
               <span
                 className={cn(
-                  "font-mono text-lg font-bold",
-                  (timeRemaining ?? 0) < 60 ? "text-red-600" : "text-[#1f4e78]"
+                  "font-mono text-lg font-bold tabular-nums",
+                  (timeRemaining ?? 0) < 60 ? "text-red-600" : "text-brand-700"
                 )}
               >
                 {formatClock(timeRemaining ?? 0)}
@@ -465,11 +465,11 @@ export default function TestEnginePage() {
           </div>
 
           {/* Question palette */}
-          <div className="bg-white border-2 border-gray-300 rounded-md shadow-sm p-4">
-            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+          <div className="card-surface p-4">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
               Question Palette
             </h3>
-            <p className="text-[11px] text-gray-400 mb-3">
+            <p className="text-[11px] text-slate-400 mb-3">
               {answeredCount} answered • {totalQuestions - answeredCount} unanswered
             </p>
 
@@ -488,7 +488,7 @@ export default function TestEnginePage() {
                     type="button"
                     onClick={() => goTo(i)}
                     className={cn(
-                      "h-9 rounded-md border-2 text-xs font-bold flex items-center justify-center transition-colors",
+                      "h-9 rounded-lg border-2 text-xs font-bold flex items-center justify-center transition-colors",
                       CELL_STYLES[status]
                     )}
                   >
@@ -499,11 +499,11 @@ export default function TestEnginePage() {
             </div>
 
             {/* Legend */}
-            <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-gray-600">
-              <Legend color="bg-green-500 border-green-500" label="Answered" />
-              <Legend color="bg-red-400 border-red-400" label="Not Answered" />
-              <Legend color="bg-white border-gray-300" label="Not Visited" />
-              <Legend color="bg-purple-500 border-purple-500" label="Marked for Review" />
+            <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+              <Legend color="bg-emerald-500 border-emerald-500" label="Answered" />
+              <Legend color="bg-rose-400 border-rose-400" label="Not Answered" />
+              <Legend color="bg-white border-slate-300" label="Not Visited" />
+              <Legend color="bg-amber-400 border-amber-400" label="Marked for Review" />
             </div>
           </div>
 
@@ -591,8 +591,8 @@ function ActionButton({
       className={cn(
         "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
         primary
-          ? "bg-[#1f4e78] text-white hover:bg-[#163a5c]"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+          ? "bg-brand-600 text-white hover:bg-brand-700"
+          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
       )}
     >
       {icon}

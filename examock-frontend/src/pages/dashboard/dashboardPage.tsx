@@ -1,15 +1,14 @@
 // src/pages/dashboard/dashboardPage.tsx
 // Real student dashboard — replaces the placeholder stub.
 // Fetches dashboard data from GET /api/student/dashboard and renders
-// summary cards, recent attempts, suggested weak topics, and quick links.
+// welcome hero, count-up summary cards, recent attempts, suggested weak
+// topics, and color-coded subject quick links.
 
 import { Link } from "react-router-dom";
 import {
   BookOpen,
   FileText,
   Target,
-  TrendingUp,
-  Award,
   Clock,
   ChevronRight,
   AlertTriangle,
@@ -17,13 +16,11 @@ import {
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
-import { Card } from "../../components/ui";
-import { Badge } from "../../components/ui";
-import { Button } from "../../components/ui";
-import { EmptyState } from "../../components/ui";
-import { SkeletonCard } from "../../components/ui/Skeleton";
+import { Card, Badge, Button, EmptyState, SkeletonCard, StatCard, ProgressRing, Reveal, Chip } from "../../components/ui";
 import { useDashboard } from "../../hooks/student/useStudentData";
 import { useAuthStore } from "../../store/auth.store";
+import { cn } from "../../utils/cn";
+import { subjectHue } from "../../utils/subjectColor";
 
 /** Format seconds into "Xm Ys" */
 function formatTime(seconds: number): string {
@@ -40,6 +37,13 @@ function formatDate(iso: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+/** Gradient pair used for a percentile ring (higher = greener). */
+function ringColors(pct: number): { from: string; to: string } {
+  if (pct >= 80) return { from: "#10b981", to: "#059669" };
+  if (pct >= 50) return { from: "#f59e0b", to: "#d97706" };
+  return { from: "#f43f5e", to: "#e11d48" };
 }
 
 export default function DashboardPage() {
@@ -71,13 +75,16 @@ export default function DashboardPage() {
     return (
       <AppShell section="student">
         <div className="space-y-6">
-          <SkeletonCard />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SkeletonCard />
+          <SkeletonCard className="h-40" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SkeletonCard />
             <SkeletonCard />
           </div>
-          <SkeletonCard />
         </div>
       </AppShell>
     );
@@ -104,185 +111,238 @@ export default function DashboardPage() {
   return (
     <AppShell section="student">
       <div className="space-y-6">
-        {/* ── Welcome banner ──────────────────────────────────── */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl p-6 text-white">
-          <h1 className="text-xl font-bold">
-            Welcome back{user?.name ? `, ${user.name}` : ""} 👋
-          </h1>
-          <p className="text-indigo-100 text-sm mt-1">
-            Preparing for{" "}
-            <span className="font-semibold text-white">
-              {examType?.name ?? "your exam"}
-            </span>
-          </p>
-          <div className="flex flex-wrap gap-3 mt-4">
-            <Link to="/tests">
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<Target className="w-4 h-4" />}
-              >
-                Take a Test
-              </Button>
-            </Link>
-            <Link to="/subjects">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white border border-white/30 hover:bg-white/10"
-                icon={<BookOpen className="w-4 h-4" />}
-              >
-                Browse Subjects
-              </Button>
-            </Link>
+        {/* ── Welcome hero ────────────────────────────────────── */}
+        <Reveal>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 p-6 sm:p-8 text-white shadow-pop">
+            <div
+              aria-hidden="true"
+              className="absolute -top-20 -right-14 w-72 h-72 rounded-full bg-white/10 blur-2xl"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -bottom-24 left-1/3 w-64 h-64 rounded-full bg-violet-400/25 blur-2xl"
+            />
+            <img
+              src="/logo-mark.svg"
+              alt=""
+              aria-hidden="true"
+              className="absolute -right-4 -bottom-8 w-44 h-44 opacity-[0.14] rotate-6"
+              draggable={false}
+            />
+            <div className="relative">
+              <h1 className="font-display text-xl sm:text-2xl font-extrabold">
+                Welcome back{user?.name ? `, ${user.name}` : ""} 👋
+              </h1>
+              <p className="text-brand-100 text-sm mt-1">
+                Preparing for{" "}
+                <span className="font-semibold text-white">
+                  {examType?.name ?? "your exam"}
+                </span>
+              </p>
+              <div className="flex flex-wrap gap-3 mt-5">
+                <Link to="/tests">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Target className="w-4 h-4" />}
+                  >
+                    Take a Test
+                  </Button>
+                </Link>
+                <Link to="/subjects">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white border border-white/30 hover:bg-white/10"
+                    icon={<BookOpen className="w-4 h-4" />}
+                  >
+                    Browse Subjects
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
+        </Reveal>
 
         {/* ── Summary cards ───────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            icon={<BookOpen className="w-5 h-5 text-indigo-600" />}
+            delay={60}
             label="Subjects"
             value={subjects.length}
+            icon={<BookOpen className="w-5 h-5" />}
+            tile="bg-gradient-to-br from-brand-500 to-brand-600 text-white"
           />
           <StatCard
-            icon={<FileText className="w-5 h-5 text-emerald-600" />}
+            delay={120}
             label="Topics Explored"
             value={totalTopicsAttempted}
+            icon={<FileText className="w-5 h-5" />}
+            tile="bg-gradient-to-br from-violet-500 to-purple-600 text-white"
           />
           <StatCard
-            icon={<BarChart3 className="w-5 h-5 text-amber-600" />}
+            delay={180}
             label="Tests Taken"
             value={recentAttempts.length}
+            icon={<BarChart3 className="w-5 h-5" />}
+            tile="bg-gradient-to-br from-sky-500 to-blue-600 text-white"
           />
           <StatCard
-            icon={<Target className="w-5 h-5 text-rose-600" />}
+            delay={240}
             label="Weak Topics"
             value={suggestedTopics.length}
+            icon={<Target className="w-5 h-5" />}
+            tile="bg-gradient-to-br from-rose-500 to-pink-600 text-white"
           />
-        </div>
-
-        {/* ── Quick links ─────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickLink to="/tests" icon={<Target className="w-5 h-5" />} label="Mock Tests" />
-          <QuickLink to="/notes" icon={<FileText className="w-5 h-5" />} label="Notes" />
-          <QuickLink to="/channels" icon={<BookOpen className="w-5 h-5" />} label="Channels" />
-          <QuickLink to="/progress" icon={<TrendingUp className="w-5 h-5" />} label="Progress" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── Recent attempts ──────────────────────────────────── */}
-          <Card title="Recent Tests" subtitle="Your last completed attempts">
-            {recentAttempts.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4 text-center">
-                You haven&apos;t taken any tests yet.{" "}
-                <Link to="/tests" className="text-indigo-600 font-semibold hover:underline">
-                  Start one now
-                </Link>
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {recentAttempts.map((attempt) => (
-                  <div
-                    key={attempt.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {attempt.mockTest?.title ?? "Mock Test"}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Award className="w-3 h-3" />
-                          {attempt.score}/{attempt.mockTest?.totalMarks ?? "—"}
-                        </span>
-                        <span>Pctl {Math.round(attempt.percentile)}</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatTime(attempt.timeTakenSec)}
+          <Reveal delay={100}>
+            <Card title="Recent Tests" subtitle="Your last completed attempts">
+              {recentAttempts.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  You haven&apos;t taken any tests yet.{" "}
+                  <Link to="/tests" className="text-brand-600 font-semibold hover:underline">
+                    Start one now
+                  </Link>
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {recentAttempts.map((attempt) => {
+                    const pct = Math.max(0, Math.min(100, attempt.percentile));
+                    const colors = ringColors(pct);
+                    return (
+                      <div
+                        key={attempt.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
+                      >
+                        <ProgressRing value={pct} size={44} stroke={5} from={colors.from} to={colors.to} className="shrink-0">
+                          <span className="text-[10px] font-bold text-slate-800 tabular-nums">
+                            P{Math.round(pct)}
+                          </span>
+                        </ProgressRing>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {attempt.mockTest?.title ?? "Mock Test"}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                            <span className="font-semibold text-slate-700">
+                              {attempt.score}/{attempt.mockTest?.totalMarks ?? "—"}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(attempt.timeTakenSec)}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                          {formatDate(attempt.completedAt)}
                         </span>
                       </div>
-                    </div>
-                    <span className="text-[11px] text-gray-400 whitespace-nowrap">
-                      {formatDate(attempt.completedAt)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </Reveal>
 
           {/* ── Suggested weak topics ───────────────────────────── */}
-          <Card
-            title="Weak Areas"
-            subtitle="Topics where you need more practice"
-            action={
-              <Link
-                to="/progress"
-                className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
-              >
-                View all <ChevronRight className="w-3 h-3" />
-              </Link>
-            }
-          >
-            {suggestedTopics.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4 text-center">
-                Take some tests to get personalized suggestions.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {suggestedTopics.slice(0, 5).map((topic) => (
-                  <div
-                    key={topic.topicId}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {topic.topicName}
-                      </p>
-                      {topic.subjectName && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {topic.subjectName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {topic.bestScore !== null ? (
-                        <Badge variant="warning">{Math.round(topic.bestScore)}%</Badge>
-                      ) : (
-                        <Badge variant="muted">Not attempted</Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          <Reveal delay={160}>
+            <Card
+              title="Weak Areas"
+              subtitle="Topics where you need more practice"
+              action={
+                <Link
+                  to="/progress"
+                  className="text-xs font-semibold text-brand-600 hover:underline flex items-center gap-1"
+                >
+                  View all <ChevronRight className="w-3 h-3" />
+                </Link>
+              }
+            >
+              {suggestedTopics.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  Take some tests to get personalized suggestions.
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {suggestedTopics.slice(0, 5).map((topic) => {
+                    const score = topic.bestScore;
+                    const severity =
+                      score == null ? ("none" as const)
+                      : score < 40 ? ("high" as const)
+                      : score < 70 ? ("medium" as const)
+                      : ("low" as const);
+                    return (
+                      <div
+                        key={topic.topicId}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {topic.topicName}
+                          </p>
+                          {topic.subjectName && (
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {topic.subjectName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {score !== null ? (
+                            <Badge
+                              variant={
+                                severity === "high" ? "danger"
+                                : severity === "medium" ? "warning"
+                                : "success"
+                              }
+                            >
+                              {Math.round(score)}%
+                            </Badge>
+                          ) : (
+                            <Badge variant="muted">Not attempted</Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </Reveal>
         </div>
 
-        {/* ── Subjects overview ──────────────────────────────────── */}
+        {/* ── Subjects quick chips (color-coded) ─────────────────── */}
         {subjects.length > 0 && (
-          <Card title="Your Subjects">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {subjects.map((subject) => (
-                <Link
-                  key={subject.id}
-                  to={`/subjects/${subject.id}/topics`}
-                  className="flex items-center justify-between gap-3 p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {subject.name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {subject.topicCount} topic{subject.topicCount !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                </Link>
-              ))}
-            </div>
-          </Card>
+          <Reveal delay={200}>
+            <Card title="Your Subjects">
+              <div className="flex flex-wrap gap-2">
+                {subjects.map((subject) => {
+                  const hue = subjectHue(subject.name);
+                  return (
+                    <Link
+                      key={subject.id}
+                      to={`/subjects/${subject.id}/topics`}
+                      className={cn(
+                        "inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl border border-slate-200 bg-white transition-all hover:shadow-sm",
+                        hue.hoverBorder
+                      )}
+                    >
+                      <span className={cn("w-2.5 h-2.5 rounded-full", hue.dot)} />
+                      <span className="text-sm font-semibold text-slate-800">
+                        {subject.name}
+                      </span>
+                      <Chip className="!px-1.5 !py-0.5 text-[10px]">
+                        {subject.topicCount} topic{subject.topicCount !== 1 ? "s" : ""}
+                      </Chip>
+                    </Link>
+                  );
+                })}
+              </div>
+            </Card>
+          </Reveal>
         )}
 
         {/* Admin shortcut */}
@@ -290,7 +350,7 @@ export default function DashboardPage() {
           <div className="text-center">
             <Link
               to="/admin-dashboard"
-              className="text-xs font-semibold text-indigo-600 hover:underline"
+              className="text-xs font-semibold text-brand-600 hover:underline"
             >
               Open Admin Panel →
             </Link>
@@ -298,49 +358,5 @@ export default function DashboardPage() {
         )}
       </div>
     </AppShell>
-  );
-}
-
-// ── Helper sub-components ──────────────────────────────────────
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-        <p className="text-xs text-gray-500">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-function QuickLink({
-  to,
-  icon,
-  label,
-}: {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-    >
-      <div className="text-indigo-600">{icon}</div>
-      <span className="text-xs font-semibold text-gray-700">{label}</span>
-    </Link>
   );
 }

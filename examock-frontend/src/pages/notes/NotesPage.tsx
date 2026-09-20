@@ -22,8 +22,11 @@ import {
   Button,
   EmptyState,
   Select,
+  Reveal,
 } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
+import { cn } from "../../utils/cn";
+import { subjectHue } from "../../utils/subjectColor";
 import type { SubjectWithCounts } from "../../types/student.types";
 
 interface NoteItem {
@@ -111,58 +114,66 @@ export default function NotesPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((note) => (
-              <div
-                key={note.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow flex flex-col"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  {note.isFree ? (
-                    <Badge variant="success">Free</Badge>
-                  ) : (
-                    <Badge variant="warning">
-                      <Lock className="w-3 h-3" /> Paid
-                    </Badge>
-                  )}
-                </div>
-
-                <h3 className="mt-4 text-sm font-bold text-gray-900">{note.title}</h3>
-
-                {(note.subject?.name || note.topic?.name) && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {note.subject?.name}
-                    {note.subject?.name && note.topic?.name ? " • " : ""}
-                    {note.topic?.name}
-                  </p>
-                )}
-
-                <div className="mt-auto pt-4">
-                  {note.fileSizeMb != null && (
-                    <p className="text-[11px] text-gray-400 mb-2">
-                      {note.fileSizeMb} MB
-                    </p>
-                  )}
-                  <Button
-                    variant={note.isFree ? "primary" : "outline"}
-                    size="sm"
-                    className="w-full"
-                    icon={
-                      note.isFree ? (
-                        <Download className="w-4 h-4" />
-                      ) : (
-                        <Lock className="w-4 h-4" />
-                      )
-                    }
-                    onClick={() => downloadNote(note)}
+            {filtered.map((note, i) => {
+              const hue = subjectHue(note.subject?.name ?? note.topic?.name ?? "Notes");
+              return (
+                <Reveal key={note.id} delay={i * 50}>
+                  <div
+                    className={cn(
+                      "card-surface card-surface-hover p-5 flex flex-col hover:-translate-y-0.5",
+                      hue.hoverBorder
+                    )}
                   >
-                    {note.isFree ? "Download" : "Unlock"}
-                  </Button>
-                </div>
-              </div>
-            ))}
+                    <div className="flex items-start justify-between">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-sm", hue.tile)}>
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      {note.isFree ? (
+                        <Badge variant="success">Free</Badge>
+                      ) : (
+                        <Badge variant="warning">
+                          <Lock className="w-3 h-3" /> Paid
+                        </Badge>
+                      )}
+                    </div>
+
+                    <h3 className="mt-4 text-sm font-bold text-slate-900">{note.title}</h3>
+
+                    {(note.subject?.name || note.topic?.name) && (
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", hue.dot)} />
+                        {note.subject?.name}
+                        {note.subject?.name && note.topic?.name ? " • " : ""}
+                        {note.topic?.name}
+                      </p>
+                    )}
+
+                    <div className="mt-auto pt-4">
+                      {note.fileSizeMb != null && (
+                        <p className="text-[11px] text-slate-400 mb-2">
+                          {note.fileSizeMb} MB
+                        </p>
+                      )}
+                      <Button
+                        variant={note.isFree ? "primary" : "outline"}
+                        size="sm"
+                        className="w-full"
+                        icon={
+                          note.isFree ? (
+                            <Download className="w-4 h-4" />
+                          ) : (
+                            <Lock className="w-4 h-4" />
+                          )
+                        }
+                        onClick={() => downloadNote(note)}
+                      >
+                        {note.isFree ? "Download" : "Unlock"}
+                      </Button>
+                    </div>
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
         )}
       </div>

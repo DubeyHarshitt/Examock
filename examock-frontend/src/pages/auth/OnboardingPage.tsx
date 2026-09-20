@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "../../store/auth.store";
@@ -13,8 +13,7 @@ type Step = "exam" | "email" | "otp";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  // const { onboarding, setOnboarding, user } = useAuthStore();
-  const { onboarding, setOnboarding } = useAuthStore();
+  const { onboarding, setOnboarding, user } = useAuthStore();
 
   // Determine starting step from onboarding state
   const getInitialStep = (): Step => {
@@ -25,12 +24,8 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState<Step>(getInitialStep);
   const [selectedExamId, setSelectedExamId] = useState<string>("");
-  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  // Simple client-side email sanity check
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   // Fetch available exam types for step 1
   const { data: examTypes, isLoading: loadingExams } = useQuery({
@@ -42,16 +37,39 @@ export default function OnboardingPage() {
   // Step 1 — select exam type
   const examMutation = useMutation({
     mutationFn: () => selectExamType(selectedExamId),
-    onSuccess: () => {
-      setOnboarding({
-        needsExamSelection: false,
-        needsEmailVerification: true,
-      });
-      setStep("email");
+    onSuccess: (data) => {
+      // Use the server-computed onboarding state: new accounts still need the
+      // OTP step, existing users are done and skip straight to the app.
+      setOnboarding(data.onboarding);
       setError(null);
+      if (data.onboarding.needsEmailVerification) {
+        setStep("email");
+      } else {
+        navigate("/", { replace: true });
+      }
     },
-    onError: () => setError("Failed to set exam type. Please try again."),
+    onError: (err) => {
+      // Surface the server's message (e.g. "Exam type is already set…") so a
+      // retried/double-clicked request shows a clear, actionable error.
+      const serverMsg = (err as { response?: { data?: { error?: string } } })
+        ?.response?.data?.error;
+      setError(serverMsg ?? "Failed to set exam type. Please try again.");
+    },
   });
+
+  // Guard against double-click firing two POSTs before React re-renders
+  // the disabled state (the backend is now idempotent too, but this keeps
+  // the request count at one).
+  const submittingRef = useRef(false);
+  const handleExamSubmit = () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    examMutation.mutate(undefined, {
+      onSettled: () => {
+        submittingRef.current = false;
+      },
+    });
+  };
 
   // Step 2 — send OTP (email — the OTP goes to the account email)
   const otpSendMutation = useMutation({
@@ -95,7 +113,8 @@ export default function OnboardingPage() {
           <p className="text-sm text-gray-500">
             {step === "exam" && "This cannot be changed later"}
             {step === "email" && "We'll send a 6-digit OTP to your email"}
-            {step === "otp" && `OTP sent to ${email.trim() || "your email"}`}
+            {step === "otp" &&
+              `OTP sent to ${user?.email ?? "your account email"}`}
           </p>
         </div>
 
@@ -165,7 +184,7 @@ export default function OnboardingPage() {
             )}
 
             <button
-              onClick={() => examMutation.mutate()}
+              onClick={handleExamSubmit}
               disabled={!selectedExamId || isLoading}
               className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium
                 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
@@ -175,24 +194,22 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ── Step 2: Email Input ────────────────────────── */}
+        {/* ── Step 2: Email OTP — sent to the account email (from Google) ── */}
         {step === "email" && (
           <div className="flex flex-col gap-4">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder="Enter your email address"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none
-                focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
+            <div className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 text-center">
+              <p className="text-sm text-gray-600">
+                We'll send a 6-digit OTP to
+                <span className="font-semibold text-gray-900">
+                  {" "}
+                  {user?.email ?? "your account email"}
+                </span>
+              </p>
+            </div>
 
             <button
               onClick={() => otpSendMutation.mutate()}
-              disabled={!emailValid || isLoading}
+              disabled={isLoading}
               className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium
                 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
             >
@@ -268,7 +285,7 @@ export default function OnboardingPage() {
               }}
               className="text-sm text-blue-600 hover:underline text-center"
             >
-              Change email or resend OTP
+              Resend OTP
             </button>
           </div>
         )}

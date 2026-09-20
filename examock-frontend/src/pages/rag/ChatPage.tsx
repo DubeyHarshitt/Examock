@@ -7,16 +7,17 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Send,
-  Bot,
   User as UserIcon,
   UploadCloud,
   Sparkles,
   FileText,
   AlertTriangle,
   Lightbulb,
+  ChevronRight,
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
+import Markdown from "../../components/shared/Markdown";
 import { Button } from "../../components/ui";
 import { useAskQuestion } from "../../hooks/rag/useRag";
 
@@ -87,21 +88,21 @@ export default function ChatPage() {
     <AppShell section="student">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Ask AI</h1>
+          <h1 className="text-xl font-bold text-gray-900">Ask ExaBot</h1>
           <p className="text-sm text-gray-500 mt-1">
             Get answers grounded in your uploaded study notes
           </p>
         </div>
         <Link
           to="/upload"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
         >
           <UploadCloud className="w-4 h-4" /> Upload a PDF
         </Link>
       </div>
 
       {/* ── Chat panel ───────────────────────────────────────── */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+      <div className="mt-6 card-surface flex flex-col overflow-hidden">
         {/* Messages area */}
         <div
           ref={scrollRef}
@@ -110,13 +111,13 @@ export default function ChatPage() {
         >
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center py-10">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                <Sparkles className="w-7 h-7 text-indigo-600" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-card flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-white" />
               </div>
-              <p className="mt-4 text-sm font-semibold text-gray-900">
+              <p className="mt-4 text-sm font-semibold text-slate-900">
                 Your AI study assistant
               </p>
-              <p className="mt-1 text-sm text-gray-500 max-w-sm">
+              <p className="mt-1 text-sm text-slate-500 max-w-sm">
                 Ask anything about your syllabus. For best answers, upload a PDF
                 of your notes first.
               </p>
@@ -126,11 +127,12 @@ export default function ChatPage() {
                     key={q}
                     type="button"
                     onClick={() => send(q)}
-                    className="text-left text-xs text-gray-700 bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 border border-gray-200 rounded-lg px-3 py-2 transition-colors"
+                    className="group text-left text-xs text-slate-700 bg-slate-50 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 border border-slate-200 rounded-xl px-3 py-2.5 transition-all"
                   >
                     <span className="flex items-center gap-1.5">
                       <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       {q}
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-brand-500 ml-auto transition-colors" />
                     </span>
                   </button>
                 ))}
@@ -144,14 +146,12 @@ export default function ChatPage() {
 
           {askMutation.isPending && (
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                <Bot className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div className="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3">
+              <BotAvatar />
+              <div className="bg-white border border-slate-200 shadow-card rounded-2xl rounded-tl-none px-4 py-3">
                 <span className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
+                  <span className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" />
+                  <span className="w-2 h-2 rounded-full bg-brand-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-2 h-2 rounded-full bg-brand-400 animate-bounce [animation-delay:300ms]" />
                 </span>
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function ChatPage() {
             e.preventDefault();
             send(input);
           }}
-          className="border-t border-gray-100 p-3 flex items-end gap-2 bg-gray-50"
+          className="border-t border-slate-100 p-3 flex items-end gap-2 bg-slate-50"
         >
           <textarea
             value={input}
@@ -177,7 +177,7 @@ export default function ChatPage() {
                 send(input);
               }
             }}
-            className="flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="flex-1 resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
           <Button
             type="submit"
@@ -192,15 +192,23 @@ export default function ChatPage() {
   );
 }
 
+function BotAvatar() {
+  return (
+    <div className="w-9 h-9 rounded-xl bg-white ring-1 ring-slate-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+      <img src="/logo-mark.svg" alt="Examock AI" className="w-6 h-6" draggable={false} />
+    </div>
+  );
+}
+
 function MessageBubble({ message }: { message: Message }) {
   if (message.role === "user") {
     return (
       <div className="flex items-start justify-end gap-3">
-        <div className="max-w-[80%] bg-indigo-600 text-white rounded-2xl rounded-tr-none px-4 py-3 text-sm whitespace-pre-wrap break-words">
+        <div className="max-w-[80%] bg-brand-600 text-white rounded-2xl rounded-tr-none px-4 py-3 text-sm whitespace-pre-wrap break-words">
           {message.content}
         </div>
-        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-          <UserIcon className="w-4 h-4 text-gray-600" />
+        <div className="w-9 h-9 rounded-xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center shrink-0">
+          <UserIcon className="w-4 h-4 text-brand-600" />
         </div>
       </div>
     );
@@ -208,31 +216,29 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <div className="flex items-start gap-3">
-      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-        <Bot className="w-4 h-4 text-indigo-600" />
-      </div>
+      <BotAvatar />
       <div className="max-w-[85%] space-y-2">
-        <div className="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap break-words">
-          {message.content}
+        <div className="bg-white border border-slate-200 shadow-card rounded-2xl rounded-tl-none px-4 py-3 text-sm text-slate-700 break-words">
+          {/* Render the model's Markdown (bold, lists, tables) instead of raw * characters */}
+          <Markdown>{message.content}</Markdown>
         </div>
         {message.sources && message.sources.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {message.sources.map((src) => (
               <span
                 key={src}
-                className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1"
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1"
               >
-                <FileText className="w-3 h-3 text-gray-400" />
+                <FileText className="w-3 h-3 text-slate-400" />
                 {src}
               </span>
             ))}
           </div>
         )}
-        {message.content ===
-          "No study material found. Please upload a PDF or ask your admin to add notes." && (
+        {message.content.includes("No study material found") && (
           <Link
             to="/upload"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:underline"
           >
             <AlertTriangle className="w-3.5 h-3.5" /> Upload notes to get answers
           </Link>
