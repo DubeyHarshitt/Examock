@@ -43,8 +43,10 @@ async function sendOtpDev(mobile, otp) {
   return { success: true, message: "OTP logged to console (dev mode)" };
 }
 
-// Real SMS in production, console-log in dev. Both agreed via config.isProduction,
-// which normalizes NODE_ENV "prod" → "production", so one wrong value can't
-// silently disable SMS in prod or leak real OTPs to logs in dev... the reverse
-// direction is also covered (secure cookies flip with the same flag).
-export const sendOtp = config.isProduction ? sendOtpSms : sendOtpDev;
+// OTP delivery dispatcher for PHONE numbers.
+//
+// NOTE: the phone/mobile OTP flow is currently PAUSED (email OTP is the live
+// channel during the deployment test phase — see auth.service.js + email.js).
+// SMS stays wired here: to re-enable the phone flow, set OTP_DELIVERY=sms with
+// MSG91 creds, then uncomment the mobile service functions/routes/UI.
+export const sendOtp = config.OTP_DELIVERY === "sms" ? sendOtpSms : sendOtpDev;

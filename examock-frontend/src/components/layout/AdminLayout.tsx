@@ -15,7 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  GraduationCap,
   PanelRight,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
@@ -69,9 +68,12 @@ export function AdminLayout({ children, title, subtitle, actions }: AdminLayoutP
     <div className="flex h-full flex-col">
       {/* Brand */}
       <div className="flex h-16 items-center gap-2.5 px-5 border-b border-slate-800/60">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shrink-0">
-          <GraduationCap className="h-5 w-5" />
-        </div>
+        <img
+          src="/logo-mark.svg"
+          alt="Examock"
+          className="h-9 w-9 shrink-0"
+          draggable={false}
+        />
         <div className="leading-tight">
           <p className="text-sm font-bold text-white">Examock</p>
           <p className="text-[10px] font-medium tracking-wide text-slate-400">by InitCodes</p>

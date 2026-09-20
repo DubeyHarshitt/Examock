@@ -49,18 +49,41 @@ if (!process.env.JWT_REFRESH_SECRET_EXPIRY) {
   throw new Error("JWT REFRESH SECRET EXPIRY is not defined");
 }
 
-// MSG91 is only needed in production — in dev, OTPs are logged to the console
-// (sendOtpDev in utils/sms.js), so dev machines shouldn't need fake placeholders.
-if (isProduction && !process.env.MSG91_TEMPLATE_ID) {
-  throw new Error("MSG91 TEMPLATE ID is required in production");
+// ── OTP delivery channel ─────────────────────────────────────
+// "console" → OTP printed to the server log (dev/tests, no credentials)
+// "email"   → Gmail SMTP via nodemailer (needs GMAIL_USER + GMAIL_APP_PASSWORD)
+// "sms"     → MSG91 (currently paused — the phone flow is commented out)
+const OTP_DELIVERY = process.env.OTP_DELIVERY || "console";
+if (!["console", "email", "sms"].includes(OTP_DELIVERY)) {
+  throw new Error("OTP_DELIVERY must be one of: console, email, sms");
 }
 
-if (isProduction && !process.env.MSG91_SENDER_ID) {
-  throw new Error("MSG91 SENDER ID is required in production");
+if (OTP_DELIVERY === "email") {
+  if (!process.env.GMAIL_USER) {
+    throw new Error("GMAIL_USER is required when OTP_DELIVERY=email");
+  }
+  if (!process.env.GMAIL_APP_PASSWORD) {
+    throw new Error(
+      "GMAIL_APP_PASSWORD is required when OTP_DELIVERY=email " +
+        "(enable 2FA, then create one at https://myaccount.google.com/apppasswords)",
+    );
+  }
 }
 
-if (isProduction && !process.env.MSG91_AUTH_KEY) {
-  throw new Error("MSG91 AUTH KEY is required in production");
+// MSG91 is only needed when the SMS channel is active (currently disabled —
+// keep the MSG91_* vars for when OTP_DELIVERY=sms is re-enabled).
+if (OTP_DELIVERY === "sms") {
+  if (!process.env.MSG91_TEMPLATE_ID) {
+    throw new Error("MSG91 TEMPLATE ID is required when OTP_DELIVERY=sms");
+  }
+
+  if (!process.env.MSG91_SENDER_ID) {
+    throw new Error("MSG91 SENDER ID is required when OTP_DELIVERY=sms");
+  }
+
+  if (!process.env.MSG91_AUTH_KEY) {
+    throw new Error("MSG91 AUTH KEY is required when OTP_DELIVERY=sms");
+  }
 }
 
 if (!process.env.QDRANT_URL){
@@ -109,6 +132,9 @@ const config = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   JWT_ACCESS_SECRET_EXPIRY: process.env.JWT_ACCESS_SECRET_EXPIRY,
   JWT_REFRESH_SECRET_EXPIRY: process.env.JWT_REFRESH_SECRET_EXPIRY,
+  OTP_DELIVERY,
+  GMAIL_USER: process.env.GMAIL_USER,
+  GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID,
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,

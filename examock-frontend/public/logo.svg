@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-label="Examock">
+  <defs>
+    <linearGradient id="emk-badge-l" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4538d6"/>
+    </linearGradient>
+  </defs>
+  <!-- E-check badge, scaled to 260px -->
+  <g transform="translate(20 20) scale(0.5078125)">
+    <rect x="8" y="8" width="496" height="496" rx="118" fill="url(#emk-badge-l)"/>
+    <g transform="translate(-4 -16)" fill="none" stroke="#ffffff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M176 200 V 360 L 344 184"/>
+      <path d="M176 200 H 284"/>
+      <path d="M176 280 H 228"/>
+    </g>
+  </g>
+  <text x="324" y="196" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="140" letter-spacing="-4">
+    <tspan fill="#1a1f2e">Exam</tspan><tspan fill="#4538d6">ock</tspan>
+  </text>
+</svg>

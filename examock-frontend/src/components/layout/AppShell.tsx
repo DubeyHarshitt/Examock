@@ -99,9 +99,12 @@ export function AppShell({ children, section }: AppShellProps) {
               onClick={() => navigate(section === "admin" ? "/admin-dashboard" : "/")}
               className="flex items-center gap-2"
             >
-              <span className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">
-                E
-              </span>
+              <img
+                src="/logo-mark.svg"
+                alt="Examock"
+                className="w-8 h-8"
+                draggable={false}
+              />
               <span className="text-base font-bold text-gray-900 hidden sm:block">
                 Examock
               </span>

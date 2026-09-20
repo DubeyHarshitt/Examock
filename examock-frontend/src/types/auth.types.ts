@@ -9,7 +9,7 @@ export interface User {
 
 export interface Onboarding {
   needsExamSelection: boolean;
-  needsMobileVerification: boolean;
+  needsEmailVerification: boolean;
 }
 
 export interface LoginResponse {

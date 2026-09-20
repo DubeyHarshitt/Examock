@@ -71,7 +71,7 @@ export default function LoginPage() {
       // Redirect based on onboarding state
       if (
         result.onboarding.needsExamSelection ||
-        result.onboarding.needsMobileVerification
+        result.onboarding.needsEmailVerification
       ) {
         navigate("/onboarding", { replace: true });
       } else if(result.user.role === "ADMIN"){
@@ -89,9 +89,12 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-md flex flex-col items-center gap-8">
         {/* Logo + branding */}
         <div className="flex flex-col items-center gap-2">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">E</span>
-          </div>
+          <img
+            src="/logo-mark.svg"
+            alt="Examock logo"
+            className="w-16 h-16"
+            draggable={false}
+          />
           <h1 className="text-2xl font-bold text-gray-900">Examock</h1>
           <p className="text-gray-500 text-sm text-center">
             Prepare smarter for your competitive exam

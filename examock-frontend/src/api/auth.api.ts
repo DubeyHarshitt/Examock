@@ -11,13 +11,13 @@ export const selectExamType = async (examTypeId: string) => {
   return data;
 };
 
-export const sendOtp = async (mobile: string) => {
-  const { data } = await api.post("/auth/otp/send", { mobile });
+export const sendOtp = async () => {
+  const { data } = await api.post("/auth/otp/send", {});
   return data;
 };
 
-export const verifyOtp = async (mobile: string, otp: string) => {
-  const { data } = await api.post("/auth/otp/verify", { mobile, otp });
+export const verifyOtp = async (otp: string) => {
+  const { data } = await api.post("/auth/otp/verify", { otp });
   return data;
 };
 

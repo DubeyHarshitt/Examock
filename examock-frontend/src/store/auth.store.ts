@@ -11,7 +11,7 @@ interface User {
 
 interface Onboarding {
   needsExamSelection: boolean;
-  needsMobileVerification: boolean;
+  needsEmailVerification: boolean;
 }
 
 interface AuthStore {
@@ -55,6 +55,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isFullyOnboarded: () => {
     const onboarded = get().onboarding;
     if (!onboarded) return false;
-    return !onboarded.needsExamSelection && !onboarded.needsMobileVerification;
+    return !onboarded.needsExamSelection && !onboarded.needsEmailVerification;
   },
 }));

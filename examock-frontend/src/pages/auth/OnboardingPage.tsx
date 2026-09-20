@@ -9,7 +9,7 @@ import {
   verifyOtp,
 } from "../../api/auth.api";
 
-type Step = "exam" | "mobile" | "otp";
+type Step = "exam" | "email" | "otp";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -19,15 +19,18 @@ export default function OnboardingPage() {
   // Determine starting step from onboarding state
   const getInitialStep = (): Step => {
     if (onboarding?.needsExamSelection) return "exam";
-    if (onboarding?.needsMobileVerification) return "mobile";
-    return "mobile";
+    if (onboarding?.needsEmailVerification) return "email";
+    return "email";
   };
 
   const [step, setStep] = useState<Step>(getInitialStep);
   const [selectedExamId, setSelectedExamId] = useState<string>("");
-  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Simple client-side email sanity check
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   // Fetch available exam types for step 1
   const { data: examTypes, isLoading: loadingExams } = useQuery({
@@ -42,32 +45,32 @@ export default function OnboardingPage() {
     onSuccess: () => {
       setOnboarding({
         needsExamSelection: false,
-        needsMobileVerification: true,
+        needsEmailVerification: true,
       });
-      setStep("mobile");
+      setStep("email");
       setError(null);
     },
     onError: () => setError("Failed to set exam type. Please try again."),
   });
 
-  // Step 2 — send OTP
+  // Step 2 — send OTP (email — the OTP goes to the account email)
   const otpSendMutation = useMutation({
-    mutationFn: () => sendOtp(mobile),
+    mutationFn: () => sendOtp(),
     onSuccess: () => {
       setStep("otp");
       setError(null);
     },
     onError: () =>
-      setError("Failed to send OTP. Check the number and try again."),
+      setError("Failed to send OTP. Check the email and try again."),
   });
 
   // Step 3 — verify OTP
   const otpVerifyMutation = useMutation({
-    mutationFn: () => verifyOtp(mobile, otp),
+    mutationFn: () => verifyOtp(otp),
     onSuccess: () => {
       setOnboarding({
         needsExamSelection: false,
-        needsMobileVerification: false,
+        needsEmailVerification: false,
       });
       navigate("/", { replace: true });
     },
@@ -86,31 +89,31 @@ export default function OnboardingPage() {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold text-gray-900">
             {step === "exam" && "Choose your exam"}
-            {step === "mobile" && "Add your mobile number"}
-            {step === "otp" && "Verify your number"}
+            {step === "email" && "Verify your email"}
+            {step === "otp" && "Verify your email"}
           </h1>
           <p className="text-sm text-gray-500">
             {step === "exam" && "This cannot be changed later"}
-            {step === "mobile" && "We'll send a 6-digit OTP to verify"}
-            {step === "otp" && `OTP sent to +91 ${mobile}`}
+            {step === "email" && "We'll send a 6-digit OTP to your email"}
+            {step === "otp" && `OTP sent to ${email.trim() || "your email"}`}
           </p>
         </div>
 
         {/* Step indicator */}
         <div className="flex items-center gap-2">
-          {(["exam", "mobile", "otp"] as Step[]).map((s, i) => (
+          {(["exam", "email", "otp"] as Step[]).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
                 ${
                   step === s
                     ? "bg-blue-600 text-white"
-                    : i < ["exam", "mobile", "otp"].indexOf(step)
+                    : i < ["exam", "email", "otp"].indexOf(step)
                       ? "bg-green-500 text-white"
                       : "bg-gray-100 text-gray-400"
                 }`}
               >
-                {i < ["exam", "mobile", "otp"].indexOf(step) ? "✓" : i + 1}
+                {i < ["exam", "email", "otp"].indexOf(step) ? "✓" : i + 1}
               </div>
               {i < 2 && <div className="flex-1 h-px bg-gray-200 w-8" />}
             </div>
@@ -172,7 +175,34 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ── Step 2: Mobile Number Input ────────────────── */}
+        {/* ── Step 2: Email Input ────────────────────────── */}
+        {step === "email" && (
+          <div className="flex flex-col gap-4">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError(null);
+              }}
+              placeholder="Enter your email address"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none
+                focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+
+            <button
+              onClick={() => otpSendMutation.mutate()}
+              disabled={!emailValid || isLoading}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium
+                disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+            >
+              {isLoading ? "Sending OTP..." : "Send OTP"}
+            </button>
+          </div>
+        )}
+
+        {/* ── Step 2 (paused): Mobile Number Input ──────────
+            Kept for when the SMS flow is re-enabled (OTP_DELIVERY=sms).
         {step === "mobile" && (
           <div className="flex flex-col gap-4">
             <div className="flex rounded-xl border border-gray-300 overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
@@ -201,7 +231,7 @@ export default function OnboardingPage() {
               {isLoading ? "Sending OTP..." : "Send OTP"}
             </button>
           </div>
-        )}
+        )} */}
 
         {/* ── Step 3: OTP Verification ───────────────────── */}
         {step === "otp" && (
@@ -234,11 +264,11 @@ export default function OnboardingPage() {
               onClick={() => {
                 setOtp("");
                 setError(null);
-                setStep("mobile");
+                setStep("email");
               }}
               className="text-sm text-blue-600 hover:underline text-center"
             >
-              Change number or resend OTP
+              Change email or resend OTP
             </button>
           </div>
         )}

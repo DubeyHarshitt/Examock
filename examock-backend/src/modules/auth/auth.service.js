@@ -12,7 +12,8 @@ import {
   otpExpiresAt,
   verifyOtp,
 } from "../../utils/otp.js";
-import { sendOtp } from "../../utils/sms.js";
+import { sendOtp } from "../../utils/sms.js"; // used by the paused mobile OTP flow
+import { sendEmailOtp as deliverEmailOtp } from "../../utils/email.js";
 import { AppError } from "../../utils/AppError.js";
 
 // ─────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ export async function googleLogin(idToken) {
     },
     onboarding: {
       needsExamSelection: !user.examTypeId,
-      needsMobileVerification: !user.mobileVerified,
+      needsEmailVerification: !user.emailVerified,
     },
   };
 }
@@ -104,9 +105,95 @@ export async function setExamType(userId, examTypeId) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 3. Send OTP
+// 3. Send OTP — EMAIL channel (live during deployment testing)
+//    Gmail SMTP via nodemailer; OTP logged to console when
+//    OTP_DELIVERY != "email" (dev/tests).
 // ─────────────────────────────────────────────────────────────
 
+export async function sendEmailOtp(userId) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found", 404);
+  if (!user.email) throw new AppError("No email on this account", 400);
+
+  // Invalidate any previous unverified OTPs for this user
+  await prisma.otpRecord.updateMany({
+    where: { userId, verified: false },
+    data: { verified: true },
+  });
+
+  const otp = generateOtp();
+  const hashed = await hashOtp(otp);
+
+  await prisma.otpRecord.create({
+    data: {
+      userId,
+      email: user.email,
+      otp: hashed,
+      expiresAt: otpExpiresAt(),
+    },
+  });
+
+  const result = await deliverEmailOtp(user.email, otp);
+  if (!result.success) throw new AppError(result.message, 502);
+
+  return { message: "OTP sent successfully", email: user.email };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 4. Verify OTP — EMAIL channel
+// ─────────────────────────────────────────────────────────────
+
+export async function verifyEmailOtp(userId, otp) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found", 404);
+
+  const record = await prisma.otpRecord.findFirst({
+    where: { userId, email: user.email, verified: false },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!record) {
+    throw new AppError("No pending OTP found — please request a new one", 404);
+  }
+
+  if (isOtpExpired(record.expiresAt)) {
+    throw new AppError("OTP has expired — please request a new one", 410);
+  }
+
+  const isValid = await verifyOtp(otp, record.otp);
+  if (!isValid) {
+    throw new AppError("Incorrect OTP", 401);
+  }
+
+  await prisma.otpRecord.update({
+    where: { id: record.id },
+    data: { verified: true },
+  });
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: true },
+  });
+
+  // ✅ Uses issueAndPersistTokens — refresh token hash saved to DB
+  const tokens = await issueAndPersistTokens({
+    userId: updatedUser.id,
+    email: updatedUser.email,
+    role: updatedUser.role,
+  });
+
+  return { message: "Email verified successfully", tokens };
+}
+
+// ─────────────────────────────────────────────────────────────
+// MOBILE / SMS OTP — PAUSED (kept for later re-enable)
+// The phone flow is commented out during the email-OTP phase.
+// To restore: uncomment below + switch OTP_DELIVERY=sms with MSG91 creds,
+// then re-enable the mobile routes/UI (auth.routes.js, auth.controller.js,
+// frontend OnboardingPage.tsx).
+// ─────────────────────────────────────────────────────────────
+
+/*
 export async function sendMobileOtp(userId, mobile) {
   const normalised = mobile.replace(/^\+?91/, "").replace(/\D/g, "");
 
@@ -138,15 +225,12 @@ export async function sendMobileOtp(userId, mobile) {
     },
   });
 
+  // Uses the SMS/console dispatcher in utils/sms.js
   const result = await sendOtp(normalised, otp);
   if (!result.success) throw new AppError(result.message, 502);
 
   return { message: "OTP sent successfully", mobile: normalised };
 }
-
-// ─────────────────────────────────────────────────────────────
-// 4. Verify OTP
-// ─────────────────────────────────────────────────────────────
 
 export async function verifyMobileOtp(userId, mobile, otp) {
   const normalised = mobile.replace(/^\+?91/, "").replace(/\D/g, "");
@@ -188,6 +272,7 @@ export async function verifyMobileOtp(userId, mobile, otp) {
 
   return { message: "Mobile verified successfully", tokens };
 }
+*/
 
 // ─────────────────────────────────────────────────────────────
 // 5. Refresh access token (with rotation + reuse detection)

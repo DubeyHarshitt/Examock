@@ -48,21 +48,35 @@ const schemas = {
     examTypeId: z.string().uuid("Invalid exam type ID"),
   }),
 
+  // EMAIL OTP (active channel). The mobile-only payloads below are kept,
+  // commented, for when the SMS flow is re-enabled.
   sendOtp: z.object({
-    mobile: z
-      .string()
-      .regex(/^(\+?91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
+    email: z.string().email("Invalid email").optional(),
   }),
 
   verifyOtp: z.object({
-    mobile: z
-      .string()
-      .regex(/^(\+?91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
     otp: z
       .string()
       .length(6, "OTP must be 6 digits")
       .regex(/^\d+$/, "OTP must be numeric"),
   }),
+
+  // ── Mobile OTP (paused) ─────────────────────────────────
+  // sendOtpMobile: z.object({
+  //   mobile: z
+  //     .string()
+  //     .regex(/^(\+?91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
+  // }),
+  //
+  // verifyOtpMobile: z.object({
+  //   mobile: z
+  //     .string()
+  //     .regex(/^(\+?91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
+  //   otp: z
+  //     .string()
+  //     .length(6, "OTP must be 6 digits")
+  //     .regex(/^\d+$/, "OTP must be numeric"),
+  // }),
 };
 
 // ── Optional auth — tries to extract userId but doesn't block ─

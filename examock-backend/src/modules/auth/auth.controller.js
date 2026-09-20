@@ -1,5 +1,14 @@
 import prisma from "../../config/prisma.js";
-import { googleLogin, refreshAccessToken, sendMobileOtp, setExamType, verifyMobileOtp, logoutUser } from "./auth.service.js";
+// Mobile OTP handlers — paused, re-enable with the email-OTP switch:
+// import { sendMobileOtp, verifyMobileOtp } from "./auth.service.js";
+import {
+  googleLogin,
+  refreshAccessToken,
+  sendEmailOtp,
+  setExamType,
+  verifyEmailOtp,
+  logoutUser,
+} from "./auth.service.js";
 import config from "../../config/config.js";
 
 // httpOnly refresh-token cookie. `secure` follows the shared environment check
@@ -50,12 +59,12 @@ export async function selectExamType(req, res, next) {
 
 // ─────────────────────────────────────────────────────────────
 // POST /auth/otp/send
-// Send OTP to user's mobile via MSG91
+// Email the 6-digit OTP to the authenticated user (Gmail SMTP).
 // ─────────────────────────────────────────────────────────────
 
 export async function sendOtp(req, res, next) {
   try {
-    const result = await sendMobileOtp(req.user.userId, req.body.mobile);
+    const result = await sendEmailOtp(req.user.userId);
     res.json(result);
   } catch (err) {
     next(err);
@@ -64,16 +73,12 @@ export async function sendOtp(req, res, next) {
 
 // ─────────────────────────────────────────────────────────────
 // POST /auth/otp/verify
-// Verify OTP and complete mobile verification
+// Verify OTP and complete email verification
 // ─────────────────────────────────────────────────────────────
 
 export async function verifyOtp(req, res, next) {
   try {
-    const result = await verifyMobileOtp(
-      req.user.userId,
-      req.body.mobile,
-      req.body.otp,
-    );
+    const result = await verifyEmailOtp(req.user.userId, req.body.otp);
 
     // Rotate refresh token cookie
     res.cookie("refreshToken", result.tokens.refreshToken, COOKIE_OPTIONS);
@@ -104,7 +109,7 @@ export async function refresh(req, res, next) {
     // Fetch user data to include in response (frontend needs this on init)
     const user = await prisma.user.findUnique({
       where: { id: result.userId },  // you'll need to return userId from refreshAccessToken
-      select: { id: true, email: true, name: true, avatarUrl: true, role: true, examTypeId: true, mobileVerified: true }
+      select: { id: true, email: true, name: true, avatarUrl: true, role: true, examTypeId: true, emailVerified: true }
     });
 
     res.json({
@@ -112,7 +117,7 @@ export async function refresh(req, res, next) {
       user,
       onboarding: {
         needsExamSelection: !user.examTypeId,
-        needsMobileVerification: !user.mobileVerified,
+        needsEmailVerification: !user.emailVerified,
       }
     });
   } catch (err) {

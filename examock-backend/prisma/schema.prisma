@@ -16,6 +16,7 @@ model User {
   avatarUrl        String?             @map("avatar_url")
   mobile           String?             @unique
   mobileVerified   Boolean             @default(false) @map("mobile_verified")
+  emailVerified    Boolean             @default(false) @map("email_verified")
   examTypeId       String?             @map("exam_type_id")
   examDate         DateTime?           @map("exam_date") @db.Date
   role             Role                @default(STUDENT)
@@ -36,7 +37,8 @@ model User {
 model OtpRecord {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  mobile    String
+  mobile    String?
+  email     String?
   otp       String
   expiresAt DateTime @map("expires_at")
   verified  Boolean  @default(false)
@@ -45,6 +47,7 @@ model OtpRecord {
 
   @@index([userId])
   @@index([mobile])
+  @@index([email])
   @@map("otp_records")
 }
 
