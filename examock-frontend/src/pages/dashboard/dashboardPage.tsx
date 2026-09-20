@@ -9,7 +9,6 @@ import {
   FileText,
   Target,
   TrendingUp,
-  ArrowRight,
   Award,
   Clock,
   ChevronRight,

@@ -1,12 +1,20 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-if (!process.env.PORT) {
-  throw new Error("PORT is not defined");
+const rawNodeEnv = process.env.NODE_ENV;
+
+if (!rawNodeEnv) {
+  throw new Error("NODE ENV is not defined");
 }
 
-if (!process.env.NODE_ENV) {
-  throw new Error("NODE ENV is not defined");
+// Normalize "prod" → "production" so a host's NODE_ENV setting can never
+// silently toggle secure cookies or real SMS off/on inconsistently
+// (see auth.controller.js and utils/sms.js — they must agree on one value).
+const NODE_ENV = rawNodeEnv === "prod" ? "production" : rawNodeEnv;
+const isProduction = NODE_ENV === "production";
+
+if (!process.env.PORT) {
+  throw new Error("PORT is not defined");
 }
 
 if (!process.env.CLIENT_URI) {
@@ -41,20 +49,18 @@ if (!process.env.JWT_REFRESH_SECRET_EXPIRY) {
   throw new Error("JWT REFRESH SECRET EXPIRY is not defined");
 }
 
-if (!process.env.MSG91_TEMPLATE_ID) {
-  throw new Error("MSG91 TEMPLATE ID is not defined");
+// MSG91 is only needed in production — in dev, OTPs are logged to the console
+// (sendOtpDev in utils/sms.js), so dev machines shouldn't need fake placeholders.
+if (isProduction && !process.env.MSG91_TEMPLATE_ID) {
+  throw new Error("MSG91 TEMPLATE ID is required in production");
 }
 
-if (!process.env.MSG91_SENDER_ID) {
-  throw new Error("MSG91 SENDER ID is not defined");
+if (isProduction && !process.env.MSG91_SENDER_ID) {
+  throw new Error("MSG91 SENDER ID is required in production");
 }
 
-if (!process.env.MSG91_AUTH_KEY) {
-  throw new Error("MSG91 AUTH KEY is not defined");
-}
-
-if (!process.env.OPENAI_API_KEY){
-  throw new Error("OPENAI API KEY is not defined")
+if (isProduction && !process.env.MSG91_AUTH_KEY) {
+  throw new Error("MSG91 AUTH KEY is required in production");
 }
 
 if (!process.env.QDRANT_URL){
@@ -85,9 +91,16 @@ if (!process.env.DATABASE_URL){
   throw new Error("DATABASE URL is not defined")
 }
 
+// Session-mode Postgres used by pg-boss (LISTEN/NOTIFY + advisory locks don't
+// work over the transaction pooler `?pgbouncer=true`, which is DATABASE_URL).
+if (!process.env.DIRECT_URL) {
+  throw new Error("DIRECT_URL is not defined (session-mode Postgres for pg-boss)");
+}
+
 const config = {
   PORT: Number(process.env.PORT),
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV,
+  isProduction,
   CLIENT_URI: process.env.CLIENT_URI,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
@@ -99,7 +112,6 @@ const config = {
   MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID,
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   QDRANT_URL: process.env.QDRANT_URL,
   QDRANT_API_KEY: process.env.QDRANT_API_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
@@ -107,6 +119,7 @@ const config = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
 };
 
 export default config;

@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Clock,
-  ListChecks,
   Lock,
   Play,
   Trophy,

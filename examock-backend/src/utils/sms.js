@@ -43,4 +43,8 @@ async function sendOtpDev(mobile, otp) {
   return { success: true, message: "OTP logged to console (dev mode)" };
 }
 
-export const sendOtp = config.NODE_ENV === "prod" ? sendOtpSms : sendOtpDev;
+// Real SMS in production, console-log in dev. Both agreed via config.isProduction,
+// which normalizes NODE_ENV "prod" → "production", so one wrong value can't
+// silently disable SMS in prod or leak real OTPs to logs in dev... the reverse
+// direction is also covered (secure cookies flip with the same flag).
+export const sendOtp = config.isProduction ? sendOtpSms : sendOtpDev;

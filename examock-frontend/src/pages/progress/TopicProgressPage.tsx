@@ -20,6 +20,7 @@ import { Badge } from "../../components/ui";
 import { EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useTopicProgress } from "../../hooks/student/useStudentData";
+import type { TopicAttemptSummary } from "../../types/student.types";
 
 export default function TopicProgressPage() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -147,7 +148,7 @@ export default function TopicProgressPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {data.recentAttempts.map((a) => (
+              {data.recentAttempts.map((a: TopicAttemptSummary) => (
                 <div
                   key={a.id}
                   className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50"

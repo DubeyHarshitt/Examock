@@ -23,7 +23,7 @@ export const getAccessToken = () => accessToken;
 // ── Axios instance ──────────────────────────────────────────
 
 const api = axios.create({
-  baseURL: config.API_URL ?? "http://localhost:3000",
+  baseURL: config.API_URL,
   withCredentials: true, // send cookies
 });
 

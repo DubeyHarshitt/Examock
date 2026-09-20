@@ -24,16 +24,10 @@ import { Badge } from "../../components/ui";
 import { EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useProgress, useDashboard } from "../../hooks/student/useStudentData";
-import type { SubjectProgressGroup } from "../../types/student.types";
-
-interface TopicProgressRow {
-  topicId: string;
-  topicName: string;
-  bestScore: number | null;
-  attemptCount: number;
-  videosWatched: number;
-  lastActivity: string | null;
-}
+import type {
+  SubjectProgressGroup,
+  TopicProgressRow,
+} from "../../types/student.types";
 
 export default function ProgressPage() {
   const { data, isLoading, isError } = useProgress();

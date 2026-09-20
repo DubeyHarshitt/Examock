@@ -35,7 +35,11 @@ await boss.work(QUEUE.INGEST_NOTE, { retryLimit: 3, retryBackoff: true }, async 
       data: { embeddingStatus: "READY", embeddingError: null },
     });
   } catch (err) {
-    if (job.retrycount >= job.retrylimit) {
+    // pg-boss v10 exposes retryCount/retryLimit (camelCase) on the job object.
+    // Mark the note FAILED on the final attempt so the UI can surface the error
+    // instead of showing "Processing…" forever.
+    const lastAttempt = (job.retryCount ?? 0) >= (job.retryLimit ?? 1);
+    if (lastAttempt) {
       await prisma.note.update({
         where: { id: noteId },
         data: { embeddingStatus: "FAILED", embeddingError: err.message },

@@ -6,14 +6,13 @@ import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import {
   ArrowLeft,
-  PlayCircle,
   Clock,
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
-import { PageHeader, Badge, Button, EmptyState } from "../../components/ui";
+import { PageHeader, Badge, EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useVideosByTopic } from "../../hooks/student/useStudentData";
 

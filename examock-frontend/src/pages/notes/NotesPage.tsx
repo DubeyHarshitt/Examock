@@ -8,9 +8,7 @@ import {
   FileText,
   Lock,
   Download,
-  Search,
   AlertTriangle,
-  Filter,
 } from "lucide-react";
 import {
   useNotes,
@@ -26,6 +24,7 @@ import {
   Select,
 } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
+import type { SubjectWithCounts } from "../../types/student.types";
 
 interface NoteItem {
   id: string;
@@ -77,7 +76,7 @@ export default function NotesPage() {
               aria-label="Filter by subject"
             >
               <option value="">All subjects</option>
-              {(subjectQuery.data ?? []).map((s) => (
+              {(subjectQuery.data ?? []).map((s: SubjectWithCounts) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>

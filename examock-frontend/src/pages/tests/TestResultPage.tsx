@@ -10,7 +10,6 @@ import {
   XCircle,
   MinusCircle,
   Trophy,
-  Target,
   Clock,
   RotateCcw,
   ArrowLeft,
@@ -54,7 +53,7 @@ export default function TestResultPage() {
   const location = useLocation();
   const submitResult = (location.state as SubmitPayload | null) ?? null;
 
-  const { data, isLoading, isError } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ["test-result", id, submitResult?.attemptId],
     queryFn: () => getResult(id!, submitResult!.attemptId),
     enabled: !!id && !!submitResult?.attemptId,

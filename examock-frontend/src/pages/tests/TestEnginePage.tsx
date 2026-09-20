@@ -208,15 +208,6 @@ export default function TestEnginePage() {
     }
   };
 
-  const toggleReview = () => {
-    setMarkedReview((prev) => {
-      const next = new Set(prev);
-      if (next.has(currentIndex)) next.delete(currentIndex);
-      else next.add(currentIndex);
-      return next;
-    });
-  };
-
   const goTo = (index: number) => {
     if (index < 0 || index >= totalQuestions) return;
     setCurrentIndex(index);

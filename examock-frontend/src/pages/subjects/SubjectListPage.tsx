@@ -11,6 +11,7 @@ import { Badge } from "../../components/ui";
 import { EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useSubjects } from "../../hooks/student/useStudentData";
+import type { SubjectWithCounts } from "../../types/student.types";
 
 export default function SubjectListPage() {
   const { data, isLoading, isError } = useSubjects();
@@ -42,7 +43,7 @@ export default function SubjectListPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.map((subject) => (
+            {data.map((subject: SubjectWithCounts) => (
               <Link
                 key={subject.id}
                 to={`/subjects/${subject.id}/topics`}

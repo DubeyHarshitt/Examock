@@ -60,6 +60,16 @@ export interface TopicProgress {
   lastActivity: string | null;
 }
 
+// A topic row inside a progress group (matches GET /student/progress payload)
+export interface TopicProgressRow {
+  topicId: string;
+  topicName: string;
+  bestScore: number | null;
+  attemptCount: number;
+  videosWatched: number;
+  lastActivity: string | null;
+}
+
 export interface TopicWithProgress {
   id: string;
   name: string;
@@ -123,7 +133,7 @@ export interface YtChannel {
 export interface SubjectProgressGroup {
   subjectId: string;
   subjectName: string;
-  topics: TopicProgress[];
+  topics: TopicProgressRow[];
 }
 
 export interface TopicAttemptSummary {

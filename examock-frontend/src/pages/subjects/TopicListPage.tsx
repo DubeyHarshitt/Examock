@@ -17,6 +17,10 @@ import { Badge } from "../../components/ui";
 import { EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useSubjects, useTopics } from "../../hooks/student/useStudentData";
+import type {
+  SubjectWithCounts,
+  TopicWithProgress,
+} from "../../types/student.types";
 
 export default function TopicListPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
@@ -24,7 +28,7 @@ export default function TopicListPage() {
   const { data: topics, isLoading, isError } = useTopics(subjectId ?? "");
 
   const subjectName =
-    subjectQuery.data?.find((s) => s.id === subjectId)?.name ?? "Subject";
+    subjectQuery.data?.find((s: SubjectWithCounts) => s.id === subjectId)?.name ?? "Subject";
 
   return (
     <AppShell section="student">
@@ -62,7 +66,7 @@ export default function TopicListPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {topics.map((topic) => {
+            {topics.map((topic: TopicWithProgress) => {
               const progress = topic.progress;
               const pct =
                 progress?.bestScore != null

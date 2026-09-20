@@ -1,16 +1,12 @@
 import prisma from "../../config/prisma.js";
-import {
-  googleLogin,
-  refreshAccessToken,
-  sendMobileOtp,
-  setExamType,
-  verifyMobileOtp,
-  logoutUser,
-} from "./auth.service.js";
+import { googleLogin, refreshAccessToken, sendMobileOtp, setExamType, verifyMobileOtp, logoutUser } from "./auth.service.js";
+import config from "../../config/config.js";
 
+// httpOnly refresh-token cookie. `secure` follows the shared environment check
+// (config.isProduction) so it always agrees with the SMS delivery mode.
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: config.isProduction,
   sameSite: "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
