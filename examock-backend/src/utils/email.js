@@ -108,7 +108,7 @@ export async function sendEmailOtp(email, otp) {
   }
 
   try {
-    await (await getTransporter()).sendMail({
+    const info = await (await getTransporter()).sendMail({
       from: `"Examock" <${config.GMAIL_USER}>`,
       to: email,
       subject: "Your Examock verification code",
@@ -129,6 +129,20 @@ export async function sendEmailOtp(email, otp) {
         </div>
       `,
     });
+
+    // Record the destination and Gmail's response on EVERY success. A silent
+    // success is the exact failure mode this file was just hardened against:
+    // "OTP sent" with no trace of where it went makes a filtered or misdirected
+    // message indistinguishable from a delivered one. `accepted` is Gmail's own
+    // list of addresses it took responsibility for — if the address the user is
+    // staring at isn't in here, they are checking the wrong mailbox. The OTP
+    // itself is deliberately never logged.
+    console.log(
+      `[Email OTP] Sent to ${email} — id=${info.messageId} ` +
+        `accepted=[${(info.accepted ?? []).join(", ")}] ` +
+        `response="${info.response ?? ""}"`,
+    );
+
     return { success: true, message: "OTP emailed successfully" };
   } catch (err) {
     console.error(`[Email OTP] Send failed — ${describeSmtpError(err)}`);
