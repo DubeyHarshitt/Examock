@@ -1,6 +1,6 @@
 // src/components/ui/Alert.tsx
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 type AlertVariant = "error" | "success" | "info" | "warning";
@@ -9,6 +9,10 @@ interface AlertProps {
   variant?: AlertVariant;
   children: ReactNode;
   className?: string;
+  // Renders a dismiss control. Optional on purpose: most alerts describe an
+  // error the user has to acknowledge, but a persistent advisory (e.g. "check
+  // your spam folder") needs an escape hatch for users it doesn't apply to.
+  onDismiss?: () => void;
 }
 
 const styles: Record<AlertVariant, { box: string; icon: ReactNode }> = {
@@ -30,7 +34,7 @@ const styles: Record<AlertVariant, { box: string; icon: ReactNode }> = {
   },
 };
 
-export function Alert({ variant = "info", children, className }: AlertProps) {
+export function Alert({ variant = "info", children, className, onDismiss }: AlertProps) {
   const s = styles[variant];
   return (
     <div
@@ -42,6 +46,16 @@ export function Alert({ variant = "info", children, className }: AlertProps) {
     >
       <span className="mt-0.5 shrink-0">{s.icon}</span>
       <span className="flex-1">{children}</span>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 -mr-1 opacity-50 hover:opacity-100 transition-opacity"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

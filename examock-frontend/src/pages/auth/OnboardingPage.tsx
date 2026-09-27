@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "../../store/auth.store";
+import { Alert } from "../../components/ui/Alert";
 import {
   getExamTypes,
   selectExamType,
@@ -26,6 +27,7 @@ export default function OnboardingPage() {
   const [selectedExamId, setSelectedExamId] = useState<string>("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [spamNoticeDismissed, setSpamNoticeDismissed] = useState(false);
 
   // Fetch available exam types for step 1
   const { data: examTypes, isLoading: loadingExams } = useQuery({
@@ -77,6 +79,10 @@ export default function OnboardingPage() {
     onSuccess: () => {
       setStep("otp");
       setError(null);
+      // Re-show the spam notice on every send. Dismissal only means "not for
+      // me right now" — someone who just requested another code is exactly the
+      // person who needs reminding where to look.
+      setSpamNoticeDismissed(false);
     },
     onError: () =>
       setError("Failed to send OTP. Check the email and try again."),
@@ -253,6 +259,27 @@ export default function OnboardingPage() {
         {/* ── Step 3: OTP Verification ───────────────────── */}
         {step === "otp" && (
           <div className="flex flex-col gap-4">
+            {/* Deliverability notice. The OTP mail currently goes out from a
+                personal Gmail account with "via gmail.com" branding and no
+                domain authentication, so Gmail files a large share of it in
+                spam. A user who doesn't find the code is left staring at a form
+                that silently never completes — the API already returned 200, so
+                there is no error to show them. Naming the cause here is the only
+                signal they get. */}
+            {!spamNoticeDismissed && (
+              <Alert
+                variant="warning"
+                onDismiss={() => setSpamNoticeDismissed(true)}
+                className="text-sm font-normal"
+              >
+                Didn&apos;t arrive? Check your{" "}
+                <span className="font-semibold">spam or junk folder</span> — mail
+                from a new sender often lands there. It can take a minute, and
+                searching for <span className="font-semibold">Examock</span>{" "}
+                will find it.
+              </Alert>
+            )}
+
             <input
               type="text"
               value={otp}
