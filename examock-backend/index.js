@@ -38,6 +38,8 @@ app.use(rateLimit({
     message: { error: "Too many requests. Please try again in a few minutes." },
 }));
 
+app.set('trust proxy', 1);
+app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.get("/health",(_req, res)=> {
     res.status(200).json({success: true, message:"OK"})
 });
