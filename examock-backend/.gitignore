@@ -2,5 +2,15 @@ node_modules
 # Keep environment variables out of version control
 .env
 
+# pm2 log files (see ecosystem.config.js)
+/logs
+
+# Runtime upload target for multer (`dest: "uploads/"` resolves against cwd).
+# The directory itself must be created on each host — git can't track empty dirs.
+/uploads
+
+# macOS cruft (it is currently committed, including on the deploy box)
+.DS_Store
+
 /generated/prisma
 Examock Brief.pdf

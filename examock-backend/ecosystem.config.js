@@ -7,7 +7,7 @@
 // Single source of truth for the checkout location. Every app below uses it,
 // and it must match the real path on the host (pm2 resolves `script` and the
 // gitignored .env relative to `cwd`).
-const cwd = "/home/opt/examock/examock-backend";
+const cwd = "/opt/examock/examock-backend";
 
 // V8 heap cap, in MB. Keep this BELOW `max_memory_restart` on purpose: the
 // flag makes V8 collect harder as it approaches the ceiling, while
