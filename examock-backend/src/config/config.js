@@ -70,6 +70,29 @@ if (OTP_DELIVERY === "email") {
   }
 }
 
+// A production process that falls back to the "console" channel reports every
+// OTP send as a success while emailing nothing: utils/email.js logs the code
+// and returns success:true, the API answers 200, the UI advances to the OTP
+// step. Nothing anywhere looks broken, which is exactly how this shipped.
+// Fail at boot instead, where it cannot be mistaken for a working system.
+if (isProduction && OTP_DELIVERY !== "email") {
+  throw new Error(
+    `OTP_DELIVERY is "${OTP_DELIVERY}" but NODE_ENV is "${NODE_ENV}". ` +
+      'Production must set OTP_DELIVERY="email" (plus GMAIL_USER and ' +
+      "GMAIL_APP_PASSWORD) in .env — on any other channel the OTP is only " +
+      "written to the pm2 log and never emailed. If you are running locally, " +
+      'set NODE_ENV="development" instead.',
+  );
+}
+
+// SMTP endpoint. Overridable because some hosts block 465 and must use 587,
+// and because swapping providers later should not require a code change.
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
+if (!Number.isInteger(SMTP_PORT) || SMTP_PORT <= 0 || SMTP_PORT > 65535) {
+  throw new Error(`SMTP_PORT must be a valid port number (got "${process.env.SMTP_PORT}")`);
+}
+
 // MSG91 is only needed when the SMS channel is active (currently disabled —
 // keep the MSG91_* vars for when OTP_DELIVERY=sms is re-enabled).
 if (OTP_DELIVERY === "sms") {
@@ -135,6 +158,8 @@ const config = {
   OTP_DELIVERY,
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
+  SMTP_HOST,
+  SMTP_PORT,
   MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID,
   MSG91_SENDER_ID: process.env.MSG91_SENDER_ID,
   MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY,

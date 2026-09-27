@@ -65,6 +65,15 @@ app.use((err, req, res, next) => {
 });
 
 
+// ── Startup diagnostics ────────────────────────────────────────
+// Print the resolved OTP channel on boot. Answering "is this server actually
+// emailing, or just logging codes?" should never require SSH access to read
+// .env — the answer belongs in the log anyone debugging the process can see.
+console.log(
+  `📨 OTP delivery channel: ${config.OTP_DELIVERY}` +
+    (config.OTP_DELIVERY === "email" ? ` (via ${config.GMAIL_USER})` : ""),
+);
+
 app.listen(PORT, ()=>{
     console.log(`The server is running on Port: ${PORT}`)
 })
