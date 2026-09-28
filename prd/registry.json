@@ -1,0 +1,146 @@
+{
+  "$comment": [
+    "PRD registry — source of truth for ticket metadata, dependencies and resource locks.",
+    "Validated by scripts/prd-lock.mjs:",
+    "  npm run prd:board   human-readable lock board + exclusive-overlap matrix",
+    "  npm run prd:check   exit 1 on any lock violation (used in CI and deploy)",
+    "  npm run prd:sync    rewrite the generated lock banners, then re-check",
+    "",
+    "Resource tokens are an EXCLUSIVITY namespace, not file globs. Two tickets that are",
+    "both in_progress and share an `exclusive` token is a hard error. File paths are too",
+    "noisy — every ticket touches index.js and schema.prisma — but migration folders,",
+    "middleware definitions and token claims genuinely cannot be edited by two branches",
+    "at once.",
+    "",
+    "dependencies may point at a whole ticket ('0001') or a single phase ('0001#1B').",
+    "Phase granularity matters: 0003 unblocks when 0001#2 lands, not when all of 0001 does."
+  ],
+
+  "docs": [
+    { "file": "PLAN.md", "title": "Merged sequencing plan across 0001 / 0002 / 0003" }
+  ],
+
+  "statuses": {
+    "draft": "being written; may be authored freely, must not be implemented",
+    "blocked": "authored, waiting on another ticket or resource; MUST NOT be implemented",
+    "ready": "all blockers clear; safe to start",
+    "in_progress": "actively being implemented; holds its exclusive tokens",
+    "resolved": "shipped and verified; unblocks dependents",
+    "superseded": "replaced by another ticket; set superseded_by"
+  },
+
+  "tickets": [
+    {
+      "id": "0001",
+      "title": "Multi-tenant on a single deployment",
+      "file": "0001-multi-tenant-single-deployment.md",
+      "status": "ready",
+      "owner": "harshitdubey",
+      "type": "architecture",
+      "created": "2026-09-28",
+      "sequencing": "Land 0002 Phase 0 FIRST (mailer extraction from email.js is a hard prerequisite for 0001#3). Then run 0001 with 0002 alerting live throughout.",
+      "depends_on": [],
+      "conflicts_with": [],
+      "supersedes": [],
+      "resources": [
+        "db:schema",
+        "db:migrations",
+        "db:users",
+        "db:tenants",
+        "db:content",
+        "auth:token",
+        "auth:middleware",
+        "auth:google",
+        "api:mounts",
+        "rag:qdrant",
+        "rag:pipeline",
+        "storage:cloudinary",
+        "mail:delivery",
+        "config:app",
+        "pkg:scripts",
+        "frontend:brand",
+        "frontend:auth",
+        "frontend:admin",
+        "deploy:script",
+        "infra:tls"
+      ],
+      "phases": [
+        { "id": "0", "title": "Foundations — delete stale deploy.sh, add test harness, fix getNoteById + DELETE_NOTE_CHUNKS worker", "status": "pending" },
+        { "id": "1A", "title": "Expand — Tenant/Membership/Session models, nullable tenant_id on 14 tables, no behaviour change", "status": "pending" },
+        { "id": "1B", "title": "Tenant core — resolveTenant middleware, Host resolution, /api/tenant/resolve, nginx Host forwarding, wildcard cert", "status": "pending" },
+        { "id": "1C", "title": "Backfill + contract — NOT NULL, composite PKs, User.tenantId cutover, sessions table", "status": "pending" },
+        { "id": "2", "title": "Isolation & roles — tenant-filter every service, requireTenantMember, tenant admin panel, tenant:provision CLI", "status": "pending" },
+        { "id": "3", "title": "White-label — config.js, branding bootstrap, Tailwind @theme tokens, hardcoded-string sweep, tenant-aware sendOtp", "status": "pending" },
+        { "id": "4", "title": "Onboarding — host auto-assign, email-domain matching, invite links", "status": "pending" },
+        { "id": "5", "title": "Infra isolation — Qdrant tenantId filter, Cloudinary tenant folders, per-tenant rate limits, UsageEvent metering", "status": "pending" },
+        { "id": "6", "title": "Billing readiness — Subscription, quota middleware, mock_tests.price_paise", "status": "pending" },
+        { "id": "7", "title": "Deferred — custom domains via Caddy, tenant email provider", "status": "pending" }
+      ]
+    },
+
+    {
+      "id": "0002",
+      "title": "Server health monitoring & alerting",
+      "file": "0002-server-health-monitoring.md",
+      "status": "ready",
+      "owner": "harshitdubey",
+      "type": "reliability",
+      "created": "2026-09-29",
+      "sequencing": "GO FIRST. Phase 0 must precede 0001#3 (it extracts src/utils/mailer.js out of email.js). Phases 2-3 can run alongside 0001 provided mail:delivery and infra:tls are not being edited in the same window.",
+      "depends_on": [],
+      "conflicts_with": [],
+      "supersedes": [],
+      "resources": [
+        "pm2:ecosystem",
+        "config:app",
+        "pkg:scripts",
+        "mail:delivery",
+        "infra:tls"
+      ],
+      "phases": [
+        { "id": "0", "title": "Plumbing — extract src/utils/mailer.js, monitor config keys, examock-monitor pm2 app", "status": "pending" },
+        { "id": "1", "title": "Core checks (system, api, pm2) + heartbeat only, 7-day soak, alerts disabled", "status": "pending" },
+        { "id": "2", "title": "Dependency checks — postgres, queue, qdrant, gemini, cloudinary", "status": "pending" },
+        { "id": "3", "title": "Edge checks (tls, publicUrl), state machine, flip to alert mode", "status": "pending" },
+        { "id": "4", "title": "External dead-man's switch + optional pm2-logrotate ticket", "status": "pending" }
+      ]
+    },
+
+    {
+      "id": "0003",
+      "title": "Platform super-admin control plane",
+      "file": "0003-superadmin-control-plane.md",
+      "status": "blocked",
+      "owner": "harshitdubey",
+      "type": "architecture",
+      "created": "2026-09-29",
+      "sequencing": "Unlocks when 0001#2 lands. Shares no resource with 0002, so 0002 does not gate it at all.",
+      "depends_on": ["0001#1B", "0001#2"],
+      "conflicts_with": [],
+      "supersedes": ["0001#D5 (users.platformAdmin boolean -> PlatformStaff table)"],
+      "resources": [
+        "db:platform",
+        "db:schema",
+        "db:migrations",
+        "db:users",
+        "db:commerce",
+        "auth:token",
+        "auth:middleware",
+        "api:mounts",
+        "frontend:admin",
+        "config:app",
+        "deploy:script"
+      ],
+      "phases": [
+        { "id": "0", "title": "PlatformStaff table, 4 roles, promote-platform-staff CLI — no UI yet", "status": "pending" },
+        { "id": "1", "title": "Scope separation — /api/platform chain, requirePlatformRole, invariants I1-I3", "status": "pending" },
+        { "id": "2", "title": "Tenant lifecycle — list, create, suspend, reactivate, archive, seat override, trial extend; drops users.platform_admin", "status": "pending" },
+        { "id": "3", "title": "Audit log — append-only PlatformAuditLog, auditInterceptor, hash chain, /audit/verify", "status": "pending" },
+        { "id": "4", "title": "Support tooling — audited read-only impersonation, cross-tenant user search, action replay", "status": "pending" },
+        { "id": "5", "title": "Cross-tenant analytics + revenue + per-tenant cost attribution", "status": "pending", "depends_on": ["0001#6"] },
+        { "id": "6", "title": "Per-tenant health view + global/per-tenant kill switches", "status": "pending", "depends_on": ["0001#5"] },
+        { "id": "7", "title": "DPDP erasure — erasure_requests, orchestrated cross-store job", "status": "pending" }
+      ]
+    }
+  ]
+}

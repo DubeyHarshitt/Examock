@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "node --watch index.js",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/",
+    "prd:check": "node ../scripts/prd-lock.mjs",
+    "prd:board": "node ../scripts/prd-lock.mjs --board",
+    "prd:sync": "node ../scripts/prd-lock.mjs --sync",
+    "prd:lock": "node ../scripts/prd-lock.mjs --json"
   },
   "keywords": [],
   "author": "",
