@@ -66,12 +66,12 @@ export async function requireOnboarded(req, res, next) {
         code: "NEEDS_EXAM_SELECTION",
       });
     }
-    if (!user.mobileVerified) {
-      return res.status(403).json({
-        error: "Please verify your mobile number to continue",
-        code: "NEEDS_MOBILE_VERIFICATION",
-      });
-    }
+    // if (!user.mobileVerified) {
+    //   return res.status(403).json({
+    //     error: "Please verify your mobile number to continue",
+    //     code: "NEEDS_MOBILE_VERIFICATION",
+    //   });
+    // }
 
     next();
   } catch (err) {
