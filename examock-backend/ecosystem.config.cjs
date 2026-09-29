@@ -54,6 +54,7 @@ module.exports = {
       error_file: "logs/error.log",
       env: {
         NODE_ENV: "production",
+        TZ: "Asia/Kolkata",
         // Everything else (PORT, DATABASE_URL, DIRECT_URL, QDRANT_*, GEMINI_*,
         // CLOUDINARY_*, JWT_*, GOOGLE_*) is loaded from the .env file beside
         // index.js by dotenv in src/config/config.js -- which THROWS on startup
