@@ -43,10 +43,24 @@ export const getMockTestDetail = handle((req) => adminService.getMockTestDetail(
 export const createMockTest   = handle((req) => adminService.createMockTest(req.body));
 export const updateMockTest   = handle((req) => adminService.updateMockTest(req.params.id, req.body));
 export const deleteMockTest   = handle((req) => adminService.deleteMockTest(req.params.id));
+export const activateMockTest = handle((req) => adminService.activateMockTest(req.params.id));
 
 export const addQuestionToTest     = handle((req) => adminService.addQuestionToTest(req.params.id, req.body.questionId, req.body.orderIndex));
 export const removeQuestionFromTest = handle((req) => adminService.removeQuestionFromTest(req.params.id, req.params.qid));
 export const reorderTestQuestions  = handle((req) => adminService.reorderTestQuestions(req.params.id, req.body.questions));
+
+// ── Exams tree + test lifecycle (ticket 05) ──────────────────
+export const listExams            = handle(() => adminService.getExams());
+export const getExamDetail        = handle((req) => adminService.getExamDetail(req.params.examId));
+export const duplicateMockTest    = handle((req) => adminService.duplicateMockTest(req.params.id));
+export const archiveMockTest      = handle((req) => adminService.archiveMockTest(req.params.id));
+export const restoreMockTest      = handle((req) => adminService.restoreMockTest(req.params.id));
+
+// ── Tests: paper-grid rows (ticket 06) ───────────────────────
+export const createTestWithQuestions = handle((req) =>
+  adminService.createTestWithQuestions(req.body));
+export const bulkAddQuestions = handle((req) =>
+  adminService.bulkAddQuestions(req.params.id, req.body.rows));
 
 // ── Notes ────────────────────────────────────────────────────
 

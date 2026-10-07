@@ -29,6 +29,13 @@ import AdminDashboard from "./pages/admin/adminDashboard";
 import UsersPanel from "./pages/admin/users/UsersPanel";
 import AnalyticsPanel from "./pages/admin/analytics/AnalyticsPanel";
 import NotificationsPanel from "./pages/admin/notifications/NotificationsPanel";
+// Content tree (ticket 05)
+import ExamsPage from "./pages/admin/content/ExamsPage";
+import ExamDetailPage from "./pages/admin/content/ExamDetailPage";
+import SubjectDetailPage from "./pages/admin/content/SubjectDetailPage";
+import TestsPage from "./pages/admin/content/TestsPage";
+import TestCreatePage from "./pages/admin/content/TestCreatePage";
+import PaperGrid from "./pages/admin/tests/PaperGrid";
 // import ExamTypesPage from "./pages/admin/ExamTypesPage";
 // import SubjectsPage from "./pages/admin/SubjectsPage";
 // import TopicsPage from "./pages/admin/TopicsPage";
@@ -104,6 +111,16 @@ export default function App() {
               <Route path="/admin/users" element={<UsersPanel />} />
               <Route path="/admin/analytics" element={<AnalyticsPanel />} />
               <Route path="/admin/notifications" element={<NotificationsPanel />} />
+              {/* Content tree (ticket 05) */}
+              <Route path="/admin/content/exams" element={<ExamsPage />} />
+              <Route path="/admin/content/exams/:examId" element={<ExamDetailPage />} />
+              <Route
+                path="/admin/content/exams/:examId/subjects/:subjectId"
+                element={<SubjectDetailPage />}
+              />
+              <Route path="/admin/content/tests" element={<TestsPage />} />
+              <Route path="/admin/content/tests/new" element={<TestCreatePage />} />
+              <Route path="/admin/content/tests/:testId" element={<PaperGrid />} />
               {/* <Route path="/admin/exam-types"     element={<ExamTypesPage />} />
               <Route path="/admin/subjects"       element={<SubjectsPage />} />
               <Route path="/admin/topics"         element={<TopicsPage />} />

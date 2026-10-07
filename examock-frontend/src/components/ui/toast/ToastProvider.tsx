@@ -1,5 +1,5 @@
 // src/components/ui/toast/ToastProvider.tsx
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import { ToastContext, type ToastVariant } from "./toast-context";
@@ -40,15 +40,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismiss]
   );
 
+  // Value is memoized so consumers can safely depend on `toast`/`success` in
+  // useCallback/useEffect dep arrays without re-running every render.
+  const value = useMemo(
+    () => ({
+      toast,
+      success: (m: string) => toast("success", m),
+      error: (m: string) => toast("error", m),
+      info: (m: string) => toast("info", m),
+    }),
+    [toast]
+  );
+
   return (
-    <ToastContext.Provider
-      value={{
-        toast,
-        success: (m) => toast("success", m),
-        error: (m) => toast("error", m),
-        info: (m) => toast("info", m),
-      }}
-    >
+    <ToastContext.Provider value={value}>
       {children}
       <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-80">
         {toasts.map((t) => (

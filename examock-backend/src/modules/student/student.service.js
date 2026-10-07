@@ -30,7 +30,7 @@ export const getDashboard = async (userId) => {
 
     // All subjects with topic count
     prisma.subject.findMany({
-      where:   { examTypeId },
+      where:   { examTypeId, isActive: true },
       select:  {
         id: true,
         name: true,
@@ -49,7 +49,7 @@ export const getDashboard = async (userId) => {
         percentile: true,
         timeTakenSec: true,
         completedAt: true,
-        mockTest: { select: { title: true, type: true, totalMarks: true } },
+        mockTest: { select: { title: true, totalMarks: true } },
       },
       orderBy: { completedAt: "desc" },
       take:    3,
@@ -108,7 +108,7 @@ export const getSubjects = async (userId) => {
   const examTypeId = await getUserExamTypeId(userId);
 
   const subjects = await prisma.subject.findMany({
-    where:   { examTypeId },
+    where:   { examTypeId, isActive: true },
     select:  {
       id: true,
       name: true,
@@ -136,7 +136,7 @@ export const getTopics = async (userId, subjectId) => {
 
   const [topics, progressRecords] = await Promise.all([
     prisma.topic.findMany({
-      where:   { subjectId },
+      where:   { subjectId, isActive: true },
       select:  {
         id: true,
         name: true,
@@ -193,7 +193,7 @@ export const getVideos = async ({ topicId, subjectId }) => {
   // If subjectId — get all topics in subject then all their videos
   if (subjectId && !topicId) {
     const topics = await prisma.topic.findMany({
-      where:   { subjectId },
+      where:   { subjectId, isActive: true },
       select:  {
         id: true,
         name: true,
@@ -419,12 +419,14 @@ export const getTopicProgress = async (userId, topicId) => {
       },
     }),
 
-    // Last 5 attempts on tests linked to this topic
+    // Last 5 completed attempts on tests that contain this chapter's questions
+    // (mock_tests.topic_id is gone — scope lives in subjectId, and the link to
+    // a chapter is which questions the test actually includes)
     prisma.testAttempt.findMany({
       where:   {
         userId,
         status:   "COMPLETED",
-        mockTest: { topicId },
+        mockTest: { questions: { some: { question: { topicId } } } },
       },
       select:  {
         id: true,

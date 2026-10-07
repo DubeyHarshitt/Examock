@@ -31,8 +31,6 @@ data: {
 title: "Sample Test",
 examTypeId: exam.id,
 subjectId: subject.id,
-topicId: topic.id,
-type: "CHAPTER",
 isFree: true,
 durationMins: 30,
 totalMarks: 10,

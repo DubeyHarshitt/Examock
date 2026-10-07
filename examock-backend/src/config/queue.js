@@ -4,7 +4,14 @@ import config from "./config.js";
 // pg-boss uses LISTEN/NOTIFY + advisory locks, which are NOT supported over
 // the Supabase transaction pooler (`DATABASE_URL`, `?pgbouncer=true`).
 // DIRECT_URL is the session-mode connection (port 5432) — always use it here.
-export const boss = new PgBoss(config.DIRECT_URL);
+// Supabase requires TLS on session connections but its pooler presents a
+// self-signed chain, so request `no-verify` (same trust model as psql
+// `PGSSLMODE=require`) — the URL carries no sslmode by default.
+const bossUrl = new URL(config.DIRECT_URL);
+if (!bossUrl.searchParams.has("sslmode")) {
+  bossUrl.searchParams.set("sslmode", "no-verify");
+}
+export const boss = new PgBoss(bossUrl.toString());
 
 boss.on("error", (err) => {
   console.error("[pg-boss error]", err.message);

@@ -1,5 +1,6 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
+import { contributingChapters } from "../admin/lib/progress.js";
 
 // ─────────────────────────────────────────────────────────────
 // 1. List tests for user's exam type
@@ -20,13 +21,10 @@ export async function getTests(userId) {
     select: {
       id: true,
       title: true,
-      type: true, // CHAPTER | MODULE | FULL
       isFree: true,
       durationMins: true,
       totalMarks: true,
-      topicId: true,
       subjectId: true,
-      topic: { select: { name: true } },
       subject: { select: { name: true } },
       _count: { select: { questions: true } },
     },
@@ -60,12 +58,10 @@ export async function getTestById(userId, testId) {
     select: {
       id: true,
       title: true,
-      type: true,
       isFree: true,
       durationMins: true,
       totalMarks: true,
       instructions: true,
-      topic: { select: { name: true } },
       subject: { select: { name: true } },
       _count: { select: { questions: true } },
     },
@@ -257,6 +253,7 @@ export async function submitTest(userId, attemptId) {
       question: {
         select: {
           id: true,
+          topicId: true, // drives the progress fan-out (ticket 04)
           correctOption: true,
           marks: true,
           negMarks: true,
@@ -329,23 +326,20 @@ export async function submitTest(userId, attemptId) {
 
   const test = await prisma.mockTest.findUnique({
     where: { id: attempt.mockTestId },
-    select: { type: true, topicId: true, subjectId: true, totalMarks: true },
+    select: { totalMarks: true },
   });
 
-  // CHAPTER — update single topic progress
-  if (test.type === "CHAPTER" && test.topicId) {
-    await updateTopicProgress(userId, test.topicId, score, test.totalMarks);
-  }
-
-  // MODULE — update progress for every topic in the subject
-  if (test.type === "MODULE" && test.subjectId) {
-    const topics = await prisma.topic.findMany({
-      where: { subjectId: test.subjectId },
-      select: { id: true },
-    });
-    for (const topic of topics) {
-      await updateTopicProgress(userId, topic.id, score, test.totalMarks);
-    }
+  // Progress fan-out (ticket 04 / decision Q3): write this score to each
+  // chapter that *actually contributed questions* to the attempt — and only
+  // those. Fanning out to every chapter in scope would stamp a full-exam
+  // score onto chapters the student never drilled; updating nothing (old
+  // `FULL`) threw away real signal. The old CHAPTER/MODULE branches read the
+  // dropped `type`/`topicId` columns and are gone. `contributingChapters` is a
+  // pure function covered by test/progress.test.js (ticket 01) — but it reads
+  // `q.topicId` off flat question rows, so unwrap the `{ question }` wrapper
+  // from the relation include (caught by the end-to-end submit in ticket 04).
+  for (const chapterId of contributingChapters(testQuestions.map((tq) => tq.question))) {
+    await updateTopicProgress(userId, chapterId, score, test.totalMarks);
   }
 
   return {

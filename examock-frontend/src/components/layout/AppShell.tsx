@@ -20,6 +20,9 @@ import {
   MessageCircle,
   FolderOpen,
   Bell,
+  GraduationCap,
+  ListChecks,
+  Wrench,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { logout } from "../../api/auth.api";
@@ -48,11 +51,16 @@ const studentNav: NavItem[] = [
   { to: "/chat", label: "Ask AI", icon: <MessageCircle className="w-4 h-4" /> },
 ];
 
+// Mirrors AdminLayout's Content → Exams · Tests nav. AppShell never renders
+// section="admin" today — keeping this in sync so it can't drift again
+// (it previously said "Notify" instead of "Notifications").
 const adminNav: NavItem[] = [
-  { to: "/admin-dashboard", label: "Content", icon: <LayoutDashboard className="w-4 h-4" />, end: true },
+  { to: "/admin/content/exams", label: "Exams", icon: <GraduationCap className="w-4 h-4" /> },
+  { to: "/admin/content/tests", label: "Tests", icon: <ListChecks className="w-4 h-4" /> },
+  { to: "/admin-dashboard", label: "Bank & content", icon: <Wrench className="w-4 h-4" /> },
   { to: "/admin/users", label: "Users", icon: <Users className="w-4 h-4" /> },
   { to: "/admin/analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
-  { to: "/admin/notifications", label: "Notify", icon: <Bell className="w-4 h-4" /> },
+  { to: "/admin/notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
 ];
 
 /** Mobile bottom tab bar (student only) — surface the 5 core destinations. */

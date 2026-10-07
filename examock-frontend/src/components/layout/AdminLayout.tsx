@@ -6,9 +6,8 @@
 // Branding: "Examock by InitCodes"
 
 import { useState, type ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
   Users,
   BarChart3,
   Bell,
@@ -16,6 +15,9 @@ import {
   Menu,
   X,
   PanelRight,
+  GraduationCap,
+  ListChecks,
+  Wrench,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { logout } from "../../api/auth.api";
@@ -31,22 +33,70 @@ interface AdminLayoutProps {
   actions?: ReactNode;
 }
 
-const NAV = [
+// Content → Exams · Tests (ticket 05). The management dashboard at
+// /admin-dashboard still hosts the question bank, notes, videos and channels
+// (Phase 3) — the legacy two-pane test builder is gone (ticket 06).
+const NAV_SECTIONS = [
   {
-    to: "/admin-dashboard",
     label: "Content",
-    icon: LayoutDashboard,
-    end: true,
-    hint: "Questions, tests, notes & videos",
+    items: [
+      {
+        to: "/admin/content/exams",
+        label: "Exams",
+        icon: GraduationCap,
+        hint: "Exams & subjects tree",
+        end: false,
+      },
+      {
+        to: "/admin/content/tests",
+        label: "Tests",
+        icon: ListChecks,
+        hint: "Build & manage tests",
+        end: false,
+      },
+      {
+        to: "/admin-dashboard",
+        label: "Bank & content",
+        icon: Wrench,
+        hint: "Question bank, notes & videos",
+        end: true,
+      },
+    ],
   },
-  { to: "/admin/users", label: "Users", icon: Users, end: false, hint: "Manage accounts" },
-  { to: "/admin/analytics", label: "Analytics", icon: BarChart3, end: false, hint: "Performance & revenue" },
-  { to: "/admin/notifications", label: "Notifications", icon: Bell, end: false, hint: "Broadcast updates" },
+  {
+    label: "Manage",
+    items: [
+      {
+        to: "/admin/users",
+        label: "Users",
+        icon: Users,
+        hint: "Manage accounts",
+        end: false,
+      },
+      {
+        to: "/admin/analytics",
+        label: "Analytics",
+        icon: BarChart3,
+        hint: "Performance & revenue",
+        end: false,
+      },
+      {
+        to: "/admin/notifications",
+        label: "Notifications",
+        icon: Bell,
+        hint: "Broadcast updates",
+        end: false,
+      },
+    ],
+  },
 ];
+
+type NavItem = (typeof NAV_SECTIONS)[number]["items"][number];
 
 export function AdminLayout({ children, title, subtitle, actions }: AdminLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout: clearAuth } = useAuthStore();
 
   const handleLogout = async () => {
@@ -60,9 +110,11 @@ export function AdminLayout({ children, title, subtitle, actions }: AdminLayoutP
     }
   };
 
+  const isActive = (item: NavItem) =>
+    item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+
   const activeLabel =
-    NAV.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))
-      ?.label ?? "Admin";
+    NAV_SECTIONS.flatMap((s) => s.items).find(isActive)?.label ?? "Admin";
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -81,33 +133,39 @@ export function AdminLayout({ children, title, subtitle, actions }: AdminLayoutP
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          Admin Panel
-        </p>
-        {NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={() => setMenuOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-brand-600/15 text-white"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
-              )
-            }
-          >
-            <item.icon className="h-[18px] w-[18px] shrink-0 opacity-80" />
-            <span className="flex-1">
-              <span className="block leading-tight">{item.label}</span>
-              <span className="block text-[11px] font-normal text-slate-500">
-                {item.hint}
-              </span>
-            </span>
-          </NavLink>
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {NAV_SECTIONS.map((section, sectionIndex) => (
+          <div key={section.label} className={sectionIndex > 0 ? "border-t border-slate-800/60 pt-4" : ""}>
+            <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              {section.label}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMenuOpen(false)}
+                  className={({ isActive: linkActive }) =>
+                    cn(
+                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      linkActive
+                        ? "bg-brand-600/15 text-white"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    )
+                  }
+                >
+                  <item.icon className="h-[18px] w-[18px] shrink-0 opacity-80" />
+                  <span className="flex-1">
+                    <span className="block leading-tight">{item.label}</span>
+                    <span className="block text-[11px] font-normal text-slate-500">
+                      {item.hint}
+                    </span>
+                  </span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 

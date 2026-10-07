@@ -1,6 +1,6 @@
 // admin.api.ts
 import api from "./axios";
-import type { CreateExamTypeDto, CreateMockTestDto, createQuestionsDto, CreateSubjectDto, CreateTopicDto, GetQuestionsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
+import type { CreateExamTypeDto, CreateMockTestDto, CreateSubjectDto, CreateTopicDto, Topic, createQuestionsDto, CreateTestWithQuestionsDto, DraftRow, ExamDetail, ExamNode, GetQuestionsResponse, MockTestDetail, RowsSaveSummary, Subject, TestsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -26,7 +26,9 @@ export const deleteExamTypeApi = async (id: string) => {
 
 // ── Subjects ─────────────────────────────────────────────────
 
-export const getSubjectsApi = async (examTypeId?: string) => {
+export const getSubjectsApi = async (
+  examTypeId?: string
+): Promise<Subject[]> => {
   const { data } = await api.get("/admin/subjects", {
     params: { examTypeId },
   });
@@ -50,7 +52,7 @@ export const deleteSubjectApi = async (id: string) => {
 
 // ── Topics ───────────────────────────────────────────────────
 
-export const getTopicsApi = async (subjectId?: string) => {
+export const getTopicsApi = async (subjectId?: string): Promise<Topic[]> => {
   const { data } = await api.get("/admin/topics", {
     params: { subjectId },
   });
@@ -214,13 +216,110 @@ export const removeQuestionFromTestApi = async (
   return data;
 };
 
+// ── Exams tree (ticket 05) ───────────────────────────────────
+
+export const getExamsApi = async (): Promise<ExamNode[]> => {
+  const { data } = await api.get("/admin/exams");
+  return data;
+};
+
+export const getExamDetailApi = async (examId: string): Promise<ExamDetail> => {
+  const { data } = await api.get(`/admin/exams/${examId}`);
+  return data;
+};
+
+// ── Tests — content tree surface (ticket 05) ────────────────
+
+export interface TestsFilters {
+  examTypeId?: string;
+  subjectId?: string;
+  scope?: "exam" | "subject";
+  isFree?: boolean | string;
+  isActive?: boolean | string;
+  q?: string;
+  sort?: "newest" | "oldest" | "title" | "updated";
+  page?: number;
+  limit?: number;
+}
+
+export const getTestsApi = async (
+  filters: TestsFilters = {}
+): Promise<TestsResponse> => {
+  const { data } = await api.get("/admin/tests", { params: filters });
+  return data;
+};
+
+export const getTestDetailApi = async (id: string): Promise<MockTestDetail> => {
+  const { data } = await api.get(`/admin/tests/${id}`);
+  return data;
+};
+
+export const createTestApi = async (body: CreateMockTestDto) => {
+  const { data } = await api.post("/admin/tests", body);
+  return data;
+};
+
+export const activateTestApi = async (id: string) => {
+  const { data } = await api.post(`/admin/tests/${id}/activate`);
+  return data;
+};
+
+export const duplicateTestApi = async (id: string) => {
+  const { data } = await api.post(`/admin/tests/${id}/duplicate`);
+  return data;
+};
+
+export const archiveTestApi = async (id: string) => {
+  const { data } = await api.post(`/admin/tests/${id}/archive`);
+  return data;
+};
+
+export const restoreTestApi = async (id: string) => {
+  const { data } = await api.post(`/admin/tests/${id}/restore`);
+  return data;
+};
+
+// ── Paper-grid rows (ticket 06) ──────────────────────────────
+
+export const updateTestApi = async (id: string, body: UpdateMockTestDto) => {
+  const { data } = await api.patch(`/admin/tests/${id}`, body);
+  return data;
+};
+
+export const createTestWithQuestionsApi = async (
+  body: CreateTestWithQuestionsDto
+) => {
+  const { data } = await api.post("/admin/tests/with-questions", body);
+  return data;
+};
+
+export const bulkAddQuestionsApi = async (
+  testId: string,
+  rows: DraftRow[]
+): Promise<RowsSaveSummary> => {
+  const { data } = await api.post(`/admin/tests/${testId}/questions/bulk`, {
+    rows,
+  });
+  return data;
+};
+
 export const reorderTestQuestionsApi = async (
   testId: string,
   questions: { questionId: string; orderIndex: number }[]
 ) => {
   const { data } = await api.patch(
-    `/admin/mock-tests/${testId}/questions/reorder`,
+    `/admin/tests/${testId}/questions/reorder`,
     { questions }
+  );
+  return data;
+};
+
+export const removeTestQuestionApi = async (
+  testId: string,
+  questionId: string
+) => {
+  const { data } = await api.delete(
+    `/admin/tests/${testId}/questions/${questionId}`
   );
   return data;
 };

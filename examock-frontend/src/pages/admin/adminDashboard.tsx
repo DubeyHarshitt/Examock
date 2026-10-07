@@ -3,7 +3,6 @@ import { useAdminStore } from "../../store/admin/admin.store";
 import {
   Settings,
   BookOpen,
-  ListChecks,
   FileText,
   MonitorPlay,
   ChevronRight,
@@ -17,12 +16,14 @@ import ExamTypePanel from "./examTypes/examTypePannel";
 import SubjectsPanel from "./subjects/SubjectsPanel";
 import TopicsPanel from "./topicsAndQuestions/TopicsPanel";
 import QuestionForm from "./topicsAndQuestions/QuestionForm";
-import MockTestsPanel from "./mockTest/MockTestPannel";
 import NotesPanel from "./notesUpload/NotesPannel";
 import VideosPanel from "./videos/VideosPanel";
 import YtChannelsPanel from "./channels/YtChannelsPanel";
 
-type ContentTab = "questionBank" | "mockTests" | "notes" | "videos";
+// Ticket 06: the mock-tests tab is gone — tests are built in the paper grid
+// at /admin/content/tests/:testId. This page remains the bank / notes /
+// videos management dashboard.
+type ContentTab = "questionBank" | "notes" | "videos";
 
 /** Small labelled dropdown-like chip menu. */
 interface SelectorProps {
@@ -118,7 +119,6 @@ const AdminDashboard = () => {
 
   const TABS: { key: ContentTab; label: string; hint: string; icon: React.ReactNode }[] = [
     { key: "questionBank", label: "Question bank", hint: "Add & manage MCQ questions", icon: <BookOpen size={16} /> },
-    { key: "mockTests",    label: "Mock tests",    hint: "Build and publish practice tests", icon: <ListChecks size={16} /> },
     { key: "notes",        label: "Notes",         hint: "Upload study PDFs", icon: <FileText size={16} /> },
     { key: "videos",       label: "Videos",        hint: "Link learning videos", icon: <MonitorPlay size={16} /> },
   ];
@@ -131,7 +131,7 @@ const AdminDashboard = () => {
   return (
     <AdminLayout
       title="Content"
-      subtitle="Build your question banks, mock tests, notes and videos"
+      subtitle="Manage the question bank, notes and videos"
     >
       <div className="space-y-6">
         {/* ── Settings shortcut (exam types & channels) ─────────────────── */}
@@ -301,12 +301,6 @@ const AdminDashboard = () => {
                       <div className="bg-slate-50/60">
                         {activeTab === "questionBank" ? (
                           <QuestionForm topicId={selectedTopicId} />
-                        ) : activeTab === "mockTests" ? (
-                          <MockTestsPanel
-                            examTypeId={selectedExamTypeId}
-                            subjectId={selectedSubjectId}
-                            topicId={selectedTopicId}
-                          />
                         ) : activeTab === "notes" ? (
                           <NotesPanel
                             examTypeId={selectedExamTypeId}
