@@ -128,7 +128,7 @@ export function AdminLayout({ children, title, subtitle, actions }: AdminLayoutP
         />
         <div className="leading-tight">
           <p className="text-sm font-bold text-white">Examock</p>
-          <p className="text-[10px] font-medium tracking-wide text-slate-400">by InitCodes</p>
+          <p className="text-[10px] font-medium tracking-wide text-slate-400">by <a href="https://initcodes.in" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300">InitCodes</a></p>
         </div>
       </div>
 
