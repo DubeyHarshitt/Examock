@@ -18,6 +18,7 @@ import {
   Check,
   ChevronDown,
   ClipboardPaste,
+  Download,
   FileSpreadsheet,
   FileText,
   GripVertical,
@@ -1488,25 +1489,49 @@ export default function PaperGrid() {
                 }}
               />
               {!csvParsed ? (
-                <button
-                  type="button"
-                  onClick={() => csvFileRef.current?.click()}
-                  disabled={csvImporting}
-                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
-                >
-                  {csvImporting ? (
-                    <Loader2 size={20} className="animate-spin text-brand-600" />
-                  ) : (
-                    <Upload size={20} className="text-slate-400" />
-                  )}
-                  <span className="text-xs font-bold text-slate-700">
-                    {csvImporting ? "Parsing rows…" : "Choose a .csv file"}
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Header row with columns in any order — text, optionA-D, correctOption, explanation,
-                    imageUrl, difficulty, marks, negativeMarks, chapterId
-                  </span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => csvFileRef.current?.click()}
+                    disabled={csvImporting}
+                    className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
+                  >
+                    {csvImporting ? (
+                      <Loader2 size={20} className="animate-spin text-brand-600" />
+                    ) : (
+                      <Upload size={20} className="text-slate-400" />
+                    )}
+                    <span className="text-xs font-bold text-slate-700">
+                      {csvImporting ? "Parsing rows…" : "Choose a .csv file"}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Header row with columns in any order — text, optionA-D, correctOption, explanation,
+                      imageUrl, difficulty, marks, negativeMarks, chapterId
+                    </span>
+                  </button>
+
+                  {/* Sample so an admin knows the exact shape before choosing a file. */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      What a sample looks like
+                    </p>
+                    <pre className="mt-1.5 overflow-x-auto rounded-lg bg-white px-2.5 py-2 text-[10px] leading-relaxed text-slate-600 ring-1 ring-slate-100">
+{`text,optionA,optionB,optionC,optionD,correctOption,explanation,imageUrl,difficulty,marks,negativeMarks,chapterId
+"A body moves 6 m north, then 8 m east. What is the magnitude of its displacement?","10 m","14 m","2 m","48 m",A,"Resultant = sqrt(6^2 + 8^2) = 10 m.",,EASY,4,1,`}
+                    </pre>
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      Only <span className="font-mono">text</span> and{" "}
+                      <span className="font-mono">optionA-D</span> are required — the rest are optional.
+                    </p>
+                    <a
+                      href="/samples/sample-questions.csv"
+                      download="examock-sample-questions.csv"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-600 transition-colors hover:text-brand-700"
+                    >
+                      <Download size={12} /> Download a sample CSV
+                    </a>
+                  </div>
+                </>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">

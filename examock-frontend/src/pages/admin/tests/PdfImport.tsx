@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
+  Download,
+  ExternalLink,
   FileText,
   ImageOff,
   Loader2,
@@ -113,25 +115,63 @@ export default function PdfImportModal({ testId, onAdd, onClose }: PdfImportModa
           />
 
           {!imp ? (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
-            >
-              {uploading ? (
-                <Loader2 size={20} className="animate-spin text-brand-600" />
-              ) : (
-                <Upload size={20} className="text-slate-400" />
-              )}
-              <span className="text-xs font-bold text-slate-700">
-                {uploading ? "Uploading…" : "Choose a .pdf question paper"}
-              </span>
-              <span className="text-[11px] text-slate-400">
-                Up to 25 MB. Text is extracted and split into draft rows for review — scans
-                without selectable text are rejected.
-              </span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
+              >
+                {uploading ? (
+                  <Loader2 size={20} className="animate-spin text-brand-600" />
+                ) : (
+                  <Upload size={20} className="text-slate-400" />
+                )}
+                <span className="text-xs font-bold text-slate-700">
+                  {uploading ? "Uploading…" : "Choose a .pdf question paper"}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Up to 25 MB. Text is extracted and split into draft rows for review — scans
+                  without selectable text are rejected.
+                </span>
+              </button>
+
+              {/* Sample so an admin knows the exact shape the parser expects. */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  What a good paper looks like
+                </p>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] leading-relaxed text-slate-500">
+                  <li>
+                    Every question numbered (<span className="font-mono">1.</span>,{" "}
+                    <span className="font-mono">2.</span>) with four options (
+                    <span className="font-mono">a</span>–<span className="font-mono">d</span>) on their
+                    own lines.
+                  </li>
+                  <li>
+                    Real digital text, not a scan — selectable text is required, OCR is not available.
+                  </li>
+                  <li>One PDF, up to 25 MB and 100 pages. Answers are never read from the file.</li>
+                </ul>
+                <div className="mt-2 flex items-center gap-3">
+                  <a
+                    href="/samples/sample-question-paper.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-600 transition-colors hover:text-brand-700"
+                  >
+                    <ExternalLink size={12} /> View sample paper
+                  </a>
+                  <a
+                    href="/samples/sample-question-paper.pdf"
+                    download="examock-sample-question-paper.pdf"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 transition-colors hover:text-slate-700"
+                  >
+                    <Download size={12} /> Download
+                  </a>
+                </div>
+              </div>
+            </>
           ) : polling ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-8 text-center">
               <Loader2 size={20} className="animate-spin text-brand-600" />
