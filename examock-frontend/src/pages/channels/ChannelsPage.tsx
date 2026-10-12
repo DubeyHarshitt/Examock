@@ -35,7 +35,7 @@ function YtSubscribeButton({ channelId }: { channelId: string }) {
 export default function ChannelsPage() {
   const { data, isLoading, isError } = useYtChannels();
 
-  const channels = Array.isArray(data) ? data : (data?.channels ?? data ?? []);
+  const channels = data ?? [];
 
   return (
     <AppShell section="student">

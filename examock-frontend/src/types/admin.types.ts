@@ -1,6 +1,6 @@
 // src/types/admin.types.ts
 // DTOs/responses for the admin-facing analytics & user-management API
-// (`/api/admin/analytics/*` and `/api/admin/users/*`).
+// (`/admin/analytics/*` and `/admin/users/*`).
 // Shapes verified against examock-backend/src/modules/admin/admin.service.js.
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

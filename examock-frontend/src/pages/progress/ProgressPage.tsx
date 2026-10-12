@@ -22,7 +22,7 @@ import {
 import AppShell from "../../components/layout/AppShell";
 import { Card, Badge, StatCard, ProgressRing, Reveal, EmptyState } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
-import { useProgress, useDashboard } from "../../hooks/student/useStudentData";
+import { useProgress } from "../../hooks/student/useStudentData";
 import { cn } from "../../utils/cn";
 import { subjectHue, type SubjectHue } from "../../utils/subjectColor";
 import type {
@@ -32,12 +32,7 @@ import type {
 
 export default function ProgressPage() {
   const { data, isLoading, isError } = useProgress();
-  const dash = useDashboard();
-
-  // Normalise the response (array directly, or { groups: [...] })
-  const groups: SubjectProgressGroup[] = Array.isArray(data)
-    ? data
-    : (data?.groups ?? []);
+  const groups: SubjectProgressGroup[] = data ?? [];
 
   // Summary numbers
   const totals = useMemo(() => {
@@ -64,7 +59,13 @@ export default function ProgressPage() {
         )
       : 0;
 
-  const suggested = dash.data?.suggestedTopics ?? [];
+  // "Weak chapter" count, derived locally so this page no longer needs a
+  // second round-trip to /dashboard. Heuristic: topics that haven't been
+  // attempted yet. Future ticket can refine with cross-subject thresholds.
+  const suggestedCount = useMemo(
+    () => allTopics.filter((t) => t.bestScore == null).length,
+    [allTopics],
+  );
 
   const readiness =
     allTopics.length === 0
@@ -87,7 +88,7 @@ export default function ProgressPage() {
     );
   }
 
-  if (isError || (!data && !Array.isArray(data))) {
+  if (isError || !data) {
     return (
       <AppShell section="student">
         <EmptyState
@@ -189,7 +190,7 @@ export default function ProgressPage() {
       {/* ── Study planner widget ─────────────────────────────── */}
       <Reveal delay={200}>
         <StudyPlanner
-          suggestedCount={suggested.length}
+          suggestedCount={suggestedCount}
           stats={{ avgBest, topicsDone: totals.topicsDone, totalTopics: allTopics.length }}
         />
       </Reveal>

@@ -27,19 +27,7 @@ import {
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { cn } from "../../utils/cn";
 import { subjectHue } from "../../utils/subjectColor";
-import type { SubjectWithCounts } from "../../types/student.types";
-
-interface NoteItem {
-  id: string;
-  title: string;
-  filePath: string;
-  fileName: string;
-  isFree: boolean;
-  subjectId?: string | null;
-  fileSizeMb?: number | null;
-  topic?: { name: string } | null;
-  subject?: { name: string } | null;
-}
+import type { SubjectWithCounts, StudentNote } from "../../types/student.types";
 
 export default function NotesPage() {
   const [subjectFilter, setSubjectFilter] = useState<string>("");
@@ -48,17 +36,15 @@ export default function NotesPage() {
   );
   const subjectQuery = useSubjects();
 
-  // Normalise the response (backend may return array or { notes: [...] })
-  const notes: NoteItem[] = Array.isArray(data)
-    ? data
-    : (data?.notes ?? []);
+  // Backend always returns { notes, total, page, limit }.
+  const notes: StudentNote[] = data?.notes ?? [];
 
   const filtered = useMemo(() => {
     if (!subjectFilter) return notes;
     return notes.filter((n) => n.subjectId === undefined || n.subjectId === subjectFilter);
   }, [notes, subjectFilter]);
 
-  const downloadNote = (note: NoteItem) => {
+  const downloadNote = (note: StudentNote) => {
     // Open the file via its returned path. For future-proofing, an explicit
     // GET /notes/:id/download endpoint is preferred when available.
     if (note.filePath) {

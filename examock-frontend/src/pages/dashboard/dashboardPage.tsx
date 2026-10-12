@@ -1,6 +1,6 @@
 // src/pages/dashboard/dashboardPage.tsx
 // Real student dashboard — replaces the placeholder stub.
-// Fetches dashboard data from GET /api/student/dashboard and renders
+// Fetches dashboard data from GET /student/dashboard and renders
 // welcome hero, count-up summary cards, recent attempts, suggested weak
 // topics, and color-coded subject quick links.
 
@@ -17,6 +17,7 @@ import {
 
 import AppShell from "../../components/layout/AppShell";
 import { Card, Badge, Button, EmptyState, SkeletonCard, StatCard, ProgressRing, Reveal, Chip } from "../../components/ui";
+import { NotificationBanner } from "../../components/shared/NotificationBanner";
 import { useDashboard } from "../../hooks/student/useStudentData";
 import { useAuthStore } from "../../store/auth.store";
 import { cn } from "../../utils/cn";
@@ -50,24 +51,13 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
   const { user, isAdmin } = useAuthStore();
 
-  // Real dashboard payload fields (mirror backend student.service.js)
+  // Real dashboard payload fields (mirror backend student.service.js).
+  // All shapes come from `DashboardResponse` in `student.types.ts` — no
+  // inline destructure types.
   const examType = data?.examType;
-  const subjects: { id: string; name: string; topicCount: number }[] =
-    data?.subjects ?? [];
-  const recentAttempts: {
-    id: string;
-    score: number;
-    percentile: number;
-    timeTakenSec: number;
-    completedAt: string;
-    mockTest?: { title?: string; totalMarks?: number };
-  }[] = data?.recentAttempts ?? [];
-  const suggestedTopics: {
-    topicId: string;
-    topicName: string;
-    subjectName: string;
-    bestScore: number | null;
-  }[] = data?.suggestedTopics ?? [];
+  const subjects = data?.subjects ?? [];
+  const recentAttempts = data?.recentAttempts ?? [];
+  const suggestedTopics = data?.suggestedTopics ?? [];
   const totalTopicsAttempted = data?.totalTopicsAttempted ?? 0;
 
   // ── Loading skeleton ───────────────────────────────────────
@@ -111,6 +101,9 @@ export default function DashboardPage() {
   return (
     <AppShell section="student">
       <div className="space-y-6">
+        {/* ── Newest broadcast (dismissible) ──────────────────── */}
+        <NotificationBanner />
+
         {/* ── Welcome hero ────────────────────────────────────── */}
         <Reveal>
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 p-6 sm:p-8 text-white shadow-pop">

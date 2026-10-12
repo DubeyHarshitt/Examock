@@ -1,5 +1,5 @@
 // src/types/test.types.ts
-// DTOs/responses for the test-taking API (`/api/test/*`).
+// DTOs/responses for the test-taking API (`/test/*`).
 // Mirrors the payloads returned by examock-backend/src/modules/test.
 
 // ── Test listing & detail ─────────────────────────────────────────────────────
