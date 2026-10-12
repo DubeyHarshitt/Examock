@@ -1,0 +1,5 @@
+text,optionA,optionB,optionC,optionD,correctOption,explanation,imageUrl,difficulty,marks,negativeMarks,chapterId
+"A body moves 6 m north, then 8 m east. What is the magnitude of its displacement?","10 m","14 m","2 m","48 m",A,"Resultant = sqrt(6^2 + 8^2) = 10 m.",,EASY,4,1,
+"The SI unit of force is the newton. Which physical quantity does it measure?","Energy","Mass","Force","Power",C,"The newton is the SI unit of force.",,EASY,4,1,
+"Refer to the figure below showing a ray on a plane mirror. What is the angle of reflection if the angle of incidence is 30 degrees?","15 degrees","30 degrees","60 degrees","90 degrees",B,"Angle of reflection equals the angle of incidence.",,MEDIUM,4,1,
+"Which of the following is a scalar quantity?","Velocity","Acceleration","Displacement","Speed",,"A scalar has magnitude only, no direction.",,MEDIUM,4,1,
