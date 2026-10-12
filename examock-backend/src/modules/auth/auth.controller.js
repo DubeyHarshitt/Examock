@@ -13,12 +13,13 @@ import config from "../../config/config.js";
 
 // httpOnly refresh-token cookie. `secure` follows the shared environment check
 // (config.isProduction) so it always agrees with the SMS delivery mode. `path`
-// is scoped to /auth so clearCookie on logout can actually unset it.
+// must match the browser-visible prefix (backend mounts under /api), so
+// clearCookie on logout can actually unset it.
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: config.isProduction,
   sameSite: "lax",
-  path: "/auth",
+  path: "/api/auth",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -155,11 +156,11 @@ export async function logout(req, res, next) {
       await logoutUser(req.user.userId);
     }
 
-    res.clearCookie("refreshToken", { path: "/auth" });
+    res.clearCookie("refreshToken", { path: "/api/auth" });
     res.json({ message: "Logged out successfully" });
   } catch (err) {
     // Still clear the cookie even if DB update fails
-    res.clearCookie("refreshToken", { path: "/auth" });
+    res.clearCookie("refreshToken", { path: "/api/auth" });
     next(err);
   }
 }

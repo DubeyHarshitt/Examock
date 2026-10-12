@@ -44,11 +44,11 @@ app.get("/health",(_req, res)=> {
     res.status(200).json({success: true, message:"OK"})
 });
 
-app.use("/auth", authRoutes);
-app.use("/test", testRoutes);
-app.use("/rag", ragRoutes);
-app.use("/admin", adminRoutes);
-app.use("/student", studentRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/test", testRoutes);
+app.use("/api/rag", ragRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/student", studentRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {
