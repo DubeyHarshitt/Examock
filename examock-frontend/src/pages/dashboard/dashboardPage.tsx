@@ -175,7 +175,7 @@ export default function DashboardPage() {
           />
           <StatCard
             delay={120}
-            label="Topics Explored"
+            label="Chapters Explored"
             value={totalTopicsAttempted}
             icon={<FileText className="w-5 h-5" />}
             tile="bg-gradient-to-br from-violet-500 to-purple-600 text-white"
@@ -189,7 +189,7 @@ export default function DashboardPage() {
           />
           <StatCard
             delay={240}
-            label="Weak Topics"
+            label="Weak Chapters"
             value={suggestedTopics.length}
             icon={<Target className="w-5 h-5" />}
             tile="bg-gradient-to-br from-rose-500 to-pink-600 text-white"
@@ -252,7 +252,7 @@ export default function DashboardPage() {
           <Reveal delay={160}>
             <Card
               title="Weak Areas"
-              subtitle="Topics where you need more practice"
+              subtitle="Chapters where you need more practice"
               action={
                 <Link
                   to="/progress"
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                         {subject.name}
                       </span>
                       <Chip className="!px-1.5 !py-0.5 text-[10px]">
-                        {subject.topicCount} topic{subject.topicCount !== 1 ? "s" : ""}
+                        {subject.topicCount} chapter{subject.topicCount !== 1 ? "s" : ""}
                       </Chip>
                     </Link>
                   );

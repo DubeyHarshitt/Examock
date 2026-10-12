@@ -15,6 +15,10 @@ import {
   listYtChannels, createYtChannel, updateYtChannel, deleteYtChannel,
   // Questions
   listQuestions, createQuestion, bulkCreateQuestions, updateQuestion, deleteQuestion,
+  uploadQuestionImage, destroyQuestionImage,
+  importCsvToTest, importCsvToBank,
+  // PDF ingestion (ticket 09)
+  importTestPdf, getTestPdfImport,
   // Mock Tests
   listMockTests, createMockTest, updateMockTest, deleteMockTest,
   activateMockTest,
@@ -35,9 +39,81 @@ import {
   getNoteDownloadUrl,
 } from "./admin.controller.js";
 import { rowsSchema } from "./lib/rows.js";
+import { AppError } from "../../utils/AppError.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
+
+// Image uploads (ticket 07) — unlike the PDF/doc uploads, this one refuses
+// non-images and enforces a 5 MB cap instead of silently accepting anything.
+const uploadImage = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new AppError("Only image files are allowed (got " + file.mimetype + ")", 400));
+    }
+    cb(null, true);
+  },
+});
+// Maps multer's error codes to useful HTTP statuses (the global handler would
+// otherwise turn LIMIT_FILE_SIZE into a 500).
+const uploadImageSingle = (req, res, next) => {
+  uploadImage.single("image")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return next(new AppError("Image must be 5 MB or smaller", 413));
+    }
+    next(err);
+  });
+};
+
+// CSV uploads (ticket 08) — same discipline as images: size cap + fileFilter.
+// Accept text/csv plus Excel's legacy mime type and a .csv extension fallback
+// (some platforms send application/octet-stream for .csv files).
+const uploadCsv = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const csvMime = ["text/csv", "application/csv", "application/vnd.ms-excel"].includes(file.mimetype);
+    if (!csvMime && !/\.csv$/i.test(file.originalname)) {
+      return cb(new AppError("Only CSV files are allowed (got " + file.mimetype + ")", 400));
+    }
+    cb(null, true);
+  },
+});
+const uploadCsvSingle = (req, res, next) => {
+  uploadCsv.single("file")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return next(new AppError("CSV file must be 5 MB or smaller", 413));
+    }
+    next(err);
+  });
+};
+
+// PDF ingestion upload (ticket 09) — strict: application/pdf only, 25 MB cap,
+// single file. The page-count and scanned-text checks happen AFTER parse in
+// the worker — pdf-parse gives no page count before reading the file.
+const uploadPdf = multer({
+  dest: "uploads/",
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(new AppError("Only PDF files are allowed (got " + file.mimetype + ")", 400));
+    }
+    cb(null, true);
+  },
+});
+const uploadPdfSingle = (req, res, next) => {
+  uploadPdf.single("file")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return next(new AppError("PDF must be 25 MB or smaller", 413));
+    }
+    next(err);
+  });
+};
 
 // All admin routes require auth + admin role
 router.use(requireAuth, requireAdmin);
@@ -130,6 +206,9 @@ router.delete("/topics/:id",       deleteTopic);
 router.get("/questions",           listQuestions);      // ?topicId= &page= &limit=
 router.post("/questions",          createQuestion);
 router.post("/questions/bulk",     bulkCreateQuestions);
+router.post("/questions/image",    uploadImageSingle, uploadQuestionImage); // multipart, field: "image" (ticket 07)
+router.post("/questions/image/destroy", destroyQuestionImage); // body: { publicId } — remove/replace slot (ticket 07)
+router.post("/questions/import-csv", uploadCsvSingle, importCsvToBank); // multipart: topicId + file (ticket 08)
 router.patch("/questions/:id",     updateQuestion);
 router.delete("/questions/:id",    deleteQuestion);
 
@@ -167,6 +246,11 @@ router.post("/tests/:id/restore",                      restoreMockTest);
 router.post("/tests/with-questions",   validate(withQuestionsSchema), createTestWithQuestions);
 router.post("/tests/:id/questions/bulk", validate(bulkRowsSchema), bulkAddQuestions);
 router.patch("/tests/:id/questions/reorder", reorderTestQuestions);
+router.post("/tests/:id/import/csv",   uploadCsvSingle, importCsvToTest); // multipart, field: "file" (ticket 08)
+// PDF ingestion (ticket 09): multipart, field "file" → 202 + PENDING row; the
+// worker parses off the HTTP path. GET /pdf-imports/:id polls the result.
+router.post("/tests/:id/import/pdf",   uploadPdfSingle, importTestPdf);
+router.get("/pdf-imports/:id",         getTestPdfImport);
 // Row delete for the grid (bulk "delete" action). Same service as the legacy
 // /mock-tests surface — the link row is removed, the bank question is kept.
 router.delete("/tests/:id/questions/:qid", removeQuestionFromTest);

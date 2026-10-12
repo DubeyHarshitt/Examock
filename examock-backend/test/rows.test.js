@@ -44,6 +44,17 @@ test("newRowSchema rejects a bad correctOption", () => {
   assert.throws(() => newRowSchema.parse(bad), /correctOption/);
 });
 
+test("newRowSchema accepts an unticked row (correctOption null — CSV/PDF import)", () => {
+  const out = newRowSchema.parse({ ...validNewRow, correctOption: null });
+  assert.equal(out.correctOption, null);
+  assert.equal(out.isReusable, false);
+  assert.equal(out.text.trim(), validNewRow.text.trim());
+  // omitted entirely is equally valid
+  const { correctOption, ...rest } = newRowSchema.parse({ ...validNewRow, correctOption: undefined });
+  assert.equal(correctOption, undefined);
+  assert.equal(rest.text.trim(), validNewRow.text.trim());
+});
+
 test("newRowSchema rejects missing options", () => {
   const bad = { ...validNewRow, optionC: "" };
   assert.throws(() => newRowSchema.parse(bad), /optionC/);

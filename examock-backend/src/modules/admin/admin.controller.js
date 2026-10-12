@@ -36,6 +36,29 @@ export const createQuestion      = handle((req) => adminService.createQuestion(r
 export const bulkCreateQuestions = handle((req) => adminService.bulkCreateQuestions(req.body.questions));
 export const updateQuestion      = handle((req) => adminService.updateQuestion(req.params.id, req.body));
 export const deleteQuestion      = handle((req) => adminService.deleteQuestion(req.params.id));
+export const uploadQuestionImage = handle((req) => adminService.uploadQuestionImage(req.file?.path));
+export const destroyQuestionImage = handle((req) => adminService.destroyQuestionImage(req.body.publicId));
+export const importCsvToTest = handle((req) => adminService.importCsvToTest(req.params.id, req.file?.path));
+export const importCsvToBank = handle((req) => adminService.importCsvToBank(req.body.topicId, req.file?.path));
+
+// ── PDF ingestion (ticket 09) ────────────────────────────────
+// 202 like the ticket contract: the row is PENDING and parsing is in-flight on
+// the worker — not on this request.
+export const importTestPdf = async (req, res, next) => {
+  try {
+    if (!req.file) throw new AppError("PDF file is required", 400);
+    const importRow = await adminService.importTestPdf(
+      req.params.id,
+      req.file.originalname,
+      req.file.path,
+    );
+    res.status(202).json({ success: true, import: importRow });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getTestPdfImport = handle((req) => adminService.getTestPdfImport(req.params.id));
 
 // ── Mock Tests ───────────────────────────────────────────────
 export const listMockTests    = handle((req) => adminService.getMockTests(req.query));

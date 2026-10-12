@@ -380,9 +380,19 @@ export default function TestEnginePage() {
                   <span className="shrink-0 w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold">
                     {currentIndex + 1}
                   </span>
-                  <p className="text-lg font-semibold text-slate-900 leading-relaxed">
-                    {q.text}
-                  </p>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    {q.imageUrl && (
+                      <img
+                        src={q.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        className="max-h-[26rem] w-auto rounded-lg border border-slate-100 object-contain"
+                      />
+                    )}
+                    <p className="text-lg font-semibold text-slate-900 leading-relaxed">
+                      {q.text}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Options */}

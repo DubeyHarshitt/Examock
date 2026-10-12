@@ -21,15 +21,8 @@ import { PageHeader, Badge, Button, EmptyState, Reveal } from "../../components/
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { getTestById } from "../../api/test.api";
 import { cn } from "../../utils/cn";
+import { scopeLabel } from "../../types/test.types";
 import type { TestDetail } from "../../types/test.types";
-
-function typeLabel(type: TestDetail["type"]) {
-  return type === "CHAPTER"
-    ? "Chapter Test"
-    : type === "MODULE"
-      ? "Module Test"
-      : "Full Syllabus Test";
-}
 
 export default function TestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -77,15 +70,13 @@ export default function TestDetailPage() {
                 />
                 <div className="relative flex items-start justify-between gap-4">
                   <div>
-                    <Badge variant="primary">{typeLabel(test.type)}</Badge>
+                    <Badge variant="primary">{scopeLabel(test)}</Badge>
                     <h1 className="mt-3 font-display text-xl font-extrabold text-slate-900">
                       {test.title}
                     </h1>
-                    {(test.subject?.name || test.topic?.name) && (
+                    {test.subject?.name && (
                       <p className="text-sm text-slate-500 mt-1">
-                        {test.subject?.name}
-                        {test.subject?.name && test.topic?.name ? " • " : ""}
-                        {test.topic?.name}
+                        {test.subject.name}
                       </p>
                     )}
                   </div>

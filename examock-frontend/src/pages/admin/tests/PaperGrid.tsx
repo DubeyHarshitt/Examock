@@ -9,7 +9,7 @@
 // The reconciliation bar is always visible and gates Activate: totalMarks
 // (admin-entered) must equal Σ per-question marks before the test can go live.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -18,8 +18,11 @@ import {
   Check,
   ChevronDown,
   ClipboardPaste,
+  FileSpreadsheet,
+  FileText,
   GripVertical,
   Image as ImageIcon,
+  ImageOff,
   ListChecks,
   Loader2,
   Lock,
@@ -28,6 +31,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { AdminLayout } from "../../../components/layout/AdminLayout";
@@ -38,15 +42,18 @@ import {
   getExamDetailApi,
   getTestDetailApi,
   getTopicsApi,
+  importCsvApi,
   removeTestQuestionApi,
   reorderTestQuestionsApi,
   updateQuestionApi,
   updateTestApi,
 } from "../../../api/admin.api";
 import type {
+  CsvImportResult,
   DraftRow,
   MockTestDetail,
   NewDraftRow,
+  PdfImport,
   Questions,
   TestQuestionWithDetail,
   updateQuestionDto,
@@ -54,6 +61,8 @@ import type {
 import { useToast } from "../../../components/ui/toast/toast-context";
 import { cn } from "../../../utils/cn";
 import AddFromBankDialog from "./AddFromBankDialog";
+import PdfImportModal from "./PdfImport";
+import QuestionImageSlot from "../../../components/admin/QuestionImageSlot";
 
 type QuestionDetail = TestQuestionWithDetail["question"];
 
@@ -84,6 +93,8 @@ type SavedPatch = Partial<
     | "difficulty"
     | "isReusable"
     | "imageUrl"
+    | "imagePublicId"
+    | "hadFigure"
   >
 > & { topicId?: string };
 
@@ -163,6 +174,14 @@ export default function PaperGrid() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteChapter, setPasteChapter] = useState("");
+
+  // CSV import (ticket 08) — file upload → server parse → draft rows, nothing
+  // persisted until Save; per-row errors are shown with their CSV line numbers.
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvParsed, setCsvParsed] = useState<CsvImportResult | null>(null);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [bankOpen, setBankOpen] = useState(false);
 
   // ── Load ────────────────────────────────────────────────────
@@ -449,6 +468,98 @@ export default function PaperGrid() {
     toast.success(`${parsed.length} row${parsed.length === 1 ? "" : "s"} pasted — review and Save`);
   };
 
+  // ── CSV import (ticket 08) ─────────────────────────────────
+  const csvFileRef = useRef<HTMLInputElement>(null);
+
+  const handleCsvFile = async (file: File) => {
+    if (!test) return;
+    setCsvError(null);
+    setCsvParsed(null);
+    if (!/\.csv$/i.test(file.name)) {
+      setCsvError("Please choose a .csv file — the parser reads the header row, not column positions.");
+      return;
+    }
+    setCsvImporting(true);
+    try {
+      const parsed = await importCsvApi(test.id, file);
+      setCsvParsed(parsed);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCsvError(msg ?? "Could not parse the CSV file.");
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const csvRowToDraft = (r: CsvImportResult["rows"][number]): NewDraftRow => ({
+    kind: "new",
+    clientId: crypto.randomUUID(),
+    chapterId: r.chapterId ?? (pasteChapter || chapters[0]?.id || ""),
+    text: r.text,
+    optionA: r.optionA,
+    optionB: r.optionB,
+    optionC: r.optionC,
+    optionD: r.optionD,
+    correctOption: r.correctOption ?? null, // unticked — never inferred
+    explanation: r.explanation,
+    imageUrl: r.imageUrl,
+    marks: r.marks,
+    negMarks: r.negMarks,
+    difficulty: r.difficulty,
+    isReusable: false, // server contract: past-paper rows are never practice items
+  });
+
+  const handleAddCsvRows = () => {
+    if (!csvParsed || csvParsed.rows.length === 0) return;
+    setRows((prev) => [
+      ...prev,
+      ...csvParsed.rows.map((r) => ({
+        key: `new-${crypto.randomUUID()}`,
+        kind: "pending-new" as const,
+        draft: csvRowToDraft(r),
+      })),
+    ]);
+    const n = csvParsed.rows.length;
+    setCsvParsed(null);
+    setCsvOpen(false);
+    toast.success(`${n} row${n === 1 ? "" : "s"} imported — review and Save`);
+  };
+
+  // ── PDF import (ticket 09) ─────────────────────────────────
+  // Parsed rows carry no chapter (the paper has none) so they land on the
+  // paste-chapter pick / first chapter, exactly like CSV rows without one. The
+  // parser's `hadFigure` flag rides along so the grid can show the checkbox on.
+  const pdfRowToDraft = (r: PdfImport["rows"][number]): NewDraftRow => ({
+    kind: "new",
+    clientId: crypto.randomUUID(),
+    chapterId: pasteChapter || chapters[0]?.id || "",
+    text: r.text,
+    optionA: r.optionA,
+    optionB: r.optionB,
+    optionC: r.optionC,
+    optionD: r.optionD,
+    correctOption: null, // never extracted — the admin ticks it
+    marks: test?.defaultMarks ?? 1,
+    negMarks: test?.defaultNegMarks ?? 0,
+    hadFigure: r.hadFigure,
+    isReusable: false, // past-paper rows are never practice items
+  });
+
+  const handleAddPdfRows = (imp: PdfImport) => {
+    if (imp.rows.length === 0) return;
+    setRows((prev) => [
+      ...prev,
+      ...imp.rows.map((r) => ({
+        key: `new-${crypto.randomUUID()}`,
+        kind: "pending-new" as const,
+        draft: pdfRowToDraft(r),
+      })),
+    ]);
+    const n = imp.rows.length;
+    setPdfOpen(false);
+    toast.success(`${n} row${n === 1 ? "" : "s"} imported — review and Save`);
+  };
+
   const handleBankAdd = (questions: Questions[]) => {
     const newRows: GridRow[] = questions.map((q) => ({
       key: `ref-${q.id}-${crypto.randomUUID()}`,
@@ -671,6 +782,18 @@ export default function PaperGrid() {
             <ClipboardPaste size={14} /> Paste rows
           </button>
           <button
+            onClick={() => setCsvOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <FileSpreadsheet size={14} /> Import CSV
+          </button>
+          <button
+            onClick={() => setPdfOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <FileText size={14} /> Import PDF
+          </button>
+          <button
             onClick={() => setBankOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
           >
@@ -804,6 +927,10 @@ export default function PaperGrid() {
                         : r.kind === "pending-new"
                           ? r.draft.chapterId
                           : q?.topicId ?? "";
+                    const imageUrl =
+                      r.kind === "pending-new" ? r.draft.imageUrl : q?.imageUrl;
+                    const hadFigure =
+                      (r.kind === "pending-new" ? r.draft.hadFigure : q?.hadFigure) ?? false;
                     return [
                       <tr
                         key={r.key}
@@ -893,14 +1020,18 @@ export default function PaperGrid() {
                         <td className="px-2 py-2">
                           {r.kind === "pending-new" ? (
                             <select
-                              value={r.draft.correctOption}
+                              value={r.draft.correctOption ?? ""}
                               onChange={(e) =>
                                 patchPending(r.key, {
-                                  correctOption: e.target.value as QuestionDetail["correctOption"],
+                                  correctOption:
+                                    e.target.value === ""
+                                      ? null
+                                      : (e.target.value as QuestionDetail["correctOption"]),
                                 })
                               }
                               className="rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-xs font-bold text-slate-700 focus:border-brand-400 focus:outline-none"
                             >
+                              <option value="">—</option>
                               {CORRECT_OPTIONS.map((o) => (
                                 <option key={o} value={o}>
                                   {o}
@@ -955,8 +1086,15 @@ export default function PaperGrid() {
                           )}
                         </td>
                         <td className="px-2 py-2">
-                          {q?.imageUrl ? (
-                            <img src={q.imageUrl} alt="" className="h-6 w-6 rounded object-cover" />
+                          {imageUrl ? (
+                            <img src={imageUrl} alt="" className="h-6 w-6 rounded object-cover" />
+                          ) : hadFigure ? (
+                            <span
+                              className="inline-flex text-amber-500"
+                              title="A figure was probably in the paper but could not be extracted — re-add it in the expanded row"
+                            >
+                              <ImageOff size={14} />
+                            </span>
                           ) : (
                             <span className="text-slate-300">
                               <ImageIcon size={14} />
@@ -1043,13 +1181,38 @@ export default function PaperGrid() {
                               </label>
                               <div className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Image
-                                <div className="flex h-[38px] items-center rounded-lg border border-dashed border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-400">
-                                  {q?.imageUrl ? (
-                                    <span className="truncate text-emerald-600">Attached</span>
-                                  ) : (
-                                    <span>Upload (ticket 07)</span>
-                                  )}
-                                </div>
+                                <QuestionImageSlot
+                                  compact
+                                  current={
+                                    r.kind === "pending-new"
+                                      ? { imageUrl: r.draft.imageUrl, imagePublicId: r.draft.imagePublicId }
+                                      : { imageUrl: q?.imageUrl, imagePublicId: q?.imagePublicId }
+                                  }
+                                  onChange={(img) => {
+                                    const patch = {
+                                      imageUrl: img?.imageUrl ?? null,
+                                      imagePublicId: img?.imagePublicId ?? null,
+                                    };
+                                    if (r.kind === "pending-new") patchPending(r.key, patch);
+                                    else commitSaved(r.key, patch);
+                                  }}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                Figure
+                                <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={hadFigure}
+                                    onChange={(e) => {
+                                      const val = e.target.checked;
+                                      if (r.kind === "pending-new") patchPending(r.key, { hadFigure: val });
+                                      else commitSaved(r.key, { hadFigure: val });
+                                    }}
+                                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                  />
+                                  Had a figure
+                                </label>
                               </div>
                             </div>
                           </td>
@@ -1131,6 +1294,137 @@ export default function PaperGrid() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── CSV import modal (ticket 08) ───────────────────── */}
+      {csvOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setCsvOpen(false)}
+        >
+          <div
+            className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet size={16} className="text-brand-600" />
+                <h2 className="text-sm font-bold text-slate-900">Import CSV</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setCsvOpen(false);
+                  setCsvParsed(null);
+                  setCsvError(null);
+                }}
+                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 px-5 py-4">
+              <input
+                ref={csvFileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = ""; // allow re-selecting the same file
+                  if (file) void handleCsvFile(file);
+                }}
+              />
+              {!csvParsed ? (
+                <button
+                  type="button"
+                  onClick={() => csvFileRef.current?.click()}
+                  disabled={csvImporting}
+                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
+                >
+                  {csvImporting ? (
+                    <Loader2 size={20} className="animate-spin text-brand-600" />
+                  ) : (
+                    <Upload size={20} className="text-slate-400" />
+                  )}
+                  <span className="text-xs font-bold text-slate-700">
+                    {csvImporting ? "Parsing rows…" : "Choose a .csv file"}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Header row with columns in any order — text, optionA-D, correctOption, explanation,
+                    imageUrl, difficulty, marks, negativeMarks, chapterId
+                  </span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <span className="text-xs font-bold text-slate-700">
+                      {csvParsed.rows.length} row{csvParsed.rows.length === 1 ? "" : "s"} ready
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-bold",
+                        csvParsed.errors.length > 0 ? "text-amber-600" : "text-emerald-600"
+                      )}
+                    >
+                      {csvParsed.errors.length} error{csvParsed.errors.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-500">
+                    Rows without a <span className="font-mono">correctOption</span> arrive unticked (—) —
+                    the answer is never guessed. Activate blocks until every row is ticked. Nothing is
+                    saved until you click Save in the grid.
+                  </p>
+                  {csvParsed.errors.length > 0 && (
+                    <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-red-100 bg-red-50/60 p-2.5">
+                      {csvParsed.errors.map((e, i) => (
+                        <li key={i} className="text-[11px] font-medium text-red-600">
+                          <span className="font-mono font-bold">Line {e.line}:</span> {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {csvError && (
+                <p className="rounded-lg border border-red-100 bg-red-50 p-2.5 text-xs font-semibold text-red-600">
+                  {csvError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
+              <button
+                onClick={() => {
+                  setCsvOpen(false);
+                  setCsvParsed(null);
+                  setCsvError(null);
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              {csvParsed && (
+                <button
+                  onClick={handleAddCsvRows}
+                  disabled={csvParsed.rows.length === 0}
+                  className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                >
+                  Add {csvParsed.rows.length} row{csvParsed.rows.length === 1 ? "" : "s"} to grid
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PDF import modal (ticket 09) ────────────────────── */}
+      {pdfOpen && test && (
+        <PdfImportModal
+          testId={test.id}
+          onAdd={handleAddPdfRows}
+          onClose={() => setPdfOpen(false)}
+        />
       )}
 
       {/* ── Add-from-bank dialog ────────────────────────────── */}

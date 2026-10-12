@@ -107,7 +107,7 @@ export default function ProgressPage() {
             Your Progress
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Track topic mastery, test attempts, and videos watched
+            Track chapter mastery, test attempts, and videos watched
           </p>
         </div>
         <Link
@@ -145,9 +145,9 @@ export default function ProgressPage() {
             <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
               <Badge variant="success">
                 <CheckCircle2 className="w-3 h-3" />
-                {totals.topicsDone} topics with a score
+                {totals.topicsDone} chapters with a score
               </Badge>
-              <Badge variant="primary">{allTopics.length} total topics</Badge>
+              <Badge variant="primary">{allTopics.length} total chapters</Badge>
             </div>
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function ProgressPage() {
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           delay={60}
-          label="Topics with a score"
+          label="Chapters with a score"
           value={totals.topicsDone}
           icon={<CheckCircle2 className="w-5 h-5" />}
           tile="bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
@@ -224,7 +224,7 @@ export default function ProgressPage() {
                       {group.subjectName}
                     </span>
                   }
-                  subtitle={`${group.topics.length} topic${group.topics.length !== 1 ? "s" : ""}`}
+                  subtitle={`${group.topics.length} chapter${group.topics.length !== 1 ? "s" : ""}`}
                 >
                   <div className="space-y-4">
                     {group.topics.map((topic) => (
@@ -313,7 +313,7 @@ function StudyPlanner({
 
   const recommendation = useMemo(() => {
     if (suggestedCount > 0)
-      return `You have ${suggestedCount} weak topic${suggestedCount !== 1 ? "s" : ""} worth revisiting. Focus on them, then attempt chapter-wise mock tests to raise your best scores.`;
+      return `You have ${suggestedCount} weak chapter${suggestedCount !== 1 ? "s" : ""} worth revisiting. Focus on them, then attempt chapter-wise mock tests to raise your best scores.`;
     if (stats.avgBest < 70)
       return "Your average best score is below 70%. Try daily chapter-wise tests and review explanations to close the gap.";
     return "Great momentum! Keep a steady test cadence and use the Ask AI feature to clarify doubts as they come up.";

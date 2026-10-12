@@ -1,7 +1,7 @@
 // src/pages/admin/analytics/AnalyticsPanel.tsx
 // Admin analytics: overview KPIs, per-test performance bars, and payment records.
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Users as UsersIcon,
   FileText,
@@ -42,13 +42,18 @@ const statusStyles: Record<PaymentStatus, string> = {
   REFUNDED: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
-const typeBadge: Record<string, BadgeVariantLike> = {
-  CHAPTER: "primary",
-  MODULE: "info",
-  FULL: "warning",
-};
+// Scope is derived from `subjectId` (ticket 10): the map is keyed on a union,
+// so a missing case is a compile error — no `?? "default"` escape hatch.
+type Scope = "exam" | "subject";
 
 type BadgeVariantLike = "primary" | "info" | "warning" | "success" | "default";
+
+const scopeBadge: Record<Scope, BadgeVariantLike> = {
+  exam: "primary",
+  subject: "info",
+};
+
+type StatusFilter = "all" | "live" | "archived";
 
 export function AnalyticsPanel() {
   const {
@@ -68,6 +73,8 @@ export function AnalyticsPanel() {
     setPaymentsStatus,
   } = useAdminStore();
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
   const totalPages = Math.max(1, Math.ceil(paymentsTotal / paymentsLimit));
 
   useEffect(() => {
@@ -85,10 +92,23 @@ export function AnalyticsPanel() {
     fetchPayments(1, s);
   };
 
+  // Ticket 10 bug 1: archived tests are included; filter them client-side.
+  const visibleTests = useMemo(
+    () =>
+      testAnalytics.filter((t) =>
+        statusFilter === "all"
+          ? true
+          : statusFilter === "live"
+            ? t.isActive
+            : !t.isActive,
+      ),
+    [testAnalytics, statusFilter],
+  );
+
   // Build performance bars for each test (share of max attempts = visual weight)
   const maxAttempts = Math.max(
     1,
-    ...testAnalytics.map((t) => t.totalAttempts)
+    ...visibleTests.map((t) => t.totalAttempts)
   );
 
   const kpis = overview
@@ -140,7 +160,24 @@ export function AnalyticsPanel() {
         {/* Per-test analytics */}
         <Card
           title="Test performance"
-          subtitle="Attempts, completions, and average score per active test"
+          subtitle="Attempts, completions, and average score per test"
+          action={
+            <div className="flex gap-1 flex-wrap">
+              {(["all", "live", "archived"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border capitalize transition-colors ${
+                    statusFilter === s
+                      ? "bg-brand-600 border-brand-600 text-white"
+                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          }
         >
           {testAnalyticsLoading && testAnalytics.length === 0 ? (
             <div className="space-y-3">
@@ -148,18 +185,25 @@ export function AnalyticsPanel() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : testAnalytics.length === 0 ? (
+          ) : visibleTests.length === 0 ? (
             <EmptyState
               title="No test analytics"
-              description="Once students attempt mock tests, the data will appear here."
+              description={
+                testAnalytics.length === 0
+                  ? "Once students attempt mock tests, the data will appear here."
+                  : "No tests match this status filter."
+              }
             />
           ) : (
             <ul className="space-y-3">
-              {testAnalytics.map((t) => {
+              {visibleTests.map((t) => {
                 const width =
                   t.totalAttempts > 0
                     ? Math.round((t.totalAttempts / maxAttempts) * 100)
                     : 0;
+                const scope: Scope = t.subjectId ? "subject" : "exam";
+                const label =
+                  t.subjectName ?? (t.examName ? `Full ${t.examName}` : "Full Exam");
                 return (
                   <li key={t.id}>
                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -167,7 +211,8 @@ export function AnalyticsPanel() {
                         <span className="text-sm font-medium text-slate-800 truncate">
                           {t.title}
                         </span>
-                        <Badge variant={typeBadge[t.type] ?? "default"}>{t.type}</Badge>
+                        <Badge variant={scopeBadge[scope]}>{label}</Badge>
+                        {!t.isActive && <Badge variant="default">Archived</Badge>}
                       </div>
                       <span className="text-xs text-slate-500 shrink-0">
                         {t.completedAttempts}/{t.totalAttempts} completed · avg{" "}

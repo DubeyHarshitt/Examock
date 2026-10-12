@@ -133,7 +133,7 @@ model Question {
   optionB       String         @map("option_b")
   optionC       String         @map("option_c")
   optionD       String         @map("option_d")
-  correctOption String         @map("correct_option")
+  correctOption String?        @map("correct_option")
   explanation   String?
   marks         Int            @default(1)
   negMarks      Float          @default(0) @map("neg_marks")
@@ -296,6 +296,26 @@ model Note {
   @@index([subjectId])
   @@index([examTypeId])
   @@map("notes")
+}
+
+// Ticket 09 (PDF ingestion): one row per upload. The worker advances
+// PENDING → PROCESSING → READY | FAILED and stores the heuristic parser's
+// output in `rows` (JSON — the shared draft-row contract from tickets 06/08).
+// Nothing reaches `questions` until the admin reviews the grid and clicks Save.
+model TestPdfImport {
+  id        String   @id @default(uuid())
+  testId    String   @map("test_id")
+  fileName  String   @map("file_name")
+  filePath  String   @map("file_path")
+  status    String   @default("PENDING") // PENDING | PROCESSING | READY | FAILED
+  error     String?
+  rowCount  Int      @default(0) @map("row_count")
+  parsedAt  DateTime? @map("parsed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  rows      Json     @default("[]") // draft rows, same shape as 06/08
+
+  @@index([testId])
+  @@map("test_pdf_imports")
 }
 
 enum FileType {

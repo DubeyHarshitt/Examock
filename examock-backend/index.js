@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit"
 
 // Register pg-boss workers (runs once on server startup)
 import "./src/modules/rag/workers/noteIngestion.worker.js";
+import "./src/modules/admin/workers/testPdfImport.worker.js";
 
 import authRoutes from "./src/modules/auth/auth.routes.js"
 import testRoutes from "./src/modules/test/test.route.js"

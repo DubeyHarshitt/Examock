@@ -4,25 +4,39 @@
 
 // ── Test listing & detail ─────────────────────────────────────────────────────
 
-export type TestType = "CHAPTER" | "MODULE" | "FULL";
+// Scope is derived from `subjectId`, never a stored "type" (ticket 10): a test
+// is either subject-scoped or exam-wide. `scopeLabel` produces the badge text
+// used by the student list and detail pages.
+export type Scope = "exam" | "subject";
 
 export interface TestItem {
   id: string;
   examTypeId: string;
   title: string;
-  type: TestType;
   isFree: boolean;
   durationMins: number;
   totalMarks: number;
-  topicId: string | null;
   subjectId: string | null;
   instructions: string | null;
   isActive: boolean;
-  topic?: { name: string } | null;
   subject?: { name: string } | null;
+  examType?: { name: string } | null;
   _count?: { questions: number };
   /** true when the current student already paid for a paid test */
   isPaid?: boolean;
+}
+
+/** `subjectId` null ⇒ whole exam, shown as the exam name ("Full JEE"). */
+export function testScope(test: Pick<TestItem, "subjectId">): Scope {
+  return test.subjectId ? "subject" : "exam";
+}
+
+export function scopeLabel(
+  test: Pick<TestItem, "subjectId" | "subject" | "examType">,
+): string {
+  if (test.subject?.name) return test.subject.name;
+  if (test.examType?.name) return `Full ${test.examType.name}`;
+  return "Full Exam";
 }
 
 export interface TestsResponse {
@@ -59,6 +73,7 @@ export interface TestQuestion {
   marks: number;
   negMarks: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
+  imageUrl?: string | null; // stem figure (ticket 07)
 }
 
 export interface QuestionResponse {

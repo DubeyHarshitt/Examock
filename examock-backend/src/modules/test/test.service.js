@@ -26,9 +26,12 @@ export async function getTests(userId) {
       totalMarks: true,
       subjectId: true,
       subject: { select: { name: true } },
+      examType: { select: { name: true } }, // "Full JEE" scope badge (ticket 10)
       _count: { select: { questions: true } },
     },
-    orderBy: { createdAt: "asc" },
+    // Newest first — a test list ordered by ascending creation date buries
+    // everything the admin just published (ticket 10).
+    orderBy: { createdAt: "desc" },
   });
 
   // Fetch all paid test IDs for this user in one query
@@ -62,7 +65,9 @@ export async function getTestById(userId, testId) {
       durationMins: true,
       totalMarks: true,
       instructions: true,
+      subjectId: true, // scope is derived from this (ticket 10)
       subject: { select: { name: true } },
+      examType: { select: { name: true } }, // "Full JEE" scope label
       _count: { select: { questions: true } },
     },
   });
@@ -185,6 +190,7 @@ export async function getQuestion(userId, attemptId, questionIndex) {
           marks: true,
           negMarks: true,
           difficulty: true,
+          imageUrl: true,
         },
       },
     },
@@ -258,6 +264,8 @@ export async function submitTest(userId, attemptId) {
           marks: true,
           negMarks: true,
           explanation: true,
+          text: true, // review section render (ticket 07)
+          imageUrl: true,
         },
       },
     },
@@ -280,6 +288,8 @@ export async function submitTest(userId, attemptId) {
         isCorrect: false,
         marksAwarded: 0,
         explanation: question.explanation,
+        text: question.text,
+        imageUrl: question.imageUrl,
       };
     }
 
@@ -292,6 +302,8 @@ export async function submitTest(userId, attemptId) {
         isCorrect: true,
         marksAwarded: question.marks,
         explanation: question.explanation,
+        text: question.text,
+        imageUrl: question.imageUrl,
       };
     } else {
       incorrect++;
@@ -302,6 +314,8 @@ export async function submitTest(userId, attemptId) {
         isCorrect: false,
         marksAwarded: -question.negMarks,
         explanation: question.explanation,
+        text: question.text,
+        imageUrl: question.imageUrl,
       };
     }
   });

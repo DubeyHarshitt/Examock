@@ -2,6 +2,7 @@ import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
 import { boss, QUEUE } from "../../config/queue.js";
 import cloudinary from "../../config/cloudinary.js";
+import { parseCsvToRows } from "./lib/csvRows.js";
 import { ingestFile } from "../rag/pipelines/ingestion.pipeline.js";
 import { reconcileMarks } from "./lib/marks.js";
 import { deriveScope, SCOPE } from "./lib/scope.js";
@@ -284,8 +285,176 @@ export const updateQuestion = async (id, data) => {
   return prisma.question.update({ where: { id }, data });
 };
 
+/**
+ * Ticket 07 — upload a question-stem image to Cloudinary and return the
+ * transformed delivery URL plus the public id (so the asset can be destroyed
+ * when the question is deleted). The local temp file is always cleaned up.
+ *
+ * @param {string} filePath — multer temp file (dest: "uploads/")
+ * @returns {Promise<{ imageUrl: string, imagePublicId: string }>}
+ */
+export const uploadQuestionImage = async (filePath) => {
+  if (!filePath) throw new AppError("No image file received", 400);
+  let uploadResult;
+  try {
+    uploadResult = await cloudinary.uploader.upload(filePath, {
+      resource_type: "image",
+      folder: "examock/questions/",
+    });
+  } finally {
+    // Always clean up the local temp file, whether upload succeeded or not
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  // Serve the transformed asset (~900px, auto WebP/AVIF) — the raw upload URL
+  // is a full-size delivery that no render site wants.
+  const imageUrl = cloudinary.utils.url(uploadResult.public_id, {
+    secure: true,
+    transformation: [{ width: 900, quality: "auto", fetch_format: "auto" }],
+  });
+  return { imageUrl, imagePublicId: uploadResult.public_id };
+};
+
+/**
+ * Ticket 07 — destroy a question image by its Cloudinary public id. Used when
+ * the admin removes or replaces a figure: without it, editing the slot would
+ * orphan the old asset (the whole reason `imagePublicId` is stored).
+ */
+export const destroyQuestionImage = async (publicId) => {
+  if (!publicId) throw new AppError("publicId is required", 400);
+  const result = await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+  // "not found" counts as destroyed — idempotent remove.
+  return { destroyed: result.result === "ok" || result.result === "not found" };
+};
+
+// ── CSV import (ticket 08) ──────────────────────────────────
+
+/** Read + clean up a multer temp file, returning its UTF-8 text. */
+function readCsvUpload(filePath) {
+  let csvText;
+  try {
+    csvText = fs.readFileSync(filePath, "utf8");
+  } finally {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  return csvText;
+}
+
+/**
+ * `POST /tests/:id/import/csv` — parse a CSV into the shared draft-row shape.
+ * Nothing is persisted here: the rows land in the grid as drafts (`isReusable:
+ * false`) and the admin saves (or discards) them from there. Malformed rows are
+ * reported individually with line numbers so one typo doesn't nuke a paper.
+ */
+export const importCsvToTest = async (testId, filePath) => {
+  if (!filePath) throw new AppError("No CSV file received", 400);
+  const test = await prisma.mockTest.findUnique({ where: { id: testId }, select: { id: true } });
+  if (!test) throw new AppError("Mock test not found", 404);
+  const csvText = readCsvUpload(filePath);
+  try {
+    return parseCsvToRows(csvText);
+  } catch (err) {
+    throw new AppError(err?.message ?? "Could not parse CSV", 400);
+  }
+};
+
+/**
+ * `POST /questions/import-csv` — the bank-manager variant (replaces the old
+ * pipe-delimited textarea, which broke on any `|` inside a field). The bank has
+ * no draft surface, so rows are committed immediately — but a row without
+ * `correctOption` is rejected rather than guessed (the answer is never
+ * inferred), and imported bank questions are `isReusable: false`.
+ */
+export const importCsvToBank = async (topicId, filePath) => {
+  if (!topicId) throw new AppError("topicId is required", 400);
+  if (!filePath) throw new AppError("No CSV file received", 400);
+  const topic = await prisma.topic.findUnique({ where: { id: topicId }, select: { id: true } });
+  if (!topic) throw new AppError("Topic not found", 404);
+
+  const csvText = readCsvUpload(filePath);
+  let parsed;
+  try {
+    parsed = parseCsvToRows(csvText);
+  } catch (err) {
+    throw new AppError(err?.message ?? "Could not parse CSV", 400);
+  }
+
+  const errors = [...parsed.errors];
+  const data = [];
+  parsed.rows.forEach((row) => {
+    if (!row.correctOption) {
+      // `row.line` is the CSV line the row came from (parser-attached), so a
+      // rejected row reports its real position even when earlier rows failed.
+      errors.push({ line: row.line, message: "correctOption is required to import into the bank" });
+      return;
+    }
+    data.push({
+      topicId,
+      text: row.text,
+      optionA: row.optionA,
+      optionB: row.optionB,
+      optionC: row.optionC,
+      optionD: row.optionD,
+      correctOption: row.correctOption,
+      explanation: row.explanation,
+      imageUrl: row.imageUrl,
+      marks: row.marks ?? 1,
+      negMarks: row.negMarks ?? 0,
+      difficulty: row.difficulty ?? "MEDIUM",
+      isReusable: false,
+    });
+  });
+
+  const created = data.length > 0 ? (await prisma.question.createMany({ data })).count : 0;
+  return { created, rows: parsed.rows, errors };
+};
+
 export const deleteQuestion = async (id) => {
+  // Destroy the Cloudinary image first so deleting a question never orphans
+  // its asset (ticket 07). Failure to destroy must not block the DB delete —
+  // the row going away is the part that matters; log and continue.
+  const question = await prisma.question.findUnique({
+    where: { id },
+    select: { imagePublicId: true },
+  });
+  if (question?.imagePublicId) {
+    try {
+      await cloudinary.uploader.destroy(question.imagePublicId, { resource_type: "image" });
+    } catch (err) {
+      console.error(`Failed to destroy Cloudinary image ${question.imagePublicId}:`, err?.message ?? err);
+    }
+  }
   return prisma.question.delete({ where: { id } });
+};
+
+// ── PDF ingestion (ticket 09) ────────────────────────────────
+
+/**
+ * Create a PENDING import row and hand the parse to the worker — never on the
+ * HTTP path (pm2 caps the heap at 512 MB and pdf-parse reads the whole file
+ * synchronously). Returns 202 from the controller. `importId` stays in the job
+ * payload (the anti-`noteId`-bug discipline: the result is fetchable and the
+ * row is the cleanup handle).
+ */
+export const importTestPdf = async (testId, fileName, filePath) => {
+  const test = await prisma.mockTest.findUnique({
+    where: { id: testId },
+    select: { id: true },
+  });
+  if (!test) throw new AppError("Mock test not found", 404);
+
+  const importRow = await prisma.testPdfImport.create({
+    data: { testId, fileName, filePath, status: "PENDING", rows: [] },
+  });
+
+  await boss.send(QUEUE.IMPORT_TEST_PDF, { importId: importRow.id });
+
+  return importRow;
+};
+
+export const getTestPdfImport = async (id) => {
+  const importRow = await prisma.testPdfImport.findUnique({ where: { id } });
+  if (!importRow) throw new AppError("PDF import not found", 404);
+  return importRow;
 };
 
 // ── Mock Tests ───────────────────────────────────────────────
@@ -547,7 +716,17 @@ export const activateMockTest = async (id) => {
       questions: {
         select: {
           question: {
-            select: { id: true, text: true, topicId: true, correctOption: true, marks: true },
+            select: {
+              id: true,
+              text: true,
+              topicId: true,
+              correctOption: true,
+              marks: true,
+              optionA: true,
+              optionB: true,
+              optionC: true,
+              optionD: true,
+            },
           },
         },
       },
@@ -589,7 +768,20 @@ export const activateMockTest = async (id) => {
     });
   }
 
-  // 4. marks reconcile: totalMarks === Σ question.marks
+  // 4. every option is filled — PDF partial rows ("found 3 options, expected 4")
+  //    can never reach students even if a row slips past the grid validation.
+  const missingOptions = rows.filter((q) =>
+    !q.optionA || !q.optionB || !q.optionC || !q.optionD,
+  );
+  if (missingOptions.length > 0) {
+    problems.push({
+      code: "MISSING_OPTIONS",
+      message: `${missingOptions.length} questions have empty options.`,
+      questionIds: idsOf(missingOptions),
+    });
+  }
+
+  // 5. marks reconcile: totalMarks === Σ question.marks
   const marks = reconcileMarks(test.totalMarks, rows);
   if (!marks.ok) {
     problems.push({
@@ -972,10 +1164,12 @@ async function persistRows({ test, rows, tx, startIndex = 0 }) {
         correctOption: row.correctOption,
         explanation: row.explanation ?? null,
         imageUrl: row.imageUrl ?? null,
+        imagePublicId: row.imagePublicId ?? null,
         isReusable: row.isReusable ?? true,
         marks: row.marks ?? test.defaultMarks ?? 1,
         negMarks: row.negMarks ?? test.defaultNegMarks ?? 0,
         difficulty: row.difficulty ?? undefined,
+        hadFigure: row.hadFigure ?? false, // PDF review flag (ticket 09)
       },
     });
     summary.created += 1;
@@ -1294,14 +1488,18 @@ export const getOverview = async () => {
 };
 
 export const getTestAnalytics = async () => {
+  // Ticket 10 bug 1: archived tests are NOT hidden. A published test that
+  // nobody attempted (or one that was archived) is exactly what an admin needs
+  // to see; the Live/Archived filter is applied client-side over this set.
   const tests = await prisma.mockTest.findMany({
-    where: { isActive: true },
     select: {
       id: true,
       title: true,
       subjectId: true,
       subject: { select: { name: true } },
+      examType: { select: { name: true } },
       isFree: true,
+      isActive: true,
       _count: { select: { attempts: true } },
       attempts: {
         where: { status: "COMPLETED" },
@@ -1322,7 +1520,9 @@ export const getTestAnalytics = async () => {
       // scope is derived, never stored: subjectId null ⇒ whole exam (design §3)
       subjectId: t.subjectId,
       subjectName: t.subject?.name ?? null,
+      examName: t.examType?.name ?? null,
       isFree: t.isFree,
+      isActive: t.isActive,
       totalAttempts: t._count.attempts,
       completedAttempts: t.attempts.length,
       averageScore: Math.round(avgScore * 10) / 10,

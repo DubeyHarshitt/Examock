@@ -38,6 +38,12 @@ export const correctOptionSchema = z.enum(CORRECT_OPTIONS, {
   errorMap: () => ({ message: "correctOption must be A, B, C, or D" }),
 });
 
+// Rows may arrive unticked (CSV/PDF: "never infer the correct answer" — the
+// admin ticks it in the grid; the activation guard MISSING_ANSWER blocks an
+// active test until every row has one). Requires the nullable column from
+// migration 20261007100000_question_correct_option_nullable.
+export const optionalTickedOptionSchema = correctOptionSchema.nullable().optional();
+
 export const newRowSchema = z.object({
   kind: z.literal("new"),
   chapterId: z.string().uuid("chapterId must be a valid uuid"),
@@ -46,15 +52,22 @@ export const newRowSchema = z.object({
   optionB: z.string().trim().min(1, "optionB is required"),
   optionC: z.string().trim().min(1, "optionC is required"),
   optionD: z.string().trim().min(1, "optionD is required"),
-  correctOption: correctOptionSchema,
+  correctOption: optionalTickedOptionSchema,
   explanation: z.string().optional(),
-  // Accepted now so drafts already carry the slot; upload UI lands in ticket 07.
+  // Accepted so drafts already carry the slot; upload UI lands in ticket 07.
   imageUrl: z.string().nullable().optional(),
+  // Cloudinary public id needed to destroy the asset when the question is
+  // removed — without it every upload becomes an orphan (ticket 07).
+  imagePublicId: z.string().nullable().optional(),
   // Q16: hand-typed rows default reusable; pasted/imported rows send false.
   isReusable: z.boolean().optional(),
   marks: z.coerce.number().int("marks must be an integer").min(1, "marks must be at least 1").optional(),
   negMarks: z.coerce.number().min(0, "negMarks cannot be negative").optional(),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).optional(),
+  // PDF review flag (ticket 09): the parser heuristically marks rows that
+  // "had a figure"; the grid checkbox toggles it, and it persists so review
+  // state survives Save. `correctOption` stays null for imported rows.
+  hadFigure: z.boolean().optional(),
 });
 
 export const refRowSchema = z.object({

@@ -71,7 +71,7 @@ export default function SubjectListPage() {
                     </h3>
                     <div className="flex flex-wrap gap-2 mt-3">
                       <Badge variant="muted">
-                        {subject.topicCount} topic{subject.topicCount !== 1 ? "s" : ""}
+                        {subject.topicCount} chapter{subject.topicCount !== 1 ? "s" : ""}
                       </Badge>
                       <Badge variant="muted">
                         <FileText className="w-3 h-3" />

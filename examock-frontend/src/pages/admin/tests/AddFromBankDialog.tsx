@@ -286,6 +286,14 @@ export default function AddFromBankDialog({
                           {q.marks != null && ` · ${q.marks} marks`}
                         </p>
                       </div>
+                      {q.imageUrl && (
+                        <img
+                          src={q.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          className="mt-0.5 h-10 w-10 shrink-0 rounded object-cover"
+                        />
+                      )}
                       <span
                         className={cn(
                           "mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold",

@@ -41,8 +41,8 @@ export default function TopicProgressPage() {
     return (
       <AppShell section="student">
         <EmptyState
-          title="Could not load topic progress"
-          description="Something went wrong while fetching this topic."
+          title="Could not load chapter progress"
+          description="Something went wrong while fetching this chapter."
           icon={<AlertTriangle className="w-6 h-6 text-amber-500" />}
           action={
             <Link
@@ -81,7 +81,7 @@ export default function TopicProgressPage() {
         <div className="mt-4 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="font-display text-xl font-extrabold text-slate-900">
-              {data.topicName ?? "Topic"}
+              {data.topicName ?? "Chapter"}
             </h1>
             {data.subjectName && (
               <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
@@ -142,7 +142,7 @@ export default function TopicProgressPage() {
           <div>
             <p className="text-sm font-semibold text-slate-900">Watch videos</p>
             <p className="text-xs text-slate-500">
-              {data.totalVideos ?? 0} video{(data.totalVideos ?? 0) !== 1 ? "s" : ""} for this topic
+              {data.totalVideos ?? 0} video{(data.totalVideos ?? 0) !== 1 ? "s" : ""} for this chapter
             </p>
           </div>
         </Link>
@@ -155,7 +155,7 @@ export default function TopicProgressPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-900">Take a test</p>
-            <p className="text-xs text-slate-500">{data.totalQuestions ?? 0} questions on this topic</p>
+            <p className="text-xs text-slate-500">{data.totalQuestions ?? 0} questions on this chapter</p>
           </div>
         </Link>
       </div>
@@ -164,7 +164,7 @@ export default function TopicProgressPage() {
       <div className="mt-6">
         <Card
           title="Recent Attempts"
-          subtitle="Last 5 tests on this topic"
+          subtitle="Last 5 tests on this chapter"
           action={
             trend.length >= 2 ? (
               <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ export default function TopicProgressPage() {
         >
           {data.recentAttempts.length === 0 ? (
             <p className="text-sm text-slate-500 py-4 text-center">
-              No completed attempts on this topic yet.
+              No completed attempts on this chapter yet.
             </p>
           ) : (
             <div className="space-y-2.5">

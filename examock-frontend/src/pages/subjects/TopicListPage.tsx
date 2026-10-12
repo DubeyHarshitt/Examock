@@ -35,7 +35,7 @@ export default function TopicListPage() {
     <AppShell section="student">
       <PageHeader
         title={subjectName}
-        subtitle="Topics in this subject — track your progress and jump into videos"
+        subtitle="Chapters in this subject — track your progress and jump into videos"
         action={
           <Link
             to="/subjects"
@@ -55,14 +55,14 @@ export default function TopicListPage() {
           </div>
         ) : isError || !topics ? (
           <EmptyState
-            title="Could not load topics"
-            description="Something went wrong fetching this subject's topics."
+            title="Could not load chapters"
+            description="Something went wrong fetching this subject's chapters."
             icon={<AlertTriangle className="w-6 h-6 text-amber-500" />}
           />
         ) : topics.length === 0 ? (
           <EmptyState
-            title="No topics yet"
-            description="Topics for this subject will show up here once added."
+            title="No chapters yet"
+            description="Chapters for this subject will show up here once added."
             icon={<ListChecks className="w-6 h-6 text-slate-400" />}
           />
         ) : (

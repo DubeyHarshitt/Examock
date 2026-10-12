@@ -1,6 +1,6 @@
 // admin.api.ts
 import api from "./axios";
-import type { CreateExamTypeDto, CreateMockTestDto, CreateSubjectDto, CreateTopicDto, Topic, createQuestionsDto, CreateTestWithQuestionsDto, DraftRow, ExamDetail, ExamNode, GetQuestionsResponse, MockTestDetail, RowsSaveSummary, Subject, TestsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
+import type { CreateExamTypeDto, CreateMockTestDto, CreateSubjectDto, CreateTopicDto, Topic, createQuestionsDto, CreateTestWithQuestionsDto, CsvImportResult, DraftRow, ExamDetail, ExamNode, GetQuestionsResponse, MockTestDetail, PdfImport, RowsSaveSummary, Subject, TestsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -162,6 +162,65 @@ export const updateQuestionApi = async (id: string, body: updateQuestionDto) => 
 
 export const deleteQuestionApi = async (id: string) => {
   const { data } = await api.delete(`/admin/questions/${id}`);
+  return data;
+};
+
+// ── Question images (ticket 07) ──────────────────────────────
+
+/** Multipart upload of a question-stem image → { imageUrl, imagePublicId }. */
+export const uploadQuestionImageApi = async (file: File) => {
+  const form = new FormData();
+  form.append("image", file);
+  const { data } = await api.post("/admin/questions/image", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data as { imageUrl: string; imagePublicId: string };
+};
+
+/** Destroy a question image by Cloudinary public id (remove/replace slot). */
+export const destroyQuestionImageApi = async (publicId: string) => {
+  const { data } = await api.post("/admin/questions/image/destroy", { publicId });
+  return data as { destroyed: boolean };
+};
+
+// ── CSV import (ticket 08) ──────────────────────────────────
+
+/** Parse a CSV into draft rows for a test's grid — nothing is persisted until Save. */
+export const importCsvApi = async (testId: string, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post(`/admin/tests/${testId}/import/csv`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data as CsvImportResult;
+};
+
+/** Bank-manager CSV import (QuestionForm replacement for the pipe textarea). */
+export const importCsvToBankApi = async (topicId: string, file: File) => {
+  const form = new FormData();
+  form.append("topicId", topicId);
+  form.append("file", file);
+  const { data } = await api.post("/admin/questions/import-csv", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data as CsvImportResult;
+};
+
+// ── PDF ingestion (ticket 09) ────────────────────────────────
+
+/** Upload a question paper → 202 + a PENDING import row; parse runs on a worker. */
+export const importPdfApi = async (testId: string, file: File): Promise<PdfImport> => {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post(`/admin/tests/${testId}/import/pdf`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return (data as { import: PdfImport }).import;
+};
+
+/** Poll a PDF import's status/rows (GET /admin/pdf-imports/:id). */
+export const getPdfImportApi = async (id: string): Promise<PdfImport> => {
+  const { data } = await api.get<PdfImport>(`/admin/pdf-imports/${id}`);
   return data;
 };
 

@@ -19,7 +19,11 @@ boss.on("error", (err) => {
 
 await boss.start();
 
-export const QUEUE = { INGEST_NOTE: "ingest-note", DELETE_NOTE_CHUNKS: "delete-note-chunks" };
+export const QUEUE = {
+  INGEST_NOTE: "ingest-note",
+  DELETE_NOTE_CHUNKS: "delete-note-chunks",
+  IMPORT_TEST_PDF: "import-test-pdf",
+};
 
 // pg-boss v10 requires every queue to be explicitly registered via
 // `createQueue()` — otherwise `boss.send()` silently drops jobs: its INSERT

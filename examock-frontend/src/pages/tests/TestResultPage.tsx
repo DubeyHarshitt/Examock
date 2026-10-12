@@ -28,6 +28,8 @@ interface QuestionReview {
   isCorrect: boolean;
   marksAwarded: number;
   explanation?: string | null;
+  text?: string;
+  imageUrl?: string | null;
 }
 
 interface SubmitPayload {
@@ -214,6 +216,19 @@ export default function TestResultPage() {
                             </span>
                           </div>
                         </div>
+                        {item.text && (
+                          <p className="mt-2 text-sm font-semibold text-slate-800 whitespace-pre-wrap">
+                            {item.text}
+                          </p>
+                        )}
+                        {item.imageUrl && (
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            loading="lazy"
+                            className="mt-2 max-h-64 w-auto rounded-lg border border-slate-100 object-contain"
+                          />
+                        )}
                         {item.explanation && (
                           <p className="mt-2 text-xs text-slate-500">
                             {item.explanation}

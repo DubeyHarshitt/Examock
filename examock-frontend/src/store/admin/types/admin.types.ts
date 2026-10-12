@@ -71,6 +71,8 @@ export interface Questions {
   marks?: number;
   negMarks?: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
+  imageUrl?: string | null;
+  imagePublicId?: string | null;
 }
 
 export interface GetQuestionsResponse {
@@ -91,6 +93,8 @@ export interface createQuestionsDto {
   marks?: number;
   negMarks?: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
+  imageUrl?: string | null; // stem figure (ticket 07)
+  imagePublicId?: string | null;
 }
 
 export interface updateQuestionDto {
@@ -100,33 +104,29 @@ export interface updateQuestionDto {
   optionB?: string;
   optionC?: string;
   optionD?: string;
-  correctOption?: "A" | "B" | "C" | "D";
+  correctOption?: "A" | "B" | "C" | "D" | null; // null = unticked (CSV/PDF import)
   explanation?: string;
   marks?: number;
   negMarks?: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
   isReusable?: boolean; // grid: reusable toggle (ticket 06)
-  imageUrl?: string; // grid: figure slot (ticket 06)
+  imageUrl?: string | null; // grid: figure slot (ticket 06)
+  imagePublicId?: string | null; // Cloudinary id, so the asset can be destroyed (ticket 07)
 }
 
 
 // MOCK TEST
 
-export type TestType = "CHAPTER" | "MODULE" | "FULL"; // legacy — taxonomy removed in ticket 02
-
 export interface MockTest {
   id: string;
   examTypeId: string;
   title: string;
-  /** Legacy — no longer returned by the API (ticket 02). Kept until ticket 06 retires the old dashboard. */
-  type?: TestType;
   isFree: boolean;
   durationMins: number;
   totalMarks: number;
   defaultMarks: number;
   defaultNegMarks: number;
-  /** Legacy — no longer returned by the API. Scope now lives in subjectId alone. */
-  topicId?: string | null;
+  /** Scope now lives in subjectId alone (design §3). */
   subjectId: string | null;
   instructions: string | null;
   isActive: boolean;
@@ -134,7 +134,6 @@ export interface MockTest {
   updatedAt: string;
   examType?: { name: string };
   subject?: { name: string } | null;
-  topic?: { name: string } | null;
   _count?: { questions: number; attempts: number };
 }
 
@@ -147,8 +146,6 @@ export interface CreateMockTestDto {
   subjectId?: string | null;
   /** Legacy — resolved to its subject by the backend. */
   topicId?: string;
-  /** Legacy — stripped by the backend schemas (ticket 03). Old dashboard only. */
-  type?: TestType;
   defaultMarks?: number;
   defaultNegMarks?: number;
   instructions?: string;
@@ -200,12 +197,13 @@ export interface TestQuestionWithDetail {
     optionB: string;
     optionC: string;
     optionD: string;
-    correctOption: "A" | "B" | "C" | "D";
+    correctOption: "A" | "B" | "C" | "D" | null;
     explanation?: string | null;
     marks?: number;
     negMarks?: number;
     difficulty?: "EASY" | "MEDIUM" | "HARD";
     imageUrl?: string | null;
+    imagePublicId?: string | null; // Cloudinary id — allows asset destroy (ticket 07)
     isReusable?: boolean;
     hadFigure?: boolean;
     topic?: { name: string };
@@ -235,13 +233,16 @@ export interface NewDraftRow {
   optionB: string;
   optionC: string;
   optionD: string;
-  correctOption: "A" | "B" | "C" | "D";
+  correctOption: "A" | "B" | "C" | "D" | null;
   explanation?: string;
   imageUrl?: string | null;
+  imagePublicId?: string | null; // Cloudinary id, so the asset can be destroyed (ticket 07)
   isReusable?: boolean;
   marks?: number;
   negMarks?: number;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
+  /** PDF review flag (ticket 09): parser says a figure was probably dropped. */
+  hadFigure?: boolean;
 }
 
 export interface RefDraftRow {
@@ -261,6 +262,71 @@ export interface RowsSaveSummary {
   created: number;
   reused: number;
   linked: number;
+}
+
+// ── CSV import (ticket 08) ───────────────────────────────────
+
+/** One row of the server-side CSV parse — the shared draft-row contract
+ *  minus `clientId` (added when the row lands in the grid). */
+export interface CsvImportRow {
+  kind: "new";
+  isReusable: false;
+  text: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption?: "A" | "B" | "C" | "D" | null;
+  explanation?: string;
+  imageUrl?: string;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  marks?: number;
+  negMarks?: number;
+  chapterId?: string;
+}
+
+/** Response of POST /tests/:id/import/csv (and the bank variant). */
+export interface CsvImportResult {
+  rows: CsvImportRow[];
+  errors: Array<{ line: number; message: string }>;
+  created?: number; // bank variant only — rows are committed immediately there
+}
+
+// ── PDF ingestion (ticket 09) ────────────────────────────────
+
+export type PdfImportStatus = "PENDING" | "PROCESSING" | "READY" | "FAILED";
+
+/**
+ * One draft row from the server-side PDF parse — the shared draft-row contract
+ * plus parse diagnostics. `correctOption` is always null (never extracted) and
+ * `hadFigure` defaults the grid's figure checkbox on.
+ */
+export interface PdfImportRow {
+  kind: "new";
+  text: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption: null;
+  parseStatus: "OK" | "NEEDS_REVIEW";
+  parseError: string | null;
+  hadFigure: boolean;
+  isReusable?: boolean;
+}
+
+/** A testPdfImport row — POST (202) returns it; GET /pdf-imports/:id polls it. */
+export interface PdfImport {
+  id: string;
+  testId: string;
+  fileName: string;
+  filePath: string;
+  status: PdfImportStatus;
+  error: string | null;
+  rowCount: number;
+  parsedAt: string | null;
+  createdAt: string;
+  rows: PdfImportRow[];
 }
 
 // NOTES

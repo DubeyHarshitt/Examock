@@ -1,7 +1,8 @@
 // pages/admin/questions/component/QuestionForm.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import type { createQuestionsDto, Questions } from "../../../store/admin/types/admin.types";
+import { importCsvToBankApi } from "../../../api/admin.api";
+import type { CsvImportResult, Questions } from "../../../store/admin/types/admin.types";
 import {
   BookOpen,
   CheckCircle,
@@ -10,8 +11,11 @@ import {
   XCircle,
   Upload,
   FileUp,
+  FileSpreadsheet,
+  AlertTriangle,
   X,
 } from "lucide-react";
+import QuestionImageSlot from "../../../components/admin/QuestionImageSlot";
 
 interface QuestionFormProps {
   topicId: string; // Required — every question belongs to exactly one topic
@@ -28,6 +32,11 @@ interface QuestionDTO {
   correctOption: "A" | "B" | "C" | "D";
   explanation?: string;
   topicId: string;
+  marks?: number;
+  negMarks?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  imageUrl?: string | null;
+  imagePublicId?: string | null;
 }
 
 const QuestionForm = ({ topicId }: QuestionFormProps) => {
@@ -36,7 +45,6 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
     questions,
     fetchQuestions, // Make sure to call this to sync data
     createQuestion,
-    bulkCreateQuestions,
     updateQuestion, // Added for edit capabilities
     deleteQuestion, // Added for deletion capabilities
     questionsError,
@@ -48,15 +56,24 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
   const [options, setOptions] = useState<string[]>(["", "", "", ""]);
   const [correctOptionIdx, setCorrectOptionIdx] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Marks scheme + figure (ticket 07)
+  const [marks, setMarks] = useState<number | "">("");
+  const [negMarks, setNegMarks] = useState<number | "">("");
+  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  const [image, setImage] = useState<{ imageUrl?: string | null; imagePublicId?: string | null } | null>(null);
 
   // Track if we are editing an existing question
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
 
-  // Bulk import states
+  // Bulk import states — CSV file upload (ticket 08 replaces the pipe textarea;
+  // valid rows commit immediately on the server, per-row errors come back with
+  // their CSV line numbers).
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkText, setBulkText] = useState("");
-  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const [csvResult, setCsvResult] = useState<CsvImportResult | null>(null);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   // Sync / Fetch questions whenever the topic changes.
   // getQuestions on the backend only accepts topicId, so that's all we pass.
@@ -78,6 +95,10 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
     setText(q.text);
     setExplanation(q.explanation || "");
     setOptions([q.optionA, q.optionB, q.optionC, q.optionD]);
+    setMarks(q.marks ?? "");
+    setNegMarks(q.negMarks ?? "");
+    setDifficulty(q.difficulty ?? "MEDIUM");
+    setImage(q.imageUrl ? { imageUrl: q.imageUrl, imagePublicId: q.imagePublicId } : null);
 
     const idx = ["A", "B", "C", "D"].indexOf(q.correctOption);
     setCorrectOptionIdx(idx !== -1 ? idx : 0);
@@ -89,6 +110,10 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
     setExplanation("");
     setCorrectOptionIdx(0);
     setOptions(["", "", "", ""]);
+    setMarks("");
+    setNegMarks("");
+    setDifficulty("MEDIUM");
+    setImage(null);
   };
 
   const handleDeleteClick = async (id: string) => {
@@ -117,6 +142,11 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
         correctOption: ["A", "B", "C", "D"][correctOptionIdx] as "A" | "B" | "C" | "D",
         explanation: explanation.trim() || undefined,
         topicId, // Always required by the backend — never optional
+        // Marks scheme + figure (ticket 07)
+        ...(marks !== "" ? { marks: Number(marks) } : {}),
+        ...(negMarks !== "" ? { negMarks: Number(negMarks) } : {}),
+        difficulty,
+        ...(image ? { imageUrl: image.imageUrl ?? null, imagePublicId: image.imagePublicId ?? null } : {}),
       };
 
       if (editingQuestionId) {
@@ -137,65 +167,27 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
   };
 
   /**
-   * Parse the bulk textarea into question DTOs.
-   * Expected format — one question per line, fields separated by `|`:
-   *   Question text | Option A | Option B | Option C | Option D | A|D|C|B (correct letter) | Explanation (optional)
-   * Correct letter is the 6th field. Anything after position 6 is explanation.
+   * CSV import (ticket 08) — replaces the old pipe-delimited parser. The CSV
+   * uses header columns (any order): text, optionA-D, correctOption,
+   * explanation, imageUrl, difficulty, marks, negativeMarks, chapterId.
+   * Rows WITHOUT a correctOption are REJECTED for the bank (never guessed) and
+   * come back in `errors` with their line number; valid rows commit immediately.
    */
-  const parseBulkQuestions = (): createQuestionsDto[] => {
-    const lines = bulkText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (lines.length === 0) {
-      setBulkError("Paste at least one question.");
-      return [];
-    }
-
-    const parsed: createQuestionsDto[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      const parts = lines[i].split("|").map((p) => p.trim());
-      if (parts.length < 6) {
-        setBulkError(`Line ${i + 1} is invalid: expected at least 6 fields separated by "|".`);
-        return [];
-      }
-      const [qtext, optA, optB, optC, optD, correct] = parts;
-      const correctLetter = correct.toUpperCase();
-      if (!["A", "B", "C", "D"].includes(correctLetter)) {
-        setBulkError(`Line ${i + 1}: correct option must be A, B, C, or D (got "${correct}").`);
-        return [];
-      }
-      if (!qtext || !optA || !optB || !optC || !optD) {
-        setBulkError(`Line ${i + 1}: question text and all 4 options are required.`);
-        return [];
-      }
-      const explanation = parts.length > 6 ? parts.slice(6).join("|").trim() : undefined;
-      parsed.push({
-        text: qtext,
-        optionA: optA,
-        optionB: optB,
-        optionC: optC,
-        optionD: optD,
-        correctOption: correctLetter as "A" | "B" | "C" | "D",
-        ...(explanation ? { explanation } : {}),
-      });
-    }
-    return parsed;
-  };
-
   const handleBulkImport = async () => {
-    setBulkError(null);
-    if (!topicId) return;
-    const parsed = parseBulkQuestions();
-    if (parsed.length === 0) return;
+    setCsvError(null);
+    setCsvResult(null);
+    if (!topicId || !csvFile) return;
 
     setIsBulkSubmitting(true);
     try {
-      await bulkCreateQuestions(topicId, parsed);
-      setBulkText("");
-      setShowBulkImport(false);
-    } catch (err) {
-      setBulkError((err as Error).message || "Bulk import failed.");
+      const result = await importCsvToBankApi(topicId, csvFile);
+      setCsvResult(result);
+      setCsvFile(null);
+      if (csvInputRef.current) csvInputRef.current.value = "";
+      fetchQuestions(topicId, 1); // sync the list — valid rows are already live
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCsvError(msg ?? "CSV import failed.");
     } finally {
       setIsBulkSubmitting(false);
     }
@@ -244,13 +236,15 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
         <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Upload size={15} className="text-brand-600" /> Bulk import questions
+              <FileSpreadsheet size={15} className="text-brand-600" /> Import questions from CSV
             </h3>
             <button
               type="button"
               onClick={() => {
                 setShowBulkImport(false);
-                setBulkError(null);
+                setCsvError(null);
+                setCsvResult(null);
+                setCsvFile(null);
               }}
               className="text-slate-400 hover:text-slate-600 transition-colors"
               title="Close"
@@ -258,30 +252,86 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
               <X size={16} />
             </button>
           </div>
-          <textarea
-            rows={6}
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            placeholder={'One question per line, fields separated by "|":\nQuestion text | Option A | Option B | Option C | Option D | A|B|C|D | Explanation (optional)'}
-            className="w-full text-xs p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-y font-mono"
-          />
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Correct answer is the 6th field (A/B/C/D). Explanation is optional (7th field onward). Example:
-            <span className="block mt-1 bg-slate-50 border border-slate-100 rounded p-2 font-mono text-slate-500">
-              2 + 2 equals? | 3 | 4 | 5 | 6 | B | Basic arithmetic
+          <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setCsvFile(file);
+                setCsvResult(null);
+                setCsvError(null);
+              }}
+            />
+            {csvFile ? (
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <FileSpreadsheet size={16} className="text-brand-600" />
+                {csvFile.name}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCsvFile(null);
+                    setCsvResult(null);
+                    if (csvInputRef.current) csvInputRef.current.value = "";
+                  }}
+                  className="text-slate-400 hover:text-slate-600"
+                  title="Remove file"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="flex flex-col items-center gap-1 text-slate-500 hover:text-brand-600 transition-colors"
+              >
+                <Upload size={20} />
+                <span className="text-xs font-bold">Choose a .csv file</span>
+              </button>
+            )}
+            <span className="text-[11px] text-slate-400 leading-relaxed">
+              Header row with columns in any order — text, optionA-D, correctOption, explanation,
+              imageUrl, difficulty, marks, negativeMarks, chapterId
             </span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Every row <strong>must</strong> include a <span className="font-mono">correctOption</span> (A–D) — the
+            answer is never guessed. Valid rows are added to the bank immediately; rows without a key are
+            rejected and listed below with their line numbers.
           </p>
-          {bulkError && (
-            <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">{bulkError}</p>
+          {csvError && (
+            <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">{csvError}</p>
+          )}
+          {csvResult && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
+                {csvResult.created} question{csvResult.created === 1 ? "" : "s"} imported.
+              </p>
+              {csvResult.errors.length > 0 && (
+                <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-red-100 bg-red-50/60 p-2.5">
+                  {csvResult.errors.map((err, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[11px] font-medium text-red-600">
+                      <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                      <span>
+                        <span className="font-mono font-bold">Line {err.line}:</span> {err.message}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <button
             type="button"
-            disabled={isBulkSubmitting}
+            disabled={isBulkSubmitting || !csvFile || !topicId}
             onClick={handleBulkImport}
             className="w-full flex items-center justify-center gap-2 py-2 text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-lg font-semibold text-sm shadow-sm transition-colors"
           >
             <FileUp size={15} />
-            {isBulkSubmitting ? "Importing..." : `Import ${bulkText.split("\n").filter((l) => l.trim()).length} questions`}
+            {isBulkSubmitting ? "Importing..." : csvFile ? `Import ${csvFile.name}` : "Import CSV"}
           </button>
         </div>
       )}
@@ -358,6 +408,53 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
             />
           </div>
 
+          {/* Marks scheme + figure (ticket 07) */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Marks</label>
+              <input
+                type="number"
+                min={1}
+                value={marks}
+                onChange={(e) => setMarks(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder="Default 1"
+                className="w-full text-sm px-3 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Neg. marks</label>
+              <input
+                type="number"
+                min={0}
+                step={0.25}
+                value={negMarks}
+                onChange={(e) => setNegMarks(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder="Default 0"
+                className="w-full text-sm px-3 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Difficulty</label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as "EASY" | "MEDIUM" | "HARD")}
+                className="w-full text-sm px-2 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-brand-500 outline-none bg-white"
+              >
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Figure (optional)</label>
+            <QuestionImageSlot
+              current={image}
+              onChange={(img) => setImage(img ? { imageUrl: img.imageUrl, imagePublicId: img.imagePublicId } : null)}
+            />
+          </div>
+
           {questionsError && <p className="text-xs font-semibold text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100">{questionsError}</p>}
 
           <button
@@ -416,6 +513,14 @@ const QuestionForm = ({ topicId }: QuestionFormProps) => {
                       <span className="text-xs bg-brand-100 text-brand-800 font-bold px-1.5 py-0.5 rounded mr-2">Q{qIdx + 1}.</span>
                       <p className="inline text-sm text-slate-800 font-medium whitespace-pre-wrap">{q.text}</p>
                     </div>
+                    {q.imageUrl && (
+                      <img
+                        src={q.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        className="mt-2 max-h-40 rounded-lg border border-slate-100 object-contain"
+                      />
+                    )}
 
                     <div className="space-y-1.5 mt-3">
                       {itemOptions.map((opt, oIdx) => {

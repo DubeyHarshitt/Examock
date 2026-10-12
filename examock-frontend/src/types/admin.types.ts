@@ -14,13 +14,15 @@ export interface AnalyticsOverview {
   totalQuestions: number;
 }
 
-export type TestType = "CHAPTER" | "MODULE" | "FULL";
-
 export interface TestAnalyticsRow {
   id: string;
   title: string;
-  type: TestType;
+  /** scope is derived from this (ticket 10) — null ⇒ whole exam */
+  subjectId: string | null;
+  subjectName: string | null;
+  examName: string | null;
   isFree: boolean;
+  isActive: boolean;
   totalAttempts: number;
   completedAttempts: number;
   averageScore: number;
@@ -81,7 +83,7 @@ export interface UserTestAttempt {
   status: string;
   startedAt: string;
   completedAt: string | null;
-  mockTest: { title: string; type: TestType };
+  mockTest: { title: string; subjectId: string | null };
 }
 
 export interface AdminUserDetail {
