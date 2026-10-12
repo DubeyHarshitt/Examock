@@ -1,5 +1,9 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
+import {
+  filterNotificationsByExamScope,
+  clampNotificationLimit,
+} from "./lib/notifications.js";
 
 // ─────────────────────────────────────────────────────────────
 // Helper — get examTypeId for a user (used in multiple services)
@@ -182,46 +186,16 @@ export const getTopics = async (userId, subjectId) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// 4. Videos — by topicId or subjectId
+// 4. Videos — by topicId only (ticket 09 removed the dead subjectId branch).
 // ─────────────────────────────────────────────────────────────
 
-export const getVideos = async ({ topicId, subjectId }) => {
-  if (!topicId && !subjectId) {
-    throw new AppError("topicId or subjectId is required", 400);
+export const getVideos = async (userId, { topicId }) => {
+  if (!topicId) {
+    throw new AppError("topicId is required", 400);
   }
 
-  // If subjectId — get all topics in subject then all their videos
-  if (subjectId && !topicId) {
-    const topics = await prisma.topic.findMany({
-      where:   { subjectId, isActive: true },
-      select:  {
-        id: true,
-        name: true,
-        orderIndex: true,
-        videos: {
-          where:   { isActive: true },
-          select:  {
-            id: true,
-            youtubeId: true,
-            title: true,
-            durationSec: true,
-            orderIndex: true,
-          },
-          orderBy: { orderIndex: "asc" },
-        },
-      },
-      orderBy: { orderIndex: "asc" },
-    });
-
-    // Return videos grouped by topic
-    return topics.map((t) => ({
-      topicId:   t.id,
-      topicName: t.name,
-      videos:    t.videos,
-    }));
-  }
-
-  // If topicId — flat list of videos
+  // Fetch this user's watched-state for the videos we're about to return, so
+  // the frontend can render the ✓ toggle correctly on first paint.
   const videos = await prisma.video.findMany({
     where:   { topicId, isActive: true },
     select:  {
@@ -234,7 +208,14 @@ export const getVideos = async ({ topicId, subjectId }) => {
     orderBy: { orderIndex: "asc" },
   });
 
-  return videos;
+  const watchedIds = videos.length === 0
+    ? []
+    : (await prisma.videoWatch.findMany({
+        where: { userId, videoId: { in: videos.map((v) => v.id) } },
+        select: { videoId: true },
+      })).map((r) => r.videoId);
+
+  return { videos, watchedIds };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -464,4 +445,149 @@ export const getTopicProgress = async (userId, topicId) => {
     totalQuestions: progress.topic._count.questions,
     recentAttempts,
   };
+};
+
+// ─────────────────────────────────────────────────────────────
+// 11. Notifications — student read path
+//    (Ticket 01: docs/student-pannel/issue-01/ticket/01-notifications-backend.md;
+//     ticket 11: docs/student-pannel/issue-01/ticket/11-notifications-read-state.md
+//     adds per-user read state.)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns notifications visible to the user (global + their exam), each
+ * annotated with `isRead` / `readAt` from the `notification_reads` table.
+ * `unreadCount` is `visible.length - read.length`.
+ *
+ * Notifications created before the user signed up still appear in the inbox
+ * (they're global or exam-scoped), but they're treated as already-read
+ * because there are no rows in `notification_reads` for them yet — which
+ * matches the V1 behavior where "items created after join" were unread.
+ * Every user starts at 0 unread on first sign-in.
+ */
+export const listNotifications = async (userId, { limit } = {}) => {
+  const user = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { examTypeId: true },
+  });
+  if (!user) throw new AppError("User not found", 404);
+
+  const take = clampNotificationLimit(limit);
+
+  const all = await prisma.notification.findMany({
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+
+  const visible = filterNotificationsByExamScope(all, user.examTypeId);
+
+  const reads = visible.length === 0
+    ? []
+    : await prisma.notificationRead.findMany({
+        where: {
+          userId,
+          notificationId: { in: visible.map((n) => n.id) },
+        },
+        select: { notificationId: true, readAt: true },
+      });
+
+  const readMap = new Map(reads.map((r) => [r.notificationId, r.readAt]));
+  const items = visible.map((n) => ({
+    ...n,
+    isRead: readMap.has(n.id),
+    readAt: (readMap.get(n.id) ?? null)?.toISOString() ?? null,
+  }));
+  const unreadCount = items.filter((i) => !i.isRead).length;
+
+  return { items, unreadCount };
+};
+
+/**
+ * Mark a batch of notifications as read for the given user. Idempotent —
+ * re-marking already-read ids is a no-op (createMany + skipDuplicates).
+ *
+ * @returns number of new rows written (already-read ids not counted).
+ */
+export const markNotificationsRead = async (userId, ids) => {
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+  const result = await prisma.notificationRead.createMany({
+    data: ids.map((notificationId) => ({ userId, notificationId })),
+    skipDuplicates: true,
+  });
+  return result.count;
+};
+
+// ─────────────────────────────────────────────────────────────
+// 12. Exam type — destructive re-pick
+//    (Ticket 01 / 03)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Change the user's exam type. Resets topic progress for topics that don't
+ * belong to the new exam. No-op if the id is unchanged.
+ */
+export const changeExamType = async (userId, examTypeId) => {
+  if (!examTypeId || typeof examTypeId !== "string") {
+    throw new AppError("examTypeId is required", 400);
+  }
+
+  const target = await prisma.examType.findUnique({ where: { id: examTypeId } });
+  if (!target) throw new AppError("Invalid exam type", 400);
+
+  const current = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, examTypeId: true },
+  });
+  if (!current) throw new AppError("User not found", 404);
+
+  if (current.examTypeId === examTypeId) {
+    return prisma.user.findUnique({ where: { id: userId } });
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { examTypeId },
+    }),
+    prisma.userTopicProgress.deleteMany({
+      where: {
+        topic: { subject: { examTypeId: { not: examTypeId } } },
+      },
+    }),
+  ]);
+
+  return prisma.user.findUnique({ where: { id: userId } });
+};
+
+// ─────────────────────────────────────────────────────────────
+// 13. Video watched toggle
+//    (Ticket 06)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Toggle the per-user "watched" flag on a video. Toggle semantics: first call
+ * marks watched, second call clears. The per-topic counter on
+ * `UserTopicProgress.videosWatched` is unchanged — that one is incremented by
+ * completing a chapter test (see student-side-v1.md §11).
+ */
+export const toggleVideoWatched = async (userId, videoId) => {
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    select: { id: true },
+  });
+  if (!video) throw new AppError("Video not found", 404);
+
+  const existing = await prisma.videoWatch.findUnique({
+    where: { userId_videoId: { userId, videoId } },
+    select: { userId: true },
+  });
+
+  if (existing) {
+    await prisma.videoWatch.delete({
+      where: { userId_videoId: { userId, videoId } },
+    });
+    return { watched: false };
+  }
+  await prisma.videoWatch.create({ data: { userId, videoId } });
+  return { watched: true };
 };

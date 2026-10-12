@@ -1,8 +1,8 @@
 // src/types/student.types.ts
-// Shared DTOs/responses for the student-facing API (`/api/student/*`).
+// Shared DTOs/responses for the student-facing API (`/student/*`).
 // Mirrors the payloads returned by examock-backend/src/modules/student.
 
-import type { ExamType } from "../store/admin/types/admin.types";
+import type { ExamType } from "./exam.types";
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,8 @@ export interface DashboardSubject {
 export interface DashboardRecentAttempt {
   id: string;
   mockTestId: string;
-  mockTestTitle?: string;
+  /** Backend selects these via `mockTest: { select: { title, totalMarks } }` */
+  mockTest?: { title?: string; totalMarks?: number };
   score: number;
   totalMarks: number;
   percentile: number;
@@ -25,11 +26,11 @@ export interface DashboardRecentAttempt {
 }
 
 export interface DashboardSuggestedTopic {
-  id: string;
-  name: string;
+  topicId: string;
+  topicName: string;
+  subjectName: string;
   bestScore: number | null;
   attemptCount: number;
-  subject?: { name: string }; // subject this topic belongs to
 }
 
 export interface DashboardResponse {
@@ -159,4 +160,31 @@ export interface TopicProgressDetail {
   totalVideos: number;
   totalQuestions: number;
   recentAttempts: TopicAttemptSummary[];
+}
+
+// ── Notifications (ticket 02) ────────────────────────────────────────────────
+
+/**
+ * One broadcast visible to the user. `sentAt` is when the admin scheduled /
+ * pushed it; `createdAt` is the row write time. `examTypeId` is null for
+ * global broadcasts.
+ *
+ * `isRead` / `readAt` are derived server-side from `notification_reads`
+ * (ticket 11). `isRead === false` means the user has not yet seen this
+ * notification; `readAt` is the timestamp of the first view, or null.
+ */
+export interface StudentNotification {
+  id: string;
+  title: string;
+  body: string;
+  sentAt: string | null;
+  createdAt: string;
+  examTypeId: string | null;
+  isRead: boolean;
+  readAt: string | null;
+}
+
+export interface ListNotificationsResponse {
+  items: StudentNotification[];
+  unreadCount: number;
 }

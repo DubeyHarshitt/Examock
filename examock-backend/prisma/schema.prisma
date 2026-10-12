@@ -3,33 +3,35 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id               String              @id @default(uuid())
-  gmailId          String              @unique @map("gmail_id")
-  email            String              @unique
-  name             String?
-  avatarUrl        String?             @map("avatar_url")
-  mobile           String?             @unique
-  mobileVerified   Boolean             @default(false) @map("mobile_verified")
-  emailVerified    Boolean             @default(false) @map("email_verified")
-  examTypeId       String?             @map("exam_type_id")
-  examDate         DateTime?           @map("exam_date") @db.Date
-  role             Role                @default(STUDENT)
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
-  refreshTokenHash String?             @map("refresh_token_hash")
-  doubtSessions    DoubtSession[]
-  uploadedNotes    Note[]              @relation("NoteUploader")
-  otpRecords       OtpRecord[]
-  payments         Payment[]
-  testAttempts     TestAttempt[]
-  topicProgress    UserTopicProgress[]
-  examType         ExamType?           @relation(fields: [examTypeId], references: [id])
+  id                String              @id @default(uuid())
+  gmailId           String              @unique @map("gmail_id")
+  email             String              @unique
+  name              String?
+  avatarUrl         String?             @map("avatar_url")
+  mobile            String?             @unique
+  mobileVerified    Boolean             @default(false) @map("mobile_verified")
+  emailVerified     Boolean             @default(false) @map("email_verified")
+  examTypeId        String?             @map("exam_type_id")
+  examDate          DateTime?           @map("exam_date") @db.Date
+  role              Role                @default(STUDENT)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  refreshTokenHash  String?             @map("refresh_token_hash")
+  doubtSessions     DoubtSession[]
+  uploadedNotes     Note[]              @relation("NoteUploader")
+  notificationReads NotificationRead[]
+  otpRecords        OtpRecord[]
+  payments          Payment[]
+  testAttempts      TestAttempt[]
+  topicProgress     UserTopicProgress[]
+  videoWatches      VideoWatch[]
+  examType          ExamType?           @relation(fields: [examTypeId], references: [id])
 
   @@map("users")
 }
@@ -101,24 +103,24 @@ model Topic {
 }
 
 model MockTest {
-  id               String   @id @default(uuid())
-  examTypeId       String   @map("exam_type_id")
-  subjectId        String?  @map("subject_id") // null = whole exam. THE only scope input.
-  title            String
-  isFree           Boolean  @default(true) @map("is_free")
-  durationMins     Int      @map("duration_mins")
-  totalMarks       Int      @map("total_marks") // admin-entered; must equal Σ question.marks
-  defaultMarks     Int      @default(1) @map("default_marks") // applied to new rows
-  defaultNegMarks  Float    @default(0) @map("default_neg_marks") // applied to new rows
-  instructions     String?
-  isActive         Boolean  @default(false) @map("is_active")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  examType         ExamType @relation(fields: [examTypeId], references: [id])
-  subject          Subject? @relation(fields: [subjectId], references: [id])
-  payments         Payment[]
-  attempts         TestAttempt[]
-  questions        TestQuestion[]
+  id              String         @id @default(uuid())
+  examTypeId      String         @map("exam_type_id")
+  subjectId       String?        @map("subject_id") // null = whole exam. THE only scope input.
+  title           String
+  isFree          Boolean        @default(true) @map("is_free")
+  durationMins    Int            @map("duration_mins")
+  totalMarks      Int            @map("total_marks") // admin-entered; must equal Σ question.marks
+  defaultMarks    Int            @default(1) @map("default_marks") // applied to new rows
+  defaultNegMarks Float          @default(0) @map("default_neg_marks") // applied to new rows
+  instructions    String?
+  isActive        Boolean        @default(false) @map("is_active")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  examType        ExamType       @relation(fields: [examTypeId], references: [id])
+  subject         Subject?       @relation(fields: [subjectId], references: [id])
+  payments        Payment[]
+  attempts        TestAttempt[]
+  questions       TestQuestion[]
 
   @@index([examTypeId])
   @@index([subjectId])
@@ -229,15 +231,16 @@ model DoubtSession {
 }
 
 model Video {
-  id          String   @id @default(uuid())
-  topicId     String   @map("topic_id")
-  youtubeId   String   @map("youtube_id")
+  id          String       @id @default(uuid())
+  topicId     String       @map("topic_id")
+  youtubeId   String       @map("youtube_id")
   title       String
-  durationSec Int?     @map("duration_sec")
-  orderIndex  Int      @default(0) @map("order_index")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  durationSec Int?         @map("duration_sec")
+  orderIndex  Int          @default(0) @map("order_index")
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  topic       Topic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  watches     VideoWatch[]
 
   @@index([topicId])
   @@map("videos")
@@ -265,32 +268,66 @@ model Notification {
   sentAt     DateTime? @map("sent_at")
   createdAt  DateTime  @default(now()) @map("created_at")
 
+  reads NotificationRead[]
+
   @@index([examTypeId])
   @@map("notifications")
 }
 
+/// Per-user "I have seen this notification" marker. Composite PK on
+/// (user, notification) gives toggle semantics for free: row exists ⇒
+/// read, no row ⇒ unread. See ticket 11.
+model NotificationRead {
+  userId         String   @map("user_id")
+  notificationId String   @map("notification_id")
+  readAt         DateTime @default(now()) @map("read_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, notificationId])
+  @@index([notificationId])
+  @@map("notification_reads")
+}
+
+/// Per-user "I have watched this video" toggle. Composite PK on (user, video)
+/// gives toggle semantics for free: row exists ⇒ watched, no row ⇒ not watched.
+/// See ticket 06.
+model VideoWatch {
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  watchedAt DateTime @default(now()) @map("watched_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@index([videoId])
+  @@map("video_watches")
+}
+
 model Note {
-  id         String   @id @default(uuid())
-  topicId    String?  @map("topic_id")
-  subjectId  String?  @map("subject_id")
-  examTypeId String   @map("exam_type_id")
-  title      String
-  filePath String
-  cloudinaryPublicId String?  @map("cloudinary_public_id") 
-  fileName String
-  fileType FileType
-  fileSizeMb Float?
-  embeddingStatus EmbeddingStatus @default(PENDING)
-  embeddingError String?
-  isFree     Boolean  @default(false) @map("is_free")
-  isActive   Boolean  @default(true) @map("is_active")
-  uploadedBy String   @map("uploaded_by")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  examType   ExamType @relation(fields: [examTypeId], references: [id])
-  subject    Subject? @relation(fields: [subjectId], references: [id])
-  topic      Topic?   @relation(fields: [topicId], references: [id])
-  uploader   User     @relation("NoteUploader", fields: [uploadedBy], references: [id])
+  id                 String          @id @default(uuid())
+  topicId            String?         @map("topic_id")
+  subjectId          String?         @map("subject_id")
+  examTypeId         String          @map("exam_type_id")
+  title              String
+  filePath           String
+  cloudinaryPublicId String?         @map("cloudinary_public_id")
+  fileName           String
+  fileType           FileType
+  fileSizeMb         Float?
+  embeddingStatus    EmbeddingStatus @default(PENDING)
+  embeddingError     String?
+  isFree             Boolean         @default(false) @map("is_free")
+  isActive           Boolean         @default(true) @map("is_active")
+  uploadedBy         String          @map("uploaded_by")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  examType           ExamType        @relation(fields: [examTypeId], references: [id])
+  subject            Subject?        @relation(fields: [subjectId], references: [id])
+  topic              Topic?          @relation(fields: [topicId], references: [id])
+  uploader           User            @relation("NoteUploader", fields: [uploadedBy], references: [id])
 
   @@index([topicId])
   @@index([subjectId])
@@ -303,16 +340,16 @@ model Note {
 // output in `rows` (JSON — the shared draft-row contract from tickets 06/08).
 // Nothing reaches `questions` until the admin reviews the grid and clicks Save.
 model TestPdfImport {
-  id        String   @id @default(uuid())
-  testId    String   @map("test_id")
-  fileName  String   @map("file_name")
-  filePath  String   @map("file_path")
-  status    String   @default("PENDING") // PENDING | PROCESSING | READY | FAILED
+  id        String    @id @default(uuid())
+  testId    String    @map("test_id")
+  fileName  String    @map("file_name")
+  filePath  String    @map("file_path")
+  status    String    @default("PENDING") // PENDING | PROCESSING | READY | FAILED
   error     String?
-  rowCount  Int      @default(0) @map("row_count")
+  rowCount  Int       @default(0) @map("row_count")
   parsedAt  DateTime? @map("parsed_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  rows      Json     @default("[]") // draft rows, same shape as 06/08
+  createdAt DateTime  @default(now()) @map("created_at")
+  rows      Json      @default("[]") // draft rows, same shape as 06/08
 
   @@index([testId])
   @@map("test_pdf_imports")
