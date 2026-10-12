@@ -20,13 +20,7 @@ import AppShell from "../../components/layout/AppShell";
 import Markdown from "../../components/shared/Markdown";
 import { Button } from "../../components/ui";
 import { useAskQuestion } from "../../hooks/rag/useRag";
-
-interface Message {
-  id: string;
-  role: "user" | "bot";
-  content: string;
-  sources?: string[];
-}
+import type { ChatMessage } from "../../types/rag.types";
 
 const SUGGESTED_QUESTIONS = [
   "Explain Newton's second law with an example",
@@ -35,7 +29,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const askMutation = useAskQuestion();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -52,7 +46,8 @@ export default function ChatPage() {
     const question = text.trim();
     if (!question || askMutation.isPending) return;
 
-    const userMsg: Message = {
+    const userMsg: ChatMessage = {
+      // eslint-disable-next-line react-hooks/purity -- event handler, not render
       id: `u-${Date.now()}`,
       role: "user",
       content: question,
@@ -200,7 +195,7 @@ function BotAvatar() {
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
     return (
       <div className="flex items-start justify-end gap-3">
