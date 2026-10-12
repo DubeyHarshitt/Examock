@@ -103,8 +103,11 @@ export function useTopicProgress(topicId: string) {
 // `refetchInterval: 60_000` runs every 60s while visible. `staleTime` matches
 // the interval so the first paint of the bell uses cached data if present.
 //
-// Ticket 12 — the response only ever contains *unread* notifications. When
-// the user opens the full-view modal, the page calls
+// Ticket 12 (retention extension) — the response contains the user's
+// inbox: unread items PLUS items read within the 24h retention window.
+// Each item carries `read` + `readAt` so the client can style read rows
+// differently; `unreadCount` excludes reads so the badge stays accurate.
+// When the user opens the full-view modal, the page calls
 // `markNotificationsReadApi([id])` directly and invalidates
 // `studentKeys.notifications()` so the bell (limit 3), inbox page (limit
 // 50), and dashboard banner (limit 1) all refetch at once.

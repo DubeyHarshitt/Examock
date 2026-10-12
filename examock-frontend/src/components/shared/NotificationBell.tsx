@@ -1,18 +1,19 @@
 // src/components/shared/NotificationBell.tsx
 //
 // Bell icon + unread badge + hand-rolled popover listing the most recent
-// *unread* notifications. Polled by `useNotifications` (React Query).
-// Hand-rolled popover (click-outside, ESC, focus management) to match the
-// existing slide-over pattern in AppShell and avoid adding a headless-ui
-// dependency.
+// inbox notifications (unread + items read within the 24h retention
+// window). Polled by `useNotifications` (React Query). Hand-rolled popover
+// (click-outside, ESC, focus management) to match the existing slide-over
+// pattern in AppShell and avoid adding a headless-ui dependency.
 //
 // Visibility: desktop only. On mobile the notifications inbox is reachable
 // via the slide-over menu (see AppShell.tsx).
 //
 // Ticket: docs/student-pannel/issue-01/ticket/02-notifications-frontend.md
 // Ticket 12 — opening the popover no longer marks items as read. A
-// notification becomes read (and disappears from this list) only when the
-// user opens its full view on the inbox page.
+// notification becomes read when the user opens its full view on the
+// inbox page; it then lingers in the popover for 24h (muted styling)
+// before the server drops it.
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -162,28 +163,41 @@ function NotificationRow({
   item: StudentNotification;
   onClick: () => void;
 }) {
-  // Ticket 12: every item in this list is unread by construction (the
-  // server only returns unread rows). Solid brand dot, dark title — the
-  // previous hollow-ring-vs-solid-dot read-state cue is gone.
+  // Ticket 12 (retention extension): the popover now contains unread
+  // AND recently-read items. Unread rows keep the solid brand dot + dark
+  // title. Read rows swap to a hollow ring + muted title so the eye lands
+  // on what's actually new. The dot/ring is purely decorative; the
+  // aria-label is what conveys read state to assistive tech.
+  const isRead = item.read;
+  const dotClass = isRead
+    ? "mt-1 w-2 h-2 rounded-full ring-2 ring-slate-300 shrink-0"
+    : "mt-1 w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0";
+  const titleClass = isRead
+    ? "text-sm font-medium text-slate-500 truncate"
+    : "text-sm font-medium text-slate-900 truncate";
+  const metaClass = isRead ? "text-xs text-slate-400 mt-0.5" : "text-xs text-slate-400 mt-0.5";
+  const metaText = isRead
+    ? `Read ${relativeTime(item.readAt ?? item.createdAt)}`
+    : `Posted ${relativeTime(item.createdAt)}`;
+  const ariaLabel = isRead
+    ? `Read notification: ${item.title}`
+    : `Unread notification: ${item.title}`;
+
   return (
     <li>
       <button
         onClick={onClick}
-        aria-label={`Unread notification: ${item.title}`}
-        className="block w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
+        aria-label={ariaLabel}
+        className={cn(
+          "block w-full text-left px-4 py-3 transition-colors",
+          isRead ? "hover:bg-slate-50" : "hover:bg-brand-50",
+        )}
       >
         <div className="flex items-start gap-2">
-          <span
-            aria-hidden="true"
-            className="mt-1 w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0"
-          />
+          <span aria-hidden="true" className={dotClass} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-900 truncate">
-              {item.title}
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Posted {relativeTime(item.createdAt)}
-            </p>
+            <p className={titleClass}>{item.title}</p>
+            <p className={metaClass}>{metaText}</p>
           </div>
         </div>
       </button>

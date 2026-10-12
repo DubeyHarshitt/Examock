@@ -2,9 +2,12 @@
 //
 // Student-side inbox at /notifications. Newest first. Polled every 60s via
 // the same React Query hook the bell uses — single source of truth, no extra
-// fetch. Backend caps results at 50 items, and the response only contains
-// *unread* items (ticket 12): the moment the user opens a notification's
-// full view, the server marks it as read and it disappears from this list.
+// fetch. Backend caps results at 50 items. The response now contains both
+// *unread* items AND items read within the 24h retention window (ticket 12
+// retention): opening the modal still marks the row as read, but the row
+// stays visible (in muted styling) until 24h have passed since `readAt`.
+// `unreadCount` excludes reads; the badge therefore drops the moment a
+// row is opened.
 //
 // Click a card to open the modal. The modal fires
 // `markNotificationsReadApi([id])` on open — server-side idempotent — then
@@ -72,7 +75,9 @@ export default function NotificationsPage() {
         subtitle={
           unreadCount > 0
             ? `${unreadCount} unread`
-            : "You're all caught up."
+            : items.length > 0
+              ? `All caught up · ${items.length} recently`
+              : "You're all caught up."
         }
       />
 
@@ -98,45 +103,72 @@ export default function NotificationsPage() {
         />
       ) : (
         <ul className="mt-6 space-y-3">
-          {items.map((n) => (
-            <Reveal key={n.id}>
-              <li>
-                <button
-                  onClick={() => handleOpen(n)}
-                  aria-label={`Open notification: ${n.title}`}
-                  className="block w-full text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-                >
-                  <Card className="p-4 transition-colors hover:bg-slate-50">
-                    <div className="flex items-start gap-3">
-                      <Megaphone
-                        className="w-5 h-5 text-brand-600 mt-0.5 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-slate-900">
-                          {n.title}
-                        </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Posted {formatFull(n.createdAt)}
-                          {n.examTypeId === null && " · Global"}
-                        </p>
-                        {/* Preview line — clamped so the card height stays
-                            predictable; the full body opens in the modal. */}
-                        <p
+          {items.map((n) => {
+            // Ticket 12 (retention extension): read items stay visible
+            // for 24h, but rendered muted so unread rows stand out. The
+            // distinguishing mark is the icon + title colour + a `· Read`
+            // suffix on the timestamp line.
+            const isRead = n.read;
+            return (
+              <Reveal key={n.id}>
+                <li>
+                  <button
+                    onClick={() => handleOpen(n)}
+                    aria-label={
+                      isRead
+                        ? `Open read notification: ${n.title}`
+                        : `Open unread notification: ${n.title}`
+                    }
+                    className="block w-full text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                  >
+                    <Card
+                      className={cn(
+                        "p-4 transition-colors",
+                        isRead ? "bg-slate-50 hover:bg-slate-100" : "hover:bg-slate-50",
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Megaphone
                           className={cn(
-                            "text-sm text-slate-700 mt-2",
-                            "line-clamp-2 whitespace-pre-wrap",
+                            "w-5 h-5 mt-0.5 shrink-0",
+                            isRead ? "text-slate-400" : "text-brand-600",
                           )}
-                        >
-                          {n.body}
-                        </p>
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h3
+                            className={cn(
+                              "font-semibold",
+                              isRead ? "text-slate-500" : "text-slate-900",
+                            )}
+                          >
+                            {n.title}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Posted {formatFull(n.createdAt)}
+                            {n.examTypeId === null && " · Global"}
+                            {isRead && " · Read"}
+                          </p>
+                          {/* Preview line — clamped so the card height stays
+                              predictable; the full body opens in the modal.
+                              Muted text on read rows so they recede visually. */}
+                          <p
+                            className={cn(
+                              "text-sm mt-2",
+                              "line-clamp-2 whitespace-pre-wrap",
+                              isRead ? "text-slate-500" : "text-slate-700",
+                            )}
+                          >
+                            {n.body}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                </button>
-              </li>
-            </Reveal>
-          ))}
+                    </Card>
+                  </button>
+                </li>
+              </Reveal>
+            );
+          })}
         </ul>
       )}
 

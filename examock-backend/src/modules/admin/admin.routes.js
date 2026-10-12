@@ -35,7 +35,7 @@ import {
   // Analytics
   getOverview, getTestAnalytics, getPaymentRecords,
   // Notifications
-  listNotifications, broadcastNotification,
+  listNotifications, broadcastNotification, deleteNotification,
   getNoteDownloadUrl,
 } from "./admin.controller.js";
 import { rowsSchema } from "./lib/rows.js";

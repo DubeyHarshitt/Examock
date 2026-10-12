@@ -3,6 +3,9 @@ import { AppError } from "../../utils/AppError.js";
 import {
   filterNotificationsByExamScope,
   clampNotificationLimit,
+  readCutoff,
+  shapeInboxItem,
+  countUnread,
 } from "./lib/notifications.js";
 
 // ─────────────────────────────────────────────────────────────
@@ -453,21 +456,27 @@ export const getTopicProgress = async (userId, topicId) => {
 //     ticket 11: docs/student-pannel/issue-01/ticket/11-notifications-read-state.md
 //     adds per-user read state;
 //     ticket 12: docs/student-pannel/issue-01/ticket/12-notifications-full-view-and-admin-delete.md
-//     changes semantics so read items disappear from the inbox.)
+//     changes semantics so read items disappear from the inbox;
+//     24h retention: read items linger for READ_RETENTION_MS after readAt
+//     so the user can re-open something they just dismissed.)
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Returns the user's notifications that are still unread, filtered by exam
- * scope (global + the user's exam). Once the user opens a notification's
- * full view (ticket 12) the server marks it as read; on the next refetch
- * the item is gone from this list, and the bell badge drops by one.
+ * Returns the user's notifications still in their inbox, filtered by exam
+ * scope (global + the user's exam). A row stays visible for 24 hours after
+ * the user marks it as read (see `readRetentionMs`), then drops off.
  *
- * `unreadCount` is `items.length` — the response only ever contains
- * unread items, so callers can derive the count without a separate field.
+ * The response carries every inbox row — unread AND recently-read — with
+ * a `read` flag (and matching `readAt`) so the client can style read
+ * items differently. `unreadCount` counts only the unread ones, so the
+ * bell badge drops the moment a row is read; the row itself stays in
+ * `items` until 24h after `readAt`.
  *
- * Read filtering happens in Prisma (`NOT: { reads: { some: { userId } } }`)
- * so we don't over-fetch then drop. The `reads` relation is the back-
- * reference declared on the `Notification` model in `schema.prisma`.
+ * `inboxCount` is `items.length` — included for clarity in clients that
+ * also want to render the total. The Prisma `where` keeps the unread
+ * rows PLUS read rows whose `readAt` is still inside the retention
+ * window, and `include.reads` is scoped to `userId` so we only ever
+ * see the current user's read state (composite PK caps it at 1).
  */
 export const listNotifications = async (userId, { limit } = {}) => {
   const user = await prisma.user.findUnique({
@@ -477,15 +486,35 @@ export const listNotifications = async (userId, { limit } = {}) => {
   if (!user) throw new AppError("User not found", 404);
 
   const take = clampNotificationLimit(limit);
+  const cutoff = readCutoff();
 
-  const all = await prisma.notification.findMany({
-    where: { NOT: { reads: { some: { userId } } } },
+  const rows = await prisma.notification.findMany({
+    where: {
+      OR: [
+        // Never read — always in the inbox.
+        { reads: { none: { userId } } },
+        // Read inside the retention window — still in the inbox.
+        { reads: { some: { userId, readAt: { gte: cutoff } } } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     take,
+    include: {
+      reads: {
+        where:  { userId },
+        select: { readAt: true },
+        take: 1,
+      },
+    },
   });
 
-  const visible = filterNotificationsByExamScope(all, user.examTypeId);
-  return { items: visible, unreadCount: visible.length };
+  const scoped = filterNotificationsByExamScope(rows, user.examTypeId);
+  const items  = scoped.map((n) => shapeInboxItem(n, n.reads[0] ?? null));
+  return {
+    items,
+    unreadCount: countUnread(items),
+    inboxCount:  items.length,
+  };
 };
 
 /**

@@ -165,15 +165,19 @@ export interface TopicProgressDetail {
 // ── Notifications (ticket 02) ────────────────────────────────────────────────
 
 /**
- * One unread broadcast visible to the user. `sentAt` is when the admin
- * scheduled / pushed it; `createdAt` is the row write time. `examTypeId`
- * is null for global broadcasts.
+ * One row in the user's inbox. `sentAt` is when the admin scheduled /
+ * pushed it; `createdAt` is the row write time. `examTypeId` is null for
+ * global broadcasts.
  *
- * Ticket 12: the server only returns *unread* notifications. As soon as
- * the user opens a notification's full view, the server marks it as read
- * (`notification_reads`) and on the next refetch the item is gone from
- * this list. So this shape carries no `isRead` / `readAt` — by
- * construction every item in the response is unread.
+ * `read` and `readAt` reflect *this user's* read state (the server scopes
+ * the `notification_reads` join to the current user). Items where
+ * `read === true` stay in the list for 24h after `readAt` so the user can
+ * re-open something they just dismissed; the bell badge counts only the
+ * unread ones (see `ListNotificationsResponse.unreadCount`).
+ *
+ * When `read === false`, `readAt` is always null. When `read === true`,
+ * `readAt` is the server-stamped first-view timestamp; re-opening the
+ * same notification does NOT reset it.
  */
 export interface StudentNotification {
   id: string;
@@ -182,10 +186,18 @@ export interface StudentNotification {
   sentAt: string | null;
   createdAt: string;
   examTypeId: string | null;
+  /** True once this user has marked the notification as read. */
+  read: boolean;
+  /** First-view timestamp (server-stamped). Null while unread. */
+  readAt: string | null;
 }
 
 export interface ListNotificationsResponse {
+  /** The user's inbox: unread + items read within the 24h window. */
   items: StudentNotification[];
-  /** Always equals `items.length` — kept for back-compat with the bell. */
+  /** Bell badge value: items where `read === false`. */
   unreadCount: number;
+  /** Total inbox size (`items.length`). Exposed for clarity in clients
+   * that want to render the total alongside the unread count. */
+  inboxCount: number;
 }

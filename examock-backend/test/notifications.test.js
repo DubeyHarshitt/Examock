@@ -5,6 +5,10 @@ import fc from "fast-check";
 import {
   filterNotificationsByExamScope,
   clampNotificationLimit,
+  readRetentionMs,
+  readCutoff,
+  shapeInboxItem,
+  countUnread,
 } from "../src/modules/student/lib/notifications.js";
 
 // ──────────────────────────────────────────────────────────────
@@ -183,39 +187,44 @@ test("changeExamType is not a no-op when current is null", () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// Notification unread-filter
-// (ticket 12 — listNotifications returns only items the user has NOT
-// opened. Read items live in `notification_reads` and are filtered out
-// at the Prisma layer with `NOT: { reads: { some: { userId } } }`. We
-// test the pure shape: given a list of items + a set of read ids,
-// filter unread and report unreadCount = unread.length.)
+// Notification inbox-filter
+// (ticket 12 — listNotifications returns items still in the user's
+// inbox: never-read OR read inside the 24h retention window. The Prisma
+// `where` is `OR: [{ reads: none }, { reads: some, readAt >= cutoff }]`
+// and includes the user's own read row. The JS-layer applies the exam-
+// scope filter, shapes each row, and counts the unread ones.
+//   unreadCount  = items where read === false   (bell badge)
+//   inboxCount   = items.length                (total inbox size))
 // ──────────────────────────────────────────────────────────────
 
 /**
  * Pure mirror of the in-memory half of `listNotifications`: take the
- * rows Prisma returned (all of which are unread thanks to the `NOT`
- * clause) and apply the exam-scope filter, then return `{ items, unreadCount }`.
- * The unread filter has already happened in SQL; here we just verify the
- * JS-side contract that `unreadCount === items.length`.
+ * rows Prisma returned (already filtered to inbox = unread ∪ recently-
+ * read, with the user's own `reads` row attached), apply the exam-scope
+ * filter, and shape each row into the API item. `unreadCount` is the
+ * number of items with `read === false`; `inboxCount` is `items.length`.
  */
-function filterUnread(all, userExamTypeId) {
-  const items = filterNotificationsByExamScope(all, userExamTypeId);
-  return { items, unreadCount: items.length };
+function filterInbox(rows, userExamTypeId) {
+  const scoped = filterNotificationsByExamScope(rows, userExamTypeId);
+  const items  = scoped.map((n) => shapeInboxItem(n, n.reads?.[0] ?? null));
+  return { items, unreadCount: countUnread(items), inboxCount: items.length };
 }
 
-test("filterUnread: every item is unread by construction (empty read set)", () => {
-  const all = [
-    { id: "a", examTypeId: null,    title: "A" },
-    { id: "b", examTypeId: "jee",   title: "B" },
-    { id: "c", examTypeId: "neet",  title: "C" },
+test("filterInbox: scope + counts agree (JEE user sees global + their exam)", () => {
+  const rows = [
+    { id: "a", examTypeId: null,    title: "A", reads: [] },
+    { id: "b", examTypeId: "jee",   title: "B", reads: [] },
+    { id: "c", examTypeId: "neet",  title: "C", reads: [] },
   ];
   // JEE user sees globals + their exam; neet-locked item is filtered out.
-  const { items, unreadCount } = filterUnread(all, "jee");
+  // All three are unread here, so unreadCount === inboxCount === 2.
+  const { items, unreadCount, inboxCount } = filterInbox(rows, "jee");
+  assert.equal(inboxCount, 2);
   assert.equal(unreadCount, 2);
   assert.deepEqual(items.map((i) => i.id), ["a", "b"]);
 });
 
-test("filterUnread: unreadCount === items.length always", () => {
+test("filterInbox: inboxCount === items.length always", () => {
   fc.assert(
     fc.property(
       fc.array(
@@ -223,29 +232,224 @@ test("filterUnread: unreadCount === items.length always", () => {
           id: fc.uuid(),
           examTypeId: fc.oneof(fc.constant(null), fc.uuid()),
           title: fc.string({ minLength: 1, maxLength: 20 }),
+          reads: fc.array(fc.record({ readAt: fc.integer() }), { maxLength: 1 }),
         }),
         { maxLength: 10 },
       ),
       fc.oneof(fc.constant(null), fc.uuid()),
-      (all, userExamTypeId) => {
-        const { items, unreadCount } = filterUnread(all, userExamTypeId);
-        assert.equal(unreadCount, items.length);
+      (rows, userExamTypeId) => {
+        const { items, inboxCount } = filterInbox(rows, userExamTypeId);
+        assert.equal(inboxCount, items.length);
       },
     ),
   );
 });
 
-test("filterUnread: a previously-opened id is gone (server-side filter, not modelled here)", () => {
-  // The server uses `NOT: { reads: { some: { userId } } }` so by the time
-  // items reach the JS-side helper, the read ones are already gone. This
-  // test pins the contract: the helper never sees a read row.
-  const all = [
-    { id: "still-unread", examTypeId: null, title: "A" },
+test("filterInbox: rows reaching JS are guaranteed inbox-eligible by SQL", () => {
+  // The server uses `OR: [{ reads: none }, { reads: some, readAt >= cutoff }]`
+  // so by the time items reach the JS-side helper, the expired-read ones
+  // are already gone. This test pins the contract: the helper never sees
+  // an expired-read row.
+  const rows = [
+    { id: "still-in-inbox", examTypeId: null, title: "A", reads: [] },
   ];
-  const { items, unreadCount } = filterUnread(all, "jee");
+  const { items, unreadCount, inboxCount } = filterInbox(rows, "jee");
+  assert.equal(inboxCount, 1);
   assert.equal(unreadCount, 1);
   assert.equal(items.length, 1);
-  assert.equal(items[0].id, "still-unread");
+  assert.equal(items[0].id, "still-in-inbox");
+});
+
+// ──────────────────────────────────────────────────────────────
+// shapeInboxItem — row → API item mapping
+// (ticket 12 retention extension: each item carries `read` + `readAt`)
+// ──────────────────────────────────────────────────────────────
+
+test("shapeInboxItem: never-read row → read=false, readAt=null", () => {
+  const row = {
+    id: "n-1",
+    examTypeId: null,
+    title: "Hello",
+    body: "World",
+    sentAt: null,
+    createdAt: "2026-10-12T10:00:00Z",
+    reads: [],
+  };
+  const item = shapeInboxItem(row, null);
+  assert.deepEqual(item, {
+    id: "n-1",
+    examTypeId: null,
+    title: "Hello",
+    body: "World",
+    sentAt: null,
+    createdAt: "2026-10-12T10:00:00Z",
+    read: false,
+    readAt: null,
+  });
+});
+
+test("shapeInboxItem: read row → read=true, readAt copied through", () => {
+  const row = {
+    id: "n-2",
+    examTypeId: "jee",
+    title: "T",
+    body: "B",
+    sentAt: "2026-10-12T09:00:00Z",
+    createdAt: "2026-10-12T09:00:00Z",
+    reads: [{ readAt: "2026-10-12T11:30:00Z" }],
+  };
+  const myRead = row.reads[0];
+  const item = shapeInboxItem(row, myRead);
+  assert.equal(item.read, true);
+  assert.equal(item.readAt, "2026-10-12T11:30:00Z");
+  // Pass-through fields preserved
+  assert.equal(item.id, "n-2");
+  assert.equal(item.title, "T");
+  assert.equal(item.body, "B");
+  assert.equal(item.sentAt, "2026-10-12T09:00:00Z");
+  assert.equal(item.createdAt, "2026-10-12T09:00:00Z");
+  assert.equal(item.examTypeId, "jee");
+});
+
+test("shapeInboxItem: ignores additional reads beyond the first", () => {
+  // Defensive: Prisma caps via `take: 1`, but the helper must be robust
+  // if a caller forgets. Only the first read row is consulted.
+  const row = {
+    id: "n-3", examTypeId: null, title: "t", body: "b",
+    sentAt: null, createdAt: "2026-10-12T10:00:00Z",
+    reads: [{ readAt: "first" }, { readAt: "second" }],
+  };
+  const item = shapeInboxItem(row, row.reads[0]);
+  assert.equal(item.readAt, "first");
+});
+
+// ──────────────────────────────────────────────────────────────
+// countUnread — inbox badge derivation
+// ──────────────────────────────────────────────────────────────
+
+test("countUnread: empty list → 0", () => {
+  assert.equal(countUnread([]), 0);
+});
+
+test("countUnread: counts only items with read=false", () => {
+  const items = [
+    { read: false },
+    { read: true  },
+    { read: false },
+    { read: true  },
+    { read: false },
+  ];
+  assert.equal(countUnread(items), 3);
+});
+
+test("countUnread: matches `items.filter(!read).length` always", () => {
+  fc.assert(
+    fc.property(
+      fc.array(fc.record({ read: fc.boolean(), id: fc.uuid() }), { maxLength: 30 }),
+      (items) => {
+        const expected = items.filter((it) => !it.read).length;
+        assert.equal(countUnread(items), expected);
+      },
+    ),
+  );
+});
+
+test("countUnread + inboxCount relationship (service-level property)", () => {
+  // The service exposes both fields. Their invariant is:
+  //   0 ≤ unreadCount ≤ inboxCount
+  // Any list that violates this would mean read rows are leaking into
+  // the unread count (or vice versa). Property-tested over random inputs.
+  fc.assert(
+    fc.property(
+      fc.array(fc.record({ read: fc.boolean() }), { maxLength: 30 }),
+      (items) => {
+        const unread = countUnread(items);
+        const total  = items.length;
+        assert.ok(unread >= 0);
+        assert.ok(unread <= total);
+      },
+    ),
+  );
+});
+
+// ──────────────────────────────────────────────────────────────
+// 24h retention — readCutoff / readRetentionMs
+// (ticket 12 retention: read items drop off READ_RETENTION_MS after readAt.)
+// ──────────────────────────────────────────────────────────────
+
+test("readRetentionMs is 24 hours, in milliseconds", () => {
+  assert.equal(readRetentionMs(), 24 * 60 * 60 * 1000);
+});
+
+test("readCutoff defaults to now - retention (uses real clock)", () => {
+  const before = Date.now();
+  const cutoff = readCutoff();
+  const after = Date.now();
+  // cutoff should sit somewhere in [before - 24h, after - 24h]
+  assert.ok(cutoff.getTime() >= before - readRetentionMs());
+  assert.ok(cutoff.getTime() <= after - readRetentionMs());
+});
+
+test("readCutoff honours an injected `now` (testable clock)", () => {
+  const fixedNow = 1_700_000_000_000; // arbitrary fixed epoch ms
+  const cutoff = readCutoff(fixedNow);
+  assert.equal(cutoff.getTime(), fixedNow - readRetentionMs());
+});
+
+test("readCutoff is injectable for property tests", () => {
+  fc.assert(
+    fc.property(
+      fc.integer({ min: 0, max: 2 ** 48 }),
+      (now) => {
+        const cutoff = readCutoff(now);
+        assert.equal(cutoff.getTime(), now - readRetentionMs());
+      },
+    ),
+  );
+});
+
+/**
+ * Pure mirror of the inbox-eligibility decision the SQL `where` expresses.
+ * `readIds` is a Map of notificationId → readAt (ms). A row is in the
+ * inbox when: it's never read, OR it was read at-or-after `cutoff`.
+ */
+function isInboxEligible(notificationId, readIds, cutoff) {
+  const readAt = readIds.get(notificationId);
+  if (readAt === undefined) return true;   // never read
+  return readAt >= cutoff.getTime();       // recent read
+}
+
+test("isInboxEligible: never-read → in", () => {
+  assert.equal(isInboxEligible("n-1", new Map(), readCutoff(1_000_000)), true);
+});
+
+test("isInboxEligible: read 1 min ago → in (well inside retention)", () => {
+  const now = 1_000_000_000;
+  const readIds = new Map([["n-1", now - 60 * 1000]]);
+  assert.equal(isInboxEligible("n-1", readIds, readCutoff(now)), true);
+});
+
+test("isInboxEligible: read exactly at cutoff → in (>=)", () => {
+  const now = 1_000_000_000;
+  const cutoff = readCutoff(now);
+  const readIds = new Map([["n-1", cutoff.getTime()]]);
+  assert.equal(isInboxEligible("n-1", readIds, cutoff), true);
+});
+
+test("isInboxEligible: read 1 ms past the cutoff → out", () => {
+  const now = 1_000_000_000;
+  const cutoff = readCutoff(now);
+  const readIds = new Map([["n-1", cutoff.getTime() - 1]]);
+  assert.equal(isInboxEligible("n-1", readIds, cutoff), false);
+});
+
+test("isInboxEligible: read a full retention window ago → in (boundary is inclusive)", () => {
+  // cutoff = now - retention; readAt = now - retention. readAt === cutoff ⇒
+  // >= holds ⇒ still in. The "just past" test (1 ms earlier) is the
+  // partner that proves the boundary is not sticky on the other side.
+  const now = 1_000_000_000;
+  const readIds = new Map([["n-1", now - readRetentionMs()]]);
+  assert.equal(isInboxEligible("n-1", readIds, readCutoff(now)), true);
 });
 
 // ──────────────────────────────────────────────────────────────
