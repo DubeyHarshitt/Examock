@@ -23,6 +23,8 @@ import ProgressPage from "./pages/progress/ProgressPage";
 import TopicProgressPage from "./pages/progress/TopicProgressPage";
 import ChatPage from "./pages/rag/ChatPage";
 import UploadPage from "./pages/rag/UploadPage";
+import NotificationsPage from "./pages/notifications/NotificationsPage";
+import ProfilePage from "./pages/profile/ProfilePage";
 
 // Admin
 import AdminDashboard from "./pages/admin/adminDashboard";
@@ -103,6 +105,8 @@ export default function App() {
               <Route path="/progress/:topicId" element={<TopicProgressPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/upload" element={<UploadPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
 
             {/* ── Admin routes — auth + admin role ──────────── */}

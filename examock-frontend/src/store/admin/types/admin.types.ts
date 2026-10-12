@@ -17,13 +17,9 @@ export interface CreateSubjectDto {
 
 export type UpdateSubjectDto = Partial<CreateSubjectDto>;
 
-// EXAM TYPES
-export interface ExamType {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-}
+// EXAM TYPES — re-exported from the neutral location so existing admin code
+// keeps working. New code should import from "../../../types/exam.types".
+export type { ExamType } from "../../../types/exam.types";
 
 export interface CreateExamTypeDto {
   name: string;

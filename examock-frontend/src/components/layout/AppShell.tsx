@@ -16,7 +16,6 @@ import {
   MonitorPlay,
   BarChart3,
   Users,
-  LogOut,
   MessageCircle,
   FolderOpen,
   Bell,
@@ -25,8 +24,9 @@ import {
   Wrench,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
-import { logout } from "../../api/auth.api";
 import { cn } from "../../utils/cn";
+import { NotificationBell } from "../shared/NotificationBell";
+import { ProfileMenu } from "../shared/ProfileMenu";
 
 interface NavItem {
   to: string;
@@ -75,20 +75,9 @@ const studentBottomNav: NavItem[] = [
 export function AppShell({ children, section }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, isAdmin, logout: clearAuth } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
 
   const nav = section === "admin" ? adminNav : studentNav;
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      // ignore — backend may already have invalidated; still clear locally
-    } finally {
-      clearAuth();
-      navigate("/login", { replace: true });
-    }
-  };
 
   const linkClasses = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -156,27 +145,8 @@ export function AppShell({ children, section }: AppShellProps) {
                 Student View
               </button>
             )}
-            <div className="hidden sm:flex items-center gap-2">
-              {user?.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name ?? "User"}
-                  className="w-7 h-7 rounded-full ring-2 ring-brand-100"
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white flex items-center justify-center text-xs font-bold uppercase">
-                  {user?.name?.[0] ?? "U"}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-              aria-label="Logout"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            {section === "student" && <NotificationBell />}
+            <ProfileMenu />
           </div>
         </div>
       </header>
@@ -200,6 +170,40 @@ export function AppShell({ children, section }: AppShellProps) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              {section === "student" && (
+                <>
+                  <NavLink
+                    to="/notifications"
+                    onClick={() => setMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium",
+                        isActive
+                          ? "bg-brand-50 text-brand-700"
+                          : "text-slate-600 hover:bg-slate-100"
+                      )
+                    }
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </NavLink>
+                  <NavLink
+                    to="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium",
+                        isActive
+                          ? "bg-brand-50 text-brand-700"
+                          : "text-slate-600 hover:bg-slate-100"
+                      )
+                    }
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    Profile
+                  </NavLink>
+                </>
+              )}
               {nav.map((item) => (
                 <NavLink
                   key={item.to}

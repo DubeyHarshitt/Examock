@@ -3,6 +3,7 @@ import type {
   LoginResponse,
   SelectExamTypeResponse,
 } from "../types/auth.types";
+import type { ExamType } from "../types/exam.types";
 
 export const googleLogin = async (idToken: string): Promise<LoginResponse> => {
   const { data } = await api.post("/auth/google", { idToken });
@@ -31,9 +32,13 @@ export const logout = async () => {
   return data;
 };
 
-// Used in onboarding step 1 — show available exam types to pick from
-export const getExamTypes = async () => {
-  const { data } = await api.get("/auth/exam-types");
+// Used in onboarding step 1 — show available exam types to pick from.
+// The backend response shape is `{ success, examTypes: ExamType[] }`; we hand
+// back the inner array.
+export const getExamTypes = async (): Promise<ExamType[]> => {
+  const { data } = await api.get<{ success: boolean; examTypes: ExamType[] }>(
+    "/auth/exam-types",
+  );
 
   return data.examTypes;
 };
