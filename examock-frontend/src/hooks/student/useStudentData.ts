@@ -2,7 +2,6 @@
 // React Query hooks for the student-facing API.
 // These power Phase 1+ pages (dashboard, subjects, topics, videos, notes, etc.).
 
-import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as studentApi from "../../api/student.api";
 import type { DashboardResponse } from "../../types/student.types";
@@ -104,14 +103,14 @@ export function useTopicProgress(topicId: string) {
 // `refetchInterval: 60_000` runs every 60s while visible. `staleTime` matches
 // the interval so the first paint of the bell uses cached data if present.
 //
-// Ticket 11 — added `markRead`. The bell (limit 3), inbox page (limit 50)
-// and dashboard banner (limit 1) all share the same query-key prefix
-// `studentKeys.notifications()` so invalidating that prefix refreshes every
-// caller at once, regardless of `limit`.
+// Ticket 12 — the response only ever contains *unread* notifications. When
+// the user opens the full-view modal, the page calls
+// `markNotificationsReadApi([id])` directly and invalidates
+// `studentKeys.notifications()` so the bell (limit 3), inbox page (limit
+// 50), and dashboard banner (limit 1) all refetch at once.
 
 export function useNotifications(limit = 50) {
-  const queryClient = useQueryClient();
-  const query = useQuery({
+  return useQuery({
     queryKey: [...studentKeys.notifications(), limit],
     queryFn: () => studentApi.getNotifications(limit),
     refetchOnWindowFocus: true,
@@ -119,18 +118,6 @@ export function useNotifications(limit = 50) {
     refetchIntervalInBackground: false,
     staleTime: 30_000,
   });
-
-  const markRead = useCallback(
-    async (ids: string[]) => {
-      if (!Array.isArray(ids) || ids.length === 0) return;
-      await studentApi.markNotificationsReadApi(ids);
-      // Invalidate by prefix so every limit variant (1, 3, 50) refetches.
-      queryClient.invalidateQueries({ queryKey: studentKeys.notifications() });
-    },
-    [queryClient],
-  );
-
-  return { ...query, markRead };
 }
 
 // ── Profile (ticket 03) ──────────────────────────────────────────────────────

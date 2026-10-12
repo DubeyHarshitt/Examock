@@ -285,7 +285,8 @@ router.get("/analytics/tests",     getTestAnalytics);
 router.get("/analytics/payments",  getPaymentRecords);
 
 // ── Notifications ────────────────────────────────────────────
-router.get("/notifications",       listNotifications);
-router.post("/notifications",      broadcastNotification);
+router.get("/notifications",             listNotifications);
+router.post("/notifications",            broadcastNotification);
+router.delete("/notifications/:id",      deleteNotification);
 
 export default router;

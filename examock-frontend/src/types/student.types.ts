@@ -165,13 +165,15 @@ export interface TopicProgressDetail {
 // ── Notifications (ticket 02) ────────────────────────────────────────────────
 
 /**
- * One broadcast visible to the user. `sentAt` is when the admin scheduled /
- * pushed it; `createdAt` is the row write time. `examTypeId` is null for
- * global broadcasts.
+ * One unread broadcast visible to the user. `sentAt` is when the admin
+ * scheduled / pushed it; `createdAt` is the row write time. `examTypeId`
+ * is null for global broadcasts.
  *
- * `isRead` / `readAt` are derived server-side from `notification_reads`
- * (ticket 11). `isRead === false` means the user has not yet seen this
- * notification; `readAt` is the timestamp of the first view, or null.
+ * Ticket 12: the server only returns *unread* notifications. As soon as
+ * the user opens a notification's full view, the server marks it as read
+ * (`notification_reads`) and on the next refetch the item is gone from
+ * this list. So this shape carries no `isRead` / `readAt` — by
+ * construction every item in the response is unread.
  */
 export interface StudentNotification {
   id: string;
@@ -180,11 +182,10 @@ export interface StudentNotification {
   sentAt: string | null;
   createdAt: string;
   examTypeId: string | null;
-  isRead: boolean;
-  readAt: string | null;
 }
 
 export interface ListNotificationsResponse {
   items: StudentNotification[];
+  /** Always equals `items.length` — kept for back-compat with the bell. */
   unreadCount: number;
 }

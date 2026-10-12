@@ -451,19 +451,23 @@ export const getTopicProgress = async (userId, topicId) => {
 // 11. Notifications — student read path
 //    (Ticket 01: docs/student-pannel/issue-01/ticket/01-notifications-backend.md;
 //     ticket 11: docs/student-pannel/issue-01/ticket/11-notifications-read-state.md
-//     adds per-user read state.)
+//     adds per-user read state;
+//     ticket 12: docs/student-pannel/issue-01/ticket/12-notifications-full-view-and-admin-delete.md
+//     changes semantics so read items disappear from the inbox.)
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Returns notifications visible to the user (global + their exam), each
- * annotated with `isRead` / `readAt` from the `notification_reads` table.
- * `unreadCount` is `visible.length - read.length`.
+ * Returns the user's notifications that are still unread, filtered by exam
+ * scope (global + the user's exam). Once the user opens a notification's
+ * full view (ticket 12) the server marks it as read; on the next refetch
+ * the item is gone from this list, and the bell badge drops by one.
  *
- * Notifications created before the user signed up still appear in the inbox
- * (they're global or exam-scoped), but they're treated as already-read
- * because there are no rows in `notification_reads` for them yet — which
- * matches the V1 behavior where "items created after join" were unread.
- * Every user starts at 0 unread on first sign-in.
+ * `unreadCount` is `items.length` — the response only ever contains
+ * unread items, so callers can derive the count without a separate field.
+ *
+ * Read filtering happens in Prisma (`NOT: { reads: { some: { userId } } }`)
+ * so we don't over-fetch then drop. The `reads` relation is the back-
+ * reference declared on the `Notification` model in `schema.prisma`.
  */
 export const listNotifications = async (userId, { limit } = {}) => {
   const user = await prisma.user.findUnique({
@@ -475,31 +479,13 @@ export const listNotifications = async (userId, { limit } = {}) => {
   const take = clampNotificationLimit(limit);
 
   const all = await prisma.notification.findMany({
+    where: { NOT: { reads: { some: { userId } } } },
     orderBy: { createdAt: "desc" },
     take,
   });
 
   const visible = filterNotificationsByExamScope(all, user.examTypeId);
-
-  const reads = visible.length === 0
-    ? []
-    : await prisma.notificationRead.findMany({
-        where: {
-          userId,
-          notificationId: { in: visible.map((n) => n.id) },
-        },
-        select: { notificationId: true, readAt: true },
-      });
-
-  const readMap = new Map(reads.map((r) => [r.notificationId, r.readAt]));
-  const items = visible.map((n) => ({
-    ...n,
-    isRead: readMap.has(n.id),
-    readAt: (readMap.get(n.id) ?? null)?.toISOString() ?? null,
-  }));
-  const unreadCount = items.filter((i) => !i.isRead).length;
-
-  return { items, unreadCount };
+  return { items: visible, unreadCount: visible.length };
 };
 
 /**

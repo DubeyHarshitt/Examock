@@ -1555,9 +1555,20 @@ export const getPaymentRecords = async ({ page = 1, limit = 20, status }) => {
 
 
 // ── Notifications ────────────────────────────────────────────
+//
+// Today no admin is exam-scoped, so this is symmetric with the student-side
+// `listNotifications` (ticket 01) — a future scoped admin sees their exam +
+// global broadcasts only. See student-side-v1.md §8.3.
 
-export const getNotifications = async () => {
-  return prisma.notification.findMany({ orderBy: { createdAt: "desc" } });
+export const getNotifications = async (admin) => {
+  const where = admin?.examTypeId
+    ? { OR: [{ examTypeId: admin.examTypeId }, { examTypeId: null }] }
+    : {};
+  return prisma.notification.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
 };
 
 export const broadcastNotification = async ({ examTypeId, title, body }) => {
@@ -1577,4 +1588,28 @@ export const broadcastNotification = async ({ examTypeId, title, body }) => {
   // For now it just persists to DB — frontend can poll /notifications
 
   return { success: true, notification };
+};
+
+/**
+ * Hard-delete a broadcast. `notification_reads` rows cascade away via the
+ * FK declared in `schema.prisma` (ticket 11 migration). This is the right
+ * call for a broadcast feed: mis-sent or stale announcements get pruned
+ * rather than lingering forever.
+ *
+ * @throws AppError 404 if the id doesn't exist.
+ */
+export const deleteNotification = async (id) => {
+  if (!id || typeof id !== "string") {
+    throw new AppError("id is required", 400);
+  }
+  try {
+    await prisma.notification.delete({ where: { id } });
+    return { success: true, id };
+  } catch (err) {
+    // Prisma's "record not found" is P2025 — surface it as 404.
+    if (err?.code === "P2025") {
+      throw new AppError("Notification not found", 404);
+    }
+    throw err;
+  }
 };

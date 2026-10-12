@@ -2,17 +2,33 @@
 //
 // Student-side inbox at /notifications. Newest first. Polled every 60s via
 // the same React Query hook the bell uses — single source of truth, no extra
-// fetch. Backend caps results at 50 items.
+// fetch. Backend caps results at 50 items, and the response only contains
+// *unread* items (ticket 12): the moment the user opens a notification's
+// full view, the server marks it as read and it disappears from this list.
 //
-// Ticket 11 — on mount, marks the currently-visible items as read so the
-// inbox feels lived-in. Server is idempotent so re-mounts are safe.
+// Click a card to open the modal. The modal fires
+// `markNotificationsReadApi([id])` on open — server-side idempotent — then
+// invalidates the notifications query so the badge and the list both refresh.
 
-import { useEffect } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Inbox as InboxIcon, Megaphone } from "lucide-react";
 import AppShell from "../../components/layout/AppShell";
-import { PageHeader, EmptyState, Card, Reveal, Skeleton } from "../../components/ui";
-import { useNotifications } from "../../hooks/student/useStudentData";
+import {
+  PageHeader,
+  EmptyState,
+  Card,
+  Reveal,
+  Skeleton,
+  Modal,
+} from "../../components/ui";
+import {
+  useNotifications,
+  studentKeys,
+} from "../../hooks/student/useStudentData";
+import * as studentApi from "../../api/student.api";
 import { cn } from "../../utils/cn";
+import type { StudentNotification } from "../../types/student.types";
 
 function formatFull(iso: string): string {
   return new Date(iso).toLocaleString("en-IN", {
@@ -25,19 +41,29 @@ function formatFull(iso: string): string {
 }
 
 export default function NotificationsPage() {
-  const { data, isLoading, isError, markRead } = useNotifications(50);
+  const { data, isLoading, isError } = useNotifications(50);
+  const queryClient = useQueryClient();
 
-  // `data?.items` is referentially stable between renders that share a
-  // query state, so depending on it (rather than re-deriving with `?? []`)
-  // means this effect fires only when the cache actually changes.
   const items = data?.items ?? [];
   const unreadCount = data?.unreadCount ?? 0;
 
-  // Mark every visible item as read on mount. Idempotent server-side.
-  useEffect(() => {
-    const unreadIds = items.filter((i) => !i.isRead).map((i) => i.id);
-    if (unreadIds.length > 0) markRead(unreadIds);
-  }, [items, markRead]);
+  // Modal state — null = closed. On open, fire mark-read for that single id
+  // and invalidate the notifications queries so the bell + banner refresh.
+  const [openItem, setOpenItem] = useState<StudentNotification | null>(null);
+
+  const handleOpen = async (item: StudentNotification) => {
+    setOpenItem(item);
+    // Fire-and-forget: even if the request fails, the modal stays open
+    // and the user still sees the notification. Next refetch will reconcile.
+    try {
+      await studentApi.markNotificationsReadApi([item.id]);
+      queryClient.invalidateQueries({
+        queryKey: studentKeys.notifications(),
+      });
+    } catch {
+      // The global error handler / toast surface network errors elsewhere.
+    }
+  };
 
   return (
     <AppShell section="student">
@@ -74,46 +100,65 @@ export default function NotificationsPage() {
         <ul className="mt-6 space-y-3">
           {items.map((n) => (
             <Reveal key={n.id}>
-              <li aria-label={n.isRead ? "Read notification" : "Unread notification"}>
-                <Card className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Megaphone
-                      className={cn(
-                        "w-5 h-5 mt-0.5 shrink-0",
-                        n.isRead ? "text-slate-300" : "text-brand-600",
-                      )}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h3
-                        className={cn(
-                          n.isRead
-                            ? "font-normal text-slate-500"
-                            : "font-semibold text-slate-900",
-                        )}
-                      >
-                        {n.title}
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Posted {formatFull(n.createdAt)}
-                        {n.examTypeId === null && " · Global"}
-                      </p>
-                      <p
-                        className={cn(
-                          "text-sm mt-2 whitespace-pre-wrap",
-                          n.isRead ? "text-slate-400" : "text-slate-700",
-                        )}
-                      >
-                        {n.body}
-                      </p>
+              <li>
+                <button
+                  onClick={() => handleOpen(n)}
+                  aria-label={`Open notification: ${n.title}`}
+                  className="block w-full text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                >
+                  <Card className="p-4 transition-colors hover:bg-slate-50">
+                    <div className="flex items-start gap-3">
+                      <Megaphone
+                        className="w-5 h-5 text-brand-600 mt-0.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-slate-900">
+                          {n.title}
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Posted {formatFull(n.createdAt)}
+                          {n.examTypeId === null && " · Global"}
+                        </p>
+                        {/* Preview line — clamped so the card height stays
+                            predictable; the full body opens in the modal. */}
+                        <p
+                          className={cn(
+                            "text-sm text-slate-700 mt-2",
+                            "line-clamp-2 whitespace-pre-wrap",
+                          )}
+                        >
+                          {n.body}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </button>
               </li>
             </Reveal>
           ))}
         </ul>
       )}
+
+      {/* Full-view modal — opens on row click, marks the item read on open. */}
+      <Modal
+        open={openItem !== null}
+        onClose={() => setOpenItem(null)}
+        title={openItem?.title}
+        description={
+          openItem
+            ? `Posted ${formatFull(openItem.createdAt)}` +
+              (openItem.examTypeId === null ? " · Global" : "")
+            : undefined
+        }
+        size="lg"
+      >
+        {openItem && (
+          <p className="text-sm text-slate-700 whitespace-pre-wrap">
+            {openItem.body}
+          </p>
+        )}
+      </Modal>
     </AppShell>
   );
 }

@@ -138,5 +138,6 @@ export const getTestAnalytics = handle(() => adminService.getTestAnalytics());
 export const getPaymentRecords = handle((req) => adminService.getPaymentRecords(req.query));
 
 // ── Notifications ────────────────────────────────────────────
-export const listNotifications    = handle(() => adminService.getNotifications());
+export const listNotifications    = handle((req) => adminService.getNotifications(req.user));
 export const broadcastNotification = handle((req) => adminService.broadcastNotification(req.body));
+export const deleteNotification   = handle((req) => adminService.deleteNotification(req.params.id));

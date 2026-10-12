@@ -1,18 +1,18 @@
 // src/components/shared/NotificationBell.tsx
 //
 // Bell icon + unread badge + hand-rolled popover listing the most recent
-// notifications. Polled by `useNotifications` (React Query). Hand-rolled
-// popover (click-outside, ESC, focus management) to match the existing slide-
-// over pattern in AppShell and avoid adding a headless-ui dependency.
+// *unread* notifications. Polled by `useNotifications` (React Query).
+// Hand-rolled popover (click-outside, ESC, focus management) to match the
+// existing slide-over pattern in AppShell and avoid adding a headless-ui
+// dependency.
 //
-// Visibility: desktop only. On mobile the notifications inbox is reachable via
-// the slide-over menu (see AppShell.tsx).
+// Visibility: desktop only. On mobile the notifications inbox is reachable
+// via the slide-over menu (see AppShell.tsx).
 //
 // Ticket: docs/student-pannel/issue-01/ticket/02-notifications-frontend.md
-// Ticket 11 — when the popover opens, mark the currently-loaded items as
-// read in one batch call. Bell badge decrements, blue dots become rings.
-// The unread selector + effect use a ref so the callback identity doesn't
-// re-trigger the effect on every render.
+// Ticket 12 — opening the popover no longer marks items as read. A
+// notification becomes read (and disappears from this list) only when the
+// user opens its full view on the inbox page.
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -41,7 +41,7 @@ function relativeTime(iso: string): string {
 }
 
 export function NotificationBell() {
-  const { data, isLoading, markRead } = useNotifications(POPOVER_LIMIT);
+  const { data, isLoading } = useNotifications(POPOVER_LIMIT);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -49,11 +49,6 @@ export function NotificationBell() {
 
   const unreadCount = data?.unreadCount ?? 0;
   const items = data?.items ?? [];
-
-  // Keep the latest `markRead` in a ref so opening the popover doesn't
-  // re-run the effect when the callback identity changes after a refetch.
-  const markReadRef = useRef(markRead);
-  markReadRef.current = markRead;
 
   // Close on click outside + ESC.
   useEffect(() => {
@@ -74,26 +69,6 @@ export function NotificationBell() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  // Mark currently-visible items as read (ticket 11).
-  // Runs on open and on every refetch while open — idempotent server-side.
-  //
-  // We read `data?.items` directly (rather than the `items` derived below)
-  // because `items` falls back to `?? []` which produces a fresh array
-  // reference on every render — that would re-fire this effect on every
-  // render of an open popover. React Query keeps the `data?.items` array
-  // referentially stable between renders that share a query state, so this
-  // effect only fires when the underlying cache actually changes.
-  const loadedItems = data?.items;
-  useEffect(() => {
-    if (!open) return;
-    if (!loadedItems || loadedItems.length === 0) return;
-    const unreadIds = loadedItems.filter((i) => !i.isRead).map((i) => i.id);
-    if (unreadIds.length > 0) markReadRef.current(unreadIds);
-    // `markRead` is read via the ref so we don't re-fire when its identity
-    // changes after a refetch invalidation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loadedItems]);
 
   const handleItemClick = () => {
     setOpen(false);
@@ -187,35 +162,23 @@ function NotificationRow({
   item: StudentNotification;
   onClick: () => void;
 }) {
-  // Read items get a hollow ring; unread get a solid brand dot. The visual
-  // difference alone isn't accessible, so the row also carries aria-label
-  // state and screen-reader-only text.
+  // Ticket 12: every item in this list is unread by construction (the
+  // server only returns unread rows). Solid brand dot, dark title — the
+  // previous hollow-ring-vs-solid-dot read-state cue is gone.
   return (
     <li>
       <button
         onClick={onClick}
-        aria-label={`${item.isRead ? "Read" : "Unread"} notification: ${item.title}`}
+        aria-label={`Unread notification: ${item.title}`}
         className="block w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-start gap-2">
           <span
             aria-hidden="true"
-            className={cn(
-              "mt-1 w-1.5 h-1.5 rounded-full shrink-0",
-              item.isRead
-                ? "bg-transparent border border-slate-300"
-                : "bg-brand-500",
-            )}
+            className="mt-1 w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <p
-              className={cn(
-                "text-sm truncate",
-                item.isRead
-                  ? "font-normal text-slate-500"
-                  : "font-medium text-slate-900",
-              )}
-            >
+            <p className="text-sm font-medium text-slate-900 truncate">
               {item.title}
             </p>
             <p className="text-xs text-slate-400 mt-0.5">

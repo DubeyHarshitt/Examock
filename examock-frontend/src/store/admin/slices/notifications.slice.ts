@@ -4,6 +4,7 @@ import type { AdminStore } from "../types/admin.store.types";
 import {
   getNotificationsApi,
   broadcastNotificationApi,
+  deleteNotificationApi,
 } from "../../../api/admin.api";
 import type {
   AdminNotification,
@@ -15,9 +16,11 @@ export interface NotificationsSlice {
   notificationsLoading: boolean;
   notificationsError: string | null;
   broadcastLoading: boolean;
+  deletingId: string | null;
 
   fetchNotifications: () => Promise<void>;
   broadcastNotification: (dto: CreateNotificationDto) => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
 }
 
 export const createNotificationsSlice: StateCreator<
@@ -30,6 +33,7 @@ export const createNotificationsSlice: StateCreator<
   notificationsLoading: false,
   notificationsError: null,
   broadcastLoading: false,
+  deletingId: null,
 
   fetchNotifications: async () => {
     set({ notificationsLoading: true, notificationsError: null });
@@ -57,6 +61,30 @@ export const createNotificationsSlice: StateCreator<
       throw error;
     } finally {
       set({ broadcastLoading: false });
+    }
+  },
+
+  deleteNotification: async (id) => {
+    set({ deletingId: id, notificationsError: null });
+    // Snapshot before mutation so we can roll back on error.
+    let snapshot: AdminNotification[] = [];
+    set((state) => {
+      snapshot = state.notifications;
+      return {
+        notifications: state.notifications.filter((n) => n.id !== id),
+      };
+    });
+    try {
+      await deleteNotificationApi(id);
+    } catch (error) {
+      // Roll back the optimistic remove.
+      set({
+        notifications: snapshot,
+        notificationsError: (error as Error).message,
+      });
+      throw error;
+    } finally {
+      set({ deletingId: null });
     }
   },
 });

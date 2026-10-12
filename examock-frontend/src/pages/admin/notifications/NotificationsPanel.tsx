@@ -1,12 +1,27 @@
 // src/pages/admin/notifications/NotificationsPanel.tsx
 // Admin page to broadcast notifications and view previously sent ones.
+//
+// Form supports an exam-type selector (ticket 08): null = global broadcast
+// (default, safer); a chosen id scopes the notification to one exam.
+//
+// Ticket 12 — adds a trash button on each sent notification. Clicking it
+// opens a confirm dialog; confirming hard-deletes the row. Cascades
+// through notification_reads via the FK declared in schema.prisma.
 
 import { useEffect, useState } from "react";
-import { Send, AlertCircle, Megaphone } from "lucide-react";
+import { Send, AlertCircle, Megaphone, Trash2 } from "lucide-react";
 import { useAdminStore } from "../../../store/admin/admin.store";
 import { useToast } from "../../../components/ui/toast/toast-context";
 import { AdminLayout } from "../../../components/layout/AdminLayout";
-import { Button, Badge, Card, Alert, EmptyState } from "../../../components/ui";
+import {
+  Button,
+  Badge,
+  Card,
+  Alert,
+  EmptyState,
+  ConfirmDialog,
+} from "../../../components/ui";
+import { useExamTypes } from "../../../hooks/useExamTypes";
 
 export function NotificationsPanel() {
   const {
@@ -14,18 +29,26 @@ export function NotificationsPanel() {
     notificationsLoading,
     notificationsError,
     broadcastLoading,
+    deletingId,
     fetchNotifications,
     broadcastNotification,
+    deleteNotification,
   } = useAdminStore();
   const toast = useToast();
+  const { data: examTypes = [] } = useExamTypes();
 
+  // null = global broadcast; a string = scoped to that exam.
+  const [examTypeId, setExamTypeId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
 
+  // Delete confirmation: which row is currently queued for deletion?
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   const handleBroadcast = async () => {
     if (!title.trim() || !body.trim()) {
@@ -34,7 +57,11 @@ export function NotificationsPanel() {
     }
     setError("");
     try {
-      await broadcastNotification({ title: title.trim(), body: body.trim() });
+      await broadcastNotification({
+        title: title.trim(),
+        body: body.trim(),
+        examTypeId: examTypeId || undefined,
+      });
       toast.success("Notification broadcast");
       setTitle("");
       setBody("");
@@ -43,10 +70,22 @@ export function NotificationsPanel() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete;
+    setPendingDelete(null);
+    try {
+      await deleteNotification(id);
+      toast.success("Notification deleted");
+    } catch {
+      toast.error("Failed to delete notification");
+    }
+  };
+
   return (
     <AdminLayout
       title="Notifications"
-      subtitle="Broadcast updates to all users (currently stored in DB — push delivery is a backend enhancement)."
+      subtitle="Broadcast updates to students. Push delivery (FCM / WebSockets / email) is a backend enhancement."
     >
       <div className="space-y-6">
         {notificationsError && <Alert variant="error">{notificationsError}</Alert>}
@@ -56,9 +95,30 @@ export function NotificationsPanel() {
           <Card
             className="lg:col-span-2"
             title="New broadcast"
-            subtitle="Global announcement to all exam types"
+            subtitle={
+              examTypeId
+                ? `Scoped to ${examTypes.find((e) => e.id === examTypeId)?.name ?? "exam"}`
+                : "Global — all exams"
+            }
           >
             <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                  Audience
+                </label>
+                <select
+                  value={examTypeId}
+                  onChange={(e) => setExamTypeId(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all"
+                >
+                  <option value="">Global — all exams</option>
+                  {examTypes.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
                   Title
@@ -79,7 +139,7 @@ export function NotificationsPanel() {
                   onChange={(e) => setBody(e.target.value)}
                   rows={4}
                   placeholder="Write your announcement…"
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all resize-none"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all resize-none"
                 />
               </div>
               {error && (
@@ -144,11 +204,21 @@ export function NotificationsPanel() {
                           </p>
                         </div>
                       </div>
-                      {n.examTypeId ? (
-                        <Badge variant="primary">Specific exam</Badge>
-                      ) : (
-                        <Badge variant="success">All</Badge>
-                      )}
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {n.examTypeId ? (
+                          <Badge variant="primary">Specific exam</Badge>
+                        ) : (
+                          <Badge variant="success">All</Badge>
+                        )}
+                        <button
+                          onClick={() => setPendingDelete(n.id)}
+                          disabled={deletingId === n.id}
+                          aria-label={`Delete notification: ${n.title}`}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -157,6 +227,18 @@ export function NotificationsPanel() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this broadcast?"
+        message="This permanently removes the announcement from every student's inbox. This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Keep"
+        danger
+        loading={deletingId !== null}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AdminLayout>
   );
 }

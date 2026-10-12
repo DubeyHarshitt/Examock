@@ -183,100 +183,105 @@ test("changeExamType is not a no-op when current is null", () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// Notification read-state attachment
-// (ticket 11 — per-user read state via `notification_reads`)
+// Notification unread-filter
+// (ticket 12 — listNotifications returns only items the user has NOT
+// opened. Read items live in `notification_reads` and are filtered out
+// at the Prisma layer with `NOT: { reads: { some: { userId } } }`. We
+// test the pure shape: given a list of items + a set of read ids,
+// filter unread and report unreadCount = unread.length.)
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Pure mirror of the read-state attachment in
- * `student.service.listNotifications`: given visible items and the rows
- * from `notification_reads`, attach `isRead` / `readAt` and compute the
- * unread count. Keeps the tests honest about the data shape and avoids
- * pulling Prisma into a unit test.
+ * Pure mirror of the in-memory half of `listNotifications`: take the
+ * rows Prisma returned (all of which are unread thanks to the `NOT`
+ * clause) and apply the exam-scope filter, then return `{ items, unreadCount }`.
+ * The unread filter has already happened in SQL; here we just verify the
+ * JS-side contract that `unreadCount === items.length`.
  */
-function attachReadState(visible, readRows) {
-  const readMap = new Map(readRows.map((r) => [r.notificationId, r.readAt]));
-  const items = visible.map((n) => ({
-    ...n,
-    isRead: readMap.has(n.id),
-    readAt: (readMap.get(n.id) ?? null)?.toISOString() ?? null,
-  }));
-  return { items, unreadCount: items.filter((i) => !i.isRead).length };
+function filterUnread(all, userExamTypeId) {
+  const items = filterNotificationsByExamScope(all, userExamTypeId);
+  return { items, unreadCount: items.length };
 }
 
-test("attachReadState: empty read set marks every item unread", () => {
-  const visible = [
-    { id: "a", title: "A" },
-    { id: "b", title: "B" },
+test("filterUnread: every item is unread by construction (empty read set)", () => {
+  const all = [
+    { id: "a", examTypeId: null,    title: "A" },
+    { id: "b", examTypeId: "jee",   title: "B" },
+    { id: "c", examTypeId: "neet",  title: "C" },
   ];
-  const { items, unreadCount } = attachReadState(visible, []);
+  // JEE user sees globals + their exam; neet-locked item is filtered out.
+  const { items, unreadCount } = filterUnread(all, "jee");
   assert.equal(unreadCount, 2);
-  assert.deepEqual(items.map((i) => i.isRead), [false, false]);
-  assert.deepEqual(items.map((i) => i.readAt), [null, null]);
+  assert.deepEqual(items.map((i) => i.id), ["a", "b"]);
 });
 
-test("attachReadState: every item read → unreadCount 0", () => {
-  const visible = [
-    { id: "a", title: "A" },
-    { id: "b", title: "B" },
-  ];
-  const ts = new Date("2026-10-12T10:00:00Z");
-  const { items, unreadCount } = attachReadState(visible, [
-    { notificationId: "a", readAt: ts },
-    { notificationId: "b", readAt: ts },
-  ]);
-  assert.equal(unreadCount, 0);
-  assert.deepEqual(items.map((i) => i.isRead), [true, true]);
-  assert.deepEqual(items.map((i) => i.readAt), [ts.toISOString(), ts.toISOString()]);
-});
-
-test("attachReadState: mixed list reports per-item state and correct count", () => {
-  const visible = [
-    { id: "a", title: "A" },
-    { id: "b", title: "B" },
-    { id: "c", title: "C" },
-  ];
-  const ts = new Date("2026-10-12T10:00:00Z");
-  const { items, unreadCount } = attachReadState(visible, [
-    { notificationId: "b", readAt: ts },
-  ]);
-  assert.equal(unreadCount, 2);
-  const byId = Object.fromEntries(items.map((i) => [i.id, i]));
-  assert.equal(byId.a.isRead, false);
-  assert.equal(byId.a.readAt, null);
-  assert.equal(byId.b.isRead, true);
-  assert.equal(byId.b.readAt, ts.toISOString());
-  assert.equal(byId.c.isRead, false);
-  assert.equal(byId.c.readAt, null);
-});
-
-test("attachReadState: extra read rows for ids not in visible are ignored (idempotent reopen)", () => {
-  const visible = [{ id: "a", title: "A" }];
-  const ts = new Date("2026-10-12T10:00:00Z");
-  const { items, unreadCount } = attachReadState(visible, [
-    { notificationId: "a", readAt: ts },
-    { notificationId: "ghost", readAt: ts },
-  ]);
-  assert.equal(unreadCount, 0);
-  assert.equal(items.length, 1);
-  assert.equal(items[0].isRead, true);
-});
-
-test("attachReadState: unreadCount equals visible.length minus read rows.length", () => {
+test("filterUnread: unreadCount === items.length always", () => {
   fc.assert(
     fc.property(
-      fc.uniqueArray(fc.uuid(), { minLength: 0, maxLength: 10 }),
-      fc.uniqueArray(fc.uuid(), { minLength: 0, maxLength: 10 }),
-      (visibleIds, readIds) => {
-        const visible = visibleIds.map((id) => ({ id, title: id }));
-        // Restrict read rows to ids in the visible set (production shape).
-        const visibleSet = new Set(visibleIds);
-        const readRows = readIds
-          .filter((id) => visibleSet.has(id))
-          .map((id) => ({ notificationId: id, readAt: new Date() }));
-        const { unreadCount } = attachReadState(visible, readRows);
-        assert.equal(unreadCount, visible.length - readRows.length);
+      fc.array(
+        fc.record({
+          id: fc.uuid(),
+          examTypeId: fc.oneof(fc.constant(null), fc.uuid()),
+          title: fc.string({ minLength: 1, maxLength: 20 }),
+        }),
+        { maxLength: 10 },
+      ),
+      fc.oneof(fc.constant(null), fc.uuid()),
+      (all, userExamTypeId) => {
+        const { items, unreadCount } = filterUnread(all, userExamTypeId);
+        assert.equal(unreadCount, items.length);
       },
     ),
   );
+});
+
+test("filterUnread: a previously-opened id is gone (server-side filter, not modelled here)", () => {
+  // The server uses `NOT: { reads: { some: { userId } } }` so by the time
+  // items reach the JS-side helper, the read ones are already gone. This
+  // test pins the contract: the helper never sees a read row.
+  const all = [
+    { id: "still-unread", examTypeId: null, title: "A" },
+  ];
+  const { items, unreadCount } = filterUnread(all, "jee");
+  assert.equal(unreadCount, 1);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, "still-unread");
+});
+
+// ──────────────────────────────────────────────────────────────
+// markNotificationsRead — batch row construction (ticket 11 / 12)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Pure mirror of the row-construction half of `markNotificationsRead`.
+ * The full service also calls `prisma.notificationRead.createMany` with
+ * `skipDuplicates: true`, which is what makes re-marking the same ids a
+ * no-op (integration territory).
+ */
+function buildMarkReadRows(userId, ids) {
+  return ids.map((notificationId) => ({ userId, notificationId }));
+}
+
+test("buildMarkReadRows: one row per id, all share the userId", () => {
+  const rows = buildMarkReadRows("user-1", ["n-1", "n-2", "n-3"]);
+  assert.equal(rows.length, 3);
+  for (const r of rows) {
+    assert.equal(r.userId, "user-1");
+    assert.ok(r.notificationId !== undefined);
+  }
+});
+
+test("buildMarkReadRows: empty ids → empty rows", () => {
+  assert.deepEqual(buildMarkReadRows("user-1", []), []);
+});
+
+test("buildMarkReadRows: dedup is the caller's job (createMany + skipDuplicates)", () => {
+  // If the client sends the same id twice, the rows have a duplicate key.
+  // Prisma's `skipDuplicates: true` makes the second insert a no-op, so
+  // re-opening the modal can't crash the server.
+  const rows = buildMarkReadRows("user-1", ["n-1", "n-1", "n-2"]);
+  assert.equal(rows.length, 3);
+  const notificationIds = rows.map((r) => r.notificationId);
+  // No dedup at the JS layer — the DB is the source of truth.
+  assert.deepEqual(notificationIds, ["n-1", "n-1", "n-2"]);
 });

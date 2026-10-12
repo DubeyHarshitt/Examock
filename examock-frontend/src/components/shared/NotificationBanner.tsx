@@ -1,14 +1,14 @@
 // src/components/shared/NotificationBanner.tsx
 //
 // Dismissible banner rendered at the top of the dashboard. Shows the newest
-// *unread* broadcast. Dismiss state is stored in localStorage keyed by
+// unread broadcast. Dismiss state is stored in localStorage keyed by
 // notification id — reappears when a newer broadcast lands.
 //
 // localStorage is read inside `useState`'s initializer (lazy initialisation,
 // runs once). `typeof window` ensures no SSR / pre-hydration access.
 //
-// Ticket 11 — banner only renders for unread items. If the user has read
-// the newest item, the banner hides until a new unread one arrives.
+// Ticket 12 — the response only contains unread items, so we just take the
+// first one. No need to fetch more to find an unread item.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -35,10 +35,8 @@ function writeDismissed(id: string): void {
 }
 
 export function NotificationBanner() {
-  // Fetch a few so we can find the newest unread even if the very newest
-  // item is already read.
-  const { data } = useNotifications(10);
-  const newest = data?.items?.find((n) => !n.isRead);
+  const { data } = useNotifications(1);
+  const newest = data?.items?.[0];
 
   // `tick` is a render-bumper used only to invalidate the cached "dismissed"
   // state when the user clicks ✕. Incrementing it forces a fresh localStorage

@@ -472,3 +472,10 @@ export const broadcastNotificationApi = async (body: {
   const { data } = await api.post("/admin/notifications", body);
   return data;
 };
+
+// Hard-delete a broadcast (ticket 12). Cascades through notification_reads
+// on the server via the FK declared in schema.prisma (ticket 11).
+export const deleteNotificationApi = async (id: string) => {
+  const { data } = await api.delete(`/admin/notifications/${id}`);
+  return data;
+};
