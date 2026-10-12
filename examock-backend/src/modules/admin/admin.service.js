@@ -602,7 +602,8 @@ const MOCK_TEST_EDITABLE = [
   "defaultNegMarks",
   "instructions",
   "subjectId",
-  "isActive",
+  // `isActive` is intentionally absent — publishing goes through the gated
+  // activate/restore endpoints only, never a raw PATCH (bug 07).
 ];
 
 /** "Physics" under JEE must mean the Physics that belongs to JEE (ticket 03 §1). */

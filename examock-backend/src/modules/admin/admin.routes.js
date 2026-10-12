@@ -170,10 +170,10 @@ const mockTestBody = {
 };
 
 const createMockTestSchema = z.object(mockTestBody);
-const updateMockTestSchema = z.object({
-  ...mockTestBody,
-  isActive: booleanish.optional(),
-}).partial();
+// `isActive` is deliberately NOT here: publishing is gated exclusively by
+// POST /tests/:id/activate (the 5-step gate) and POST /tests/:id/restore.
+// A PATCH-carried `isActive` would let a client bypass the gate (bug 07).
+const updateMockTestSchema = z.object(mockTestBody).partial();
 
 // ── Paper-grid rows (ticket 06) ──────────────────────────────
 // The draft-row union from lib/rows.js: "new" (typed/pasted/imported) and

@@ -38,6 +38,7 @@ import { AdminLayout } from "../../../components/layout/AdminLayout";
 import { Breadcrumbs } from "../../../components/admin/Breadcrumbs";
 import {
   activateTestApi,
+  archiveTestApi,
   bulkAddQuestionsApi,
   getExamDetailApi,
   getTestDetailApi,
@@ -45,6 +46,7 @@ import {
   importCsvApi,
   removeTestQuestionApi,
   reorderTestQuestionsApi,
+  restoreTestApi,
   updateQuestionApi,
   updateTestApi,
 } from "../../../api/admin.api";
@@ -56,6 +58,7 @@ import type {
   PdfImport,
   Questions,
   TestQuestionWithDetail,
+  UpdateMockTestDto,
   updateQuestionDto,
 } from "../../../store/admin/types/admin.types";
 import { useToast } from "../../../components/ui/toast/toast-context";
@@ -119,6 +122,52 @@ function rowMarks(r: GridRow, def: number): number {
   return r.question.marks ?? def;
 }
 
+/** Parse a numeric cell on blur — null when the raw input is invalid. */
+function parseNumberCell(raw: string, min: number, integer: boolean): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < min) return null;
+  if (integer && !Number.isInteger(n)) return null;
+  return n;
+}
+
+interface NumberCellProps {
+  value: number | null | undefined;
+  min: number;
+  integer?: boolean;
+  className: string;
+  onCommit: (v: number) => void;
+}
+
+/**
+ * Numeric grid cell that edits locally and commits ON BLUR (or Enter) only —
+ * never per keystroke, and never persisting a transient `0` from an empty
+ * field (bug 03). Invalid input (empty, below min, non-integer) is dropped and
+ * the cell reverts to `value`; a blur without a change sends nothing.
+ */
+function NumberCell({ value, min, integer = false, className, onCommit }: NumberCellProps) {
+  const [edit, setEdit] = useState<string | null>(null);
+  const commit = () => {
+    if (edit === null) return;
+    const n = parseNumberCell(edit, min, integer);
+    if (n !== null && n !== value) onCommit(n);
+    setEdit(null);
+  };
+  return (
+    <input
+      type="number"
+      value={edit ?? (value ?? "")}
+      onChange={(e) => setEdit(e.target.value)}
+      onFocus={(e) => e.target.select()}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      className={className}
+    />
+  );
+}
+
 /** Parse pasted TSV/CSV lines into draft rows. */
 function parsePasted(
   text: string,
@@ -168,6 +217,9 @@ export default function PaperGrid() {
   const [activationProblems, setActivationProblems] = useState<ActivationProblem[] | null>(null);
 
   const [header, setHeader] = useState({ title: "", totalMarks: 0, defaultMarks: 0, defaultNegMarks: 0, durationMins: 0 });
+  // Values present when a header field gains focus — the revert target when a
+  // blur value is invalid, and the diff base for skipping no-op commits.
+  const headerFocusSnapshot = useRef({ title: "", totalMarks: 0, defaultMarks: 0, defaultNegMarks: 0, durationMins: 0 });
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -233,11 +285,13 @@ export default function PaperGrid() {
   }, [test, toast]);
 
   // ── Derived ────────────────────────────────────────────────
+  // Derived — from the LIVE header edits, not the last server fetch, so the
+  // bar and the Activate state track what the admin is typing (bug 01).
   const computed = useMemo(
-    () => rows.reduce((s, r) => s + rowMarks(r, test?.defaultMarks ?? 1), 0),
-    [rows, test]
+    () => rows.reduce((s, r) => s + rowMarks(r, header.defaultMarks), 0),
+    [rows, header.defaultMarks]
   );
-  const reconciled = rows.length > 0 && computed === test?.totalMarks;
+  const reconciled = rows.length > 0 && computed === header.totalMarks;
   const pendingCount = rows.filter((r) => r.kind !== "saved").length;
   const scopeLabel = test?.subjectId
     ? test.subject?.name ?? "Subject"
@@ -271,10 +325,38 @@ export default function PaperGrid() {
     }
   };
 
-  // ── Header commit (on blur) ────────────────────────────────
-  const commitHeader = () => {
+  // ── Header commit (per field, on blur) ─────────────────────
+  // Each field persists itself. A single invalid field (e.g. a numeric one
+  // cleared to "") no longer takes the whole header down: fields PATCH
+  // independently, and invalid blur values revert to the last-focused value.
+  const headerFieldFocus = () => {
+    headerFocusSnapshot.current = { ...header };
+  };
+
+  const commitHeaderField = (key: keyof typeof header) => {
     if (!test) return;
-    updateTestApi(test.id, header).catch(() => toast.error("Could not save header"));
+    const value = header[key];
+    if (value === headerFocusSnapshot.current[key]) return; // untouched
+    if (key === "title") {
+      if (typeof value !== "string" || value.trim().length === 0 || value.trim().length > 300) {
+        setHeader((h) => ({ ...h, title: headerFocusSnapshot.current.title }));
+        toast.error("Title must be 1–300 characters");
+        return;
+      }
+    } else {
+      // Numeric — mirror the backend rules (admin.routes.js: mockTestBody).
+      const n = Number(value);
+      const min = key === "defaultNegMarks" ? 0 : 1;
+      const integer = key !== "defaultNegMarks";
+      if (value === "" || !Number.isFinite(n) || n < min || (integer && !Number.isInteger(n))) {
+        setHeader((h) => ({ ...h, [key]: headerFocusSnapshot.current[key] }));
+        toast.error(`${key} must be ${integer ? "a whole number" : "a number"} ${min === 0 ? "≥ 0" : "≥ 1"}`);
+        return;
+      }
+    }
+    updateTestApi(test.id, { [key]: value } as unknown as UpdateMockTestDto)
+      .then(() => setTest((t) => (t ? ({ ...t, [key]: value } as MockTestDetail) : t)))
+      .catch(() => toast.error("Could not save header"));
   };
 
   // ── Saved-row edits (immediate) ────────────────────────────
@@ -352,33 +434,49 @@ export default function PaperGrid() {
       }
       return;
     }
+    // Bank rows (kind "ref") are linked by id — they carry no editable copy
+    // here, so bulk chapter/marks/neg/reusable can't touch them (bug 04).
+    const applicable = sel.filter((r) => r.kind !== "pending-ref");
+    if (applicable.length === 0) {
+      toast.info("None of the selected rows are editable in the paper grid");
+      return;
+    }
     if (action === "chapter") {
       const chapterId = String(value);
-      sel.forEach((r) => {
+      applicable.forEach((r) => {
         if (r.kind === "saved") commitSaved(r.key, { topicId: chapterId });
         else if (r.kind === "pending-new") patchPending(r.key, { chapterId });
       });
-      toast.success(`Chapter set for ${sel.length} row${sel.length === 1 ? "" : "s"}`);
+      toast.success(`Chapter set for ${applicable.length} row${applicable.length === 1 ? "" : "s"}`);
       return;
     }
     if (action === "marks" || action === "neg") {
       const field = action === "marks" ? "marks" : "negMarks";
-      const num = Number(value);
-      if (!Number.isFinite(num)) return;
-      sel.forEach((r) => {
+      const raw = typeof value === "string" ? value : String(value ?? "");
+      const num = Number(raw);
+      if (raw.trim() === "" || !Number.isFinite(num)) return;
+      if (field === "marks" && (num < 1 || !Number.isInteger(num))) {
+        toast.error("Marks must be a whole number of at least 1");
+        return;
+      }
+      if (field === "negMarks" && num < 0) {
+        toast.error("Negative marks can't be negative");
+        return;
+      }
+      applicable.forEach((r) => {
         if (r.kind === "saved") commitSaved(r.key, { [field]: num });
         else if (r.kind === "pending-new") patchPending(r.key, { [field]: num });
       });
-      toast.success(`${field === "marks" ? "Marks" : "Negative marks"} set for ${sel.length} row${sel.length === 1 ? "" : "s"}`);
+      toast.success(`${field === "marks" ? "Marks" : "Negative marks"} set for ${applicable.length} row${applicable.length === 1 ? "" : "s"}`);
       return;
     }
     if (action === "reusable") {
       const next = Boolean(value);
-      sel.forEach((r) => {
+      applicable.forEach((r) => {
         if (r.kind === "saved") commitSaved(r.key, { isReusable: next });
         else if (r.kind === "pending-new") patchPending(r.key, { isReusable: next });
       });
-      toast.success(`Reusable ${next ? "on" : "off"} for ${sel.length} row${sel.length === 1 ? "" : "s"}`);
+      toast.success(`Reusable ${next ? "on" : "off"} for ${applicable.length} row${applicable.length === 1 ? "" : "s"}`);
     }
   };
 
@@ -407,7 +505,7 @@ export default function PaperGrid() {
   const handleArchive = async () => {
     if (!test) return;
     try {
-      await updateTestApi(test.id, { isActive: false });
+      await archiveTestApi(test.id);
       toast.success(`"${test.title}" archived`);
       await load();
     } catch {
@@ -417,7 +515,7 @@ export default function PaperGrid() {
   const handleRestore = async () => {
     if (!test) return;
     try {
-      await updateTestApi(test.id, { isActive: true });
+      await restoreTestApi(test.id);
       toast.success(`"${test.title}" restored`);
       await load();
     } catch {
@@ -658,7 +756,7 @@ export default function PaperGrid() {
                 <span className="font-semibold text-slate-400">(not available yet)</span>
               </span>
             )}
-            {test?.isActive && (
+            {!test?.isActive && (
               <button
                 onClick={handleRestore}
                 className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
@@ -674,7 +772,8 @@ export default function PaperGrid() {
               <input
                 value={header.title}
                 onChange={(e) => setHeader((h) => ({ ...h, title: e.target.value }))}
-                onBlur={commitHeader}
+                onFocus={headerFieldFocus}
+                onBlur={() => commitHeaderField("title")}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </label>
@@ -684,7 +783,8 @@ export default function PaperGrid() {
                 type="number"
                 value={header.totalMarks}
                 onChange={(e) => setHeader((h) => ({ ...h, totalMarks: Number(e.target.value) }))}
-                onBlur={commitHeader}
+                onFocus={headerFieldFocus}
+                onBlur={() => commitHeaderField("totalMarks")}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </label>
@@ -694,7 +794,8 @@ export default function PaperGrid() {
                 type="number"
                 value={header.defaultMarks}
                 onChange={(e) => setHeader((h) => ({ ...h, defaultMarks: Number(e.target.value) }))}
-                onBlur={commitHeader}
+                onFocus={headerFieldFocus}
+                onBlur={() => commitHeaderField("defaultMarks")}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </label>
@@ -704,7 +805,8 @@ export default function PaperGrid() {
                 type="number"
                 value={header.defaultNegMarks}
                 onChange={(e) => setHeader((h) => ({ ...h, defaultNegMarks: Number(e.target.value) }))}
-                onBlur={commitHeader}
+                onFocus={headerFieldFocus}
+                onBlur={() => commitHeaderField("defaultNegMarks")}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </label>
@@ -714,7 +816,8 @@ export default function PaperGrid() {
                 type="number"
                 value={header.durationMins}
                 onChange={(e) => setHeader((h) => ({ ...h, durationMins: Number(e.target.value) }))}
-                onBlur={commitHeader}
+                onFocus={headerFieldFocus}
+                onBlur={() => commitHeaderField("durationMins")}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </label>
@@ -731,8 +834,8 @@ export default function PaperGrid() {
           >
             {reconciled ? <Check size={14} /> : <AlertTriangle size={14} />}
             <span>
-              {rows.length} question{rows.length === 1 ? "" : "s"} × {test?.defaultMarks ?? 1} marks = {computed}
-              {test ? `, total says ${test.totalMarks}` : ""}
+              {rows.length} question{rows.length === 1 ? "" : "s"} — Σ question marks = {computed}
+              {test ? `, total says ${header.totalMarks}` : ""}
               {" — "}
               {reconciled ? "Activate enabled" : "Activate blocked"}
             </span>
@@ -959,6 +1062,11 @@ export default function PaperGrid() {
                           {idx + 1}
                         </td>
                         <td className="px-2 py-2">
+                          {r.kind === "pending-ref" ? (
+                            <span className="block truncate px-2 py-1.5 text-xs font-semibold text-slate-500">
+                              {chapters.find((c) => c.id === q?.topicId)?.name ?? "—"}
+                            </span>
+                          ) : (
                           <div className="relative">
                             <select
                               value={chapterId}
@@ -976,6 +1084,7 @@ export default function PaperGrid() {
                             </select>
                             <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                           </div>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           {r.kind === "pending-new" ? (
@@ -1053,34 +1162,44 @@ export default function PaperGrid() {
                         </td>
                         <td className="px-2 py-2 text-right">
                           {r.kind === "pending-new" ? (
-                            <input
-                              type="number"
-                              value={r.draft.marks ?? ""}
-                              onChange={(e) => patchPending(r.key, { marks: Number(e.target.value) })}
+                            <NumberCell
+                              value={r.draft.marks}
+                              min={1}
+                              integer
+                              onCommit={(v) => patchPending(r.key, { marks: v })}
                               className="w-14 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-right text-xs tabular-nums text-slate-700 focus:border-brand-400 focus:outline-none"
                             />
+                          ) : r.kind === "pending-ref" ? (
+                            <span className="text-xs tabular-nums text-slate-500">
+                              {q?.marks ?? "—"}
+                            </span>
                           ) : (
-                            <input
-                              type="number"
-                              value={q?.marks ?? ""}
-                              onChange={(e) => commitSaved(r.key, { marks: Number(e.target.value) })}
+                            <NumberCell
+                              value={q?.marks}
+                              min={1}
+                              integer
+                              onCommit={(v) => commitSaved(r.key, { marks: v })}
                               className="w-14 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-right text-xs tabular-nums text-slate-700 focus:border-brand-400 focus:outline-none"
                             />
                           )}
                         </td>
                         <td className="px-2 py-2 text-right">
                           {r.kind === "pending-new" ? (
-                            <input
-                              type="number"
-                              value={r.draft.negMarks ?? ""}
-                              onChange={(e) => patchPending(r.key, { negMarks: Number(e.target.value) })}
+                            <NumberCell
+                              value={r.draft.negMarks}
+                              min={0}
+                              onCommit={(v) => patchPending(r.key, { negMarks: v })}
                               className="w-14 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-right text-xs tabular-nums text-slate-700 focus:border-brand-400 focus:outline-none"
                             />
+                          ) : r.kind === "pending-ref" ? (
+                            <span className="text-xs tabular-nums text-slate-500">
+                              {q?.negMarks ?? "—"}
+                            </span>
                           ) : (
-                            <input
-                              type="number"
-                              value={q?.negMarks ?? ""}
-                              onChange={(e) => commitSaved(r.key, { negMarks: Number(e.target.value) })}
+                            <NumberCell
+                              value={q?.negMarks}
+                              min={0}
+                              onCommit={(v) => commitSaved(r.key, { negMarks: v })}
                               className="w-14 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-right text-xs tabular-nums text-slate-700 focus:border-brand-400 focus:outline-none"
                             />
                           )}
@@ -1115,6 +1234,13 @@ export default function PaperGrid() {
                                     rows={2}
                                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-800 focus:border-brand-400 focus:outline-none"
                                   />
+                                ) : r.kind === "pending-ref" ? (
+                                  <textarea
+                                    value={q?.explanation ?? ""}
+                                    readOnly
+                                    rows={2}
+                                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-500"
+                                  />
                                 ) : (
                                   <textarea
                                     value={q?.explanation ?? ""}
@@ -1140,6 +1266,10 @@ export default function PaperGrid() {
                                     <option value="MEDIUM">Medium</option>
                                     <option value="HARD">Hard</option>
                                   </select>
+                                ) : r.kind === "pending-ref" ? (
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-500">
+                                    {q?.difficulty ?? "MEDIUM"}
+                                  </span>
                                 ) : (
                                   <select
                                     value={q?.difficulty ?? "MEDIUM"}
@@ -1158,6 +1288,11 @@ export default function PaperGrid() {
                               </label>
                               <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Reusable
+                                {r.kind === "pending-ref" ? (
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold normal-case tracking-normal text-slate-500">
+                                    {q?.isReusable ? "Yes" : "No"}
+                                  </span>
+                                ) : (
                                 <select
                                   value={
                                     r.kind === "pending-new"
@@ -1178,9 +1313,24 @@ export default function PaperGrid() {
                                   <option value="yes">Yes</option>
                                   <option value="no">No</option>
                                 </select>
+                                )}
                               </label>
                               <div className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Image
+                                {r.kind === "pending-ref" ? (
+                                  <div className="flex items-center gap-2">
+                                    {q?.imageUrl ? (
+                                      <img src={q.imageUrl} alt="" className="h-8 w-8 rounded object-cover" />
+                                    ) : (
+                                      <span className="text-slate-300">
+                                        <ImageIcon size={14} />
+                                      </span>
+                                    )}
+                                    <span className="text-[11px] font-semibold normal-case tracking-normal text-slate-400">
+                                      Bank figure
+                                    </span>
+                                  </div>
+                                ) : (
                                 <QuestionImageSlot
                                   compact
                                   current={
@@ -1197,6 +1347,7 @@ export default function PaperGrid() {
                                     else commitSaved(r.key, patch);
                                   }}
                                 />
+                                )}
                               </div>
                               <div className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Figure
@@ -1204,12 +1355,13 @@ export default function PaperGrid() {
                                   <input
                                     type="checkbox"
                                     checked={hadFigure}
+                                    disabled={r.kind === "pending-ref"}
                                     onChange={(e) => {
                                       const val = e.target.checked;
                                       if (r.kind === "pending-new") patchPending(r.key, { hadFigure: val });
                                       else commitSaved(r.key, { hadFigure: val });
                                     }}
-                                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
                                   />
                                   Had a figure
                                 </label>
