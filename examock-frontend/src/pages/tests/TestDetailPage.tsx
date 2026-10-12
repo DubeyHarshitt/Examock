@@ -20,6 +20,7 @@ import AppShell from "../../components/layout/AppShell";
 import { PageHeader, Badge, Button, EmptyState, Reveal } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { getTestById } from "../../api/test.api";
+import { PremiumBadge } from "../../components/shared/PremiumBadge";
 import { cn } from "../../utils/cn";
 import { scopeLabel } from "../../types/test.types";
 import type { TestDetail } from "../../types/test.types";
@@ -80,12 +81,7 @@ export default function TestDetailPage() {
                       </p>
                     )}
                   </div>
-                  {!test.isFree && (
-                    <Badge variant="warning">
-                      <Lock className="w-3 h-3" />
-                      {test.hasAccess ? "Unlocked" : "Premium"}
-                    </Badge>
-                  )}
+                  {!test.isFree && <PremiumBadge />}
                 </div>
 
                 {/* Stats */}
@@ -168,12 +164,12 @@ export default function TestDetailPage() {
                       This is a premium test
                     </p>
                     <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                      Unlock this test to attempt it. Payment integration is
-                      coming soon.
+                      Payments aren't available yet. The unlock flow will appear here once
+                      checkout is wired up.
                     </p>
-                    <Button variant="outline" className="mt-4" disabled>
-                      Unlock
-                    </Button>
+                    <div className="mt-4">
+                      <PremiumBadge size="lg" />
+                    </div>
                   </>
                 )}
               </div>

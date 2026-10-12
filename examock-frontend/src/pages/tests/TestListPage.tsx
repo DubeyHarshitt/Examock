@@ -17,10 +17,11 @@ import {
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
-import { PageHeader, Badge, EmptyState, FilterTabs, Chip, Reveal } from "../../components/ui";
+import { PageHeader, EmptyState, FilterTabs, Chip, Reveal } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getTests } from "../../api/test.api";
+import { PremiumBadge } from "../../components/shared/PremiumBadge";
 import { cn } from "../../utils/cn";
 import { testScope, scopeLabel } from "../../types/test.types";
 import type { TestItem, Scope } from "../../types/test.types";
@@ -133,12 +134,7 @@ export default function TestListPage() {
                         {meta.icon}
                         {scopeLabel(test)}
                       </span>
-                      {!test.isFree && (
-                        <Badge variant="warning">
-                          <Lock className="w-3 h-3" />
-                          {test.isPaid ? "Owned" : "Premium"}
-                        </Badge>
-                      )}
+                      {!test.isFree && <PremiumBadge size="sm" />}
                     </div>
 
                     <h3 className="mt-3 font-display text-sm font-bold text-slate-900 group-hover:text-brand-700 transition-colors">
@@ -171,7 +167,7 @@ export default function TestListPage() {
                         ) : (
                           <Lock className="w-4 h-4" />
                         )}
-                        {accessible ? "View & Start" : "Unlock Test"}
+                        {accessible ? "View & Start" : "View Details"}
                       </span>
                     </div>
                   </Link>

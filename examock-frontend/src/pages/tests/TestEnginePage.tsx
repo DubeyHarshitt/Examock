@@ -69,11 +69,14 @@ export default function TestEnginePage() {
   const toast = useToast();
   const user = useAuthStore((s) => s.user);
 
-  // Test store state
-  const attemptId = useTestStore((s) => s.attemptId);
-  const answers = useTestStore((s) => s.answers);
-  const currentIndex = useTestStore((s) => s.currentIndex);
-  const totalQuestions = useTestStore((s) => s.totalQuestions);
+  // Test store state — keyed by test id so cross-test navigation cannot leak
+  // attemptId between routes (previously a quick A → B navigation could leave
+  // B's store pointing at A's attemptId). See ticket 04.
+  const session = useTestStore((s) => (id ? s.sessions[id] : undefined));
+  const attemptId = session?.attemptId ?? null;
+  const answers = session?.answers ?? {};
+  const currentIndex = session?.currentIndex ?? 0;
+  const totalQuestions = session?.totalQuestions ?? 0;
   const startTestSession = useTestStore((s) => s.startTest);
   const saveAnswerLocal = useTestStore((s) => s.saveAnswer);
   const setCurrentIndex = useTestStore((s) => s.setCurrentIndex);
@@ -99,7 +102,10 @@ export default function TestEnginePage() {
   // ── Load a question by index ────────────────────────────────
   const loadQuestion = useCallback(
     async (index: number, overrideAttemptId?: string) => {
-      const aid = overrideAttemptId ?? attemptId ?? useTestStore.getState().attemptId;
+      const aid =
+        overrideAttemptId ??
+        attemptId ??
+        (id ? useTestStore.getState().sessions[id]?.attemptId : null);
       if (!aid || !id) return;
       setQuestionLoading(true);
       try {
@@ -139,19 +145,23 @@ export default function TestEnginePage() {
         // If we already initialized THIS exact attempt (e.g. a remount/revisit of
         // the same test), don't wipe answers/currentIndex — just refresh the timer
         // and reload the question at the current position. Prevents a "restart".
+        const existing = useTestStore.getState().sessions[id];
         if (
-          useTestStore.getState().attemptId === session.attemptId &&
-          useTestStore.getState().totalQuestions > 0
+          existing &&
+          existing.attemptId === session.attemptId &&
+          existing.totalQuestions > 0
         ) {
-          const savedIndex = useTestStore.getState().currentIndex;
           setTimeRemaining(session.timeRemainingSec);
-          if (savedIndex >= 0 && savedIndex < session.totalQuestions) {
-            await loadQuestion(savedIndex, session.attemptId);
+          if (existing.currentIndex >= 0 && existing.currentIndex < session.totalQuestions) {
+            await loadQuestion(existing.currentIndex, session.attemptId);
           }
           return;
         }
 
-        startTestSession(session.attemptId, session.totalQuestions);
+        startTestSession(id, {
+          attemptId: session.attemptId,
+          totalQuestions: session.totalQuestions,
+        });
         setTimeRemaining(session.timeRemainingSec);
         await loadQuestion(0, session.attemptId);
       } catch (err: any) {
@@ -176,8 +186,8 @@ export default function TestEnginePage() {
   function handleExpire() {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    const aid = attemptId ?? useTestStore.getState().attemptId;
-    clearTest();
+    const aid = attemptId ?? (id ? useTestStore.getState().sessions[id]?.attemptId : null);
+    if (id) clearTest(id);
     if (aid && id) {
       navigate(`/tests/${id}/result?attemptId=${aid}`, { replace: true });
     } else {
@@ -200,7 +210,7 @@ export default function TestEnginePage() {
   const selectOption = async (option: OptionKey | null) => {
     if (!currentQuestion || !attemptId || !id) return;
     const q = currentQuestion.question;
-    saveAnswerLocal(q.id, option);
+    saveAnswerLocal(id, q.id, option);
     try {
       await saveAnswer(id, { attemptId, questionId: q.id, selectedOption: option });
     } catch {
@@ -210,7 +220,8 @@ export default function TestEnginePage() {
 
   const goTo = (index: number) => {
     if (index < 0 || index >= totalQuestions) return;
-    setCurrentIndex(index);
+    if (!id) return;
+    setCurrentIndex(id, index);
     loadQuestion(index);
   };
 
@@ -238,7 +249,7 @@ export default function TestEnginePage() {
     setSubmitting(true);
     try {
       const { result } = await submitTest(id, attemptId);
-      clearTest();
+      clearTest(id);
       navigate(`/tests/${id}/result?attemptId=${result.attemptId}`, {
         state: result,
         replace: true,

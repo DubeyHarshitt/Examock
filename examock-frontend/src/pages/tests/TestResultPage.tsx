@@ -1,10 +1,15 @@
 // src/pages/tests/TestResultPage.tsx
+//
 // Shows score, percentile, time taken, and a per-question breakdown.
-// Prefers the rich submit result passed via router state; otherwise
-// fetches GET /test/:id/result?attemptId=
+// Prefers the rich submit result passed via router state.
+//
+// Two result shapes coexist in the codebase:
+//   1. The navigation-state payload below (rich: marksAwarded, imageUrl, …)
+//   2. `TestResultResponse.result.answers[]` from GET /test/:id/result
+// We render shape #1 because it carries per-row imageUrl + explanation. A
+// future ticket will unify the two; until then we explicitly don't refetch.
 
 import { useLocation, useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   XCircle,
@@ -18,8 +23,6 @@ import {
 
 import AppShell from "../../components/layout/AppShell";
 import { PageHeader, Button, EmptyState, ProgressRing, Reveal } from "../../components/ui";
-import { SkeletonCard } from "../../components/ui/Skeleton";
-import { getResult } from "../../api/test.api";
 import { cn } from "../../utils/cn";
 
 interface QuestionReview {
@@ -53,17 +56,7 @@ function formatTime(seconds: number): string {
 export default function TestResultPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const submitResult = (location.state as SubmitPayload | null) ?? null;
-
-  const { isLoading } = useQuery({
-    queryKey: ["test-result", id, submitResult?.attemptId],
-    queryFn: () => getResult(id!, submitResult!.attemptId),
-    enabled: !!id && !!submitResult?.attemptId,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Prefer the rich submit payload passed in router state
-  const result = submitResult;
+  const result = (location.state as SubmitPayload | null) ?? null;
 
   return (
     <AppShell section="student">
@@ -80,9 +73,7 @@ export default function TestResultPage() {
       />
 
       <div className="mt-6 max-w-3xl space-y-6">
-        {!result && isLoading ? (
-          <SkeletonCard />
-        ) : !result ? (
+        {!result ? (
           <EmptyState
             title="No result yet"
             description="Complete a test to view your result here."

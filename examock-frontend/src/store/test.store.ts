@@ -2,45 +2,102 @@ import { create } from "zustand";
 
 type Option = "A" | "B" | "C" | "D";
 
-interface TestStore {
-  attemptId: string | null;
-  answers: Record<string, Option | null>; // { [questionId]: selectedOption }
+/**
+ * Per-test session. Each `TestEnginePage` instance reads and writes its own
+ * session via the keyed store, so cross-test navigation never leaks
+ * `attemptId` between routes.
+ */
+interface TestSession {
+  attemptId: string;
+  answers: Record<string, Option | null>;
   currentIndex: number;
   totalQuestions: number;
+}
+
+interface TestStore {
+  /** Map of testId → active session. */
+  sessions: Record<string, TestSession>;
 
   // Actions
-  startTest: (attemptId: string, totalQuestions: number) => void;
-  saveAnswer: (questionId: string, option: Option | null) => void;
-  setCurrentIndex: (index: number) => void;
-  clearTest: () => void;
+  startTest: (
+    testId: string,
+    session: Omit<TestSession, "answers" | "currentIndex">,
+  ) => void;
+  saveAnswer: (testId: string, questionId: string, option: Option | null) => void;
+  setCurrentIndex: (testId: string, index: number) => void;
+  clearTest: (testId: string) => void;
 
-  // Computed
-  getAnswer: (questionId: string) => Option | null;
-  answeredCount: () => number;
+  // Computed — read by testId so they're safe across tests
+  getSession: (testId: string) => TestSession | undefined;
+  getAnswer: (testId: string, questionId: string) => Option | null;
+  answeredCount: (testId: string) => number;
 }
 
 export const useTestStore = create<TestStore>((set, get) => ({
-  attemptId:      null,
-  answers:        {},
-  currentIndex:   0,
-  totalQuestions: 0,
+  sessions: {},
 
-  startTest: (attemptId, totalQuestions) =>
-    set({ attemptId, totalQuestions, answers: {}, currentIndex: 0 }),
+  startTest: (testId, session) =>
+    set((state) => {
+      // Don't overwrite an in-progress session for the same attemptId —
+      // a remount must not wipe saved answers.
+      const existing = state.sessions[testId];
+      if (existing && existing.attemptId === session.attemptId) {
+        return state;
+      }
+      return {
+        sessions: {
+          ...state.sessions,
+          [testId]: {
+            attemptId: session.attemptId,
+            totalQuestions: session.totalQuestions,
+            answers: {},
+            currentIndex: 0,
+          },
+        },
+      };
+    }),
 
-  saveAnswer: (questionId, option) =>
-    set((state) => ({
-      answers: { ...state.answers, [questionId]: option },
-    })),
+  saveAnswer: (testId, questionId, option) =>
+    set((state) => {
+      const session = state.sessions[testId];
+      if (!session) return state;
+      return {
+        sessions: {
+          ...state.sessions,
+          [testId]: {
+            ...session,
+            answers: { ...session.answers, [questionId]: option },
+          },
+        },
+      };
+    }),
 
-  setCurrentIndex: (index) =>
-    set({ currentIndex: index }),
+  setCurrentIndex: (testId, index) =>
+    set((state) => {
+      const session = state.sessions[testId];
+      if (!session) return state;
+      return {
+        sessions: {
+          ...state.sessions,
+          [testId]: { ...session, currentIndex: index },
+        },
+      };
+    }),
 
-  clearTest: () =>
-    set({ attemptId: null, answers: {}, currentIndex: 0, totalQuestions: 0 }),
+  clearTest: (testId) =>
+    set((state) => {
+      const { [testId]: _drop, ...rest } = state.sessions;
+      void _drop;
+      return { sessions: rest };
+    }),
 
-  getAnswer: (questionId) => get().answers[questionId] ?? null,
+  getSession: (testId) => get().sessions[testId],
 
-  answeredCount: () =>
-    Object.values(get().answers).filter((v) => v !== null).length,
+  getAnswer: (testId, questionId) =>
+    get().sessions[testId]?.answers[questionId] ?? null,
+
+  answeredCount: (testId) =>
+    Object.values(get().sessions[testId]?.answers ?? {}).filter(
+      (v) => v !== null,
+    ).length,
 }));
