@@ -17,4 +17,8 @@ npm ci
 npm run build
 rsync -a --delete dist/ /var/www/examock/
 
-curl -fsS https://examock.initcodes.in/api/health && echo " ✔ deployed"
+# Health check the API directly on the local port (avoids the nginx /api/
+# proxy path that would otherwise 404 against the backend's root /health).
+# Mirrors the same logic in scripts/remote-deploy.sh.
+PORT="$(sed -n 's/^PORT=//p' examock-backend/.env | head -n1 | tr -d '"[:space:]')"
+curl -fsS "http://127.0.0.1:${PORT}/health" && echo " ✔ deployed"

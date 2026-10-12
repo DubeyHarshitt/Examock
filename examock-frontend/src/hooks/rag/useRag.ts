@@ -1,5 +1,5 @@
 // src/hooks/rag/useRag.ts
-// React Query hooks for the RAG / AI features (`/api/rag/*`).
+// React Query hooks for the RAG / AI features (`/rag/*`).
 
 import { useMutation } from "@tanstack/react-query";
 import * as ragApi from "../../api/rag.api";
