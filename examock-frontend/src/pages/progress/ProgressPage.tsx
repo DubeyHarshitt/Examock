@@ -20,9 +20,10 @@ import {
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
-import { Card, Badge, StatCard, ProgressRing, Reveal, EmptyState } from "../../components/ui";
+import { Card, Badge, StatCard, ProgressRing, Reveal, EmptyState, Skeleton } from "../../components/ui";
 import { SkeletonCard } from "../../components/ui/Skeleton";
-import { useProgress } from "../../hooks/student/useStudentData";
+import { AttemptRow } from "../../components/shared/AttemptRow";
+import { useProgress, useAttempts } from "../../hooks/student/useStudentData";
 import { cn } from "../../utils/cn";
 import { subjectHue, type SubjectHue } from "../../utils/subjectColor";
 import type {
@@ -32,6 +33,13 @@ import type {
 
 export default function ProgressPage() {
   const { data, isLoading, isError } = useProgress();
+  const {
+    data: attemptsData,
+    isLoading: attemptsLoading,
+    isError: attemptsError,
+  } = useAttempts(1, 5);
+  const recentAttempts = attemptsData?.attempts ?? [];
+  const attemptsTotal = attemptsData?.total ?? 0;
   const groups: SubjectProgressGroup[] = data ?? [];
 
   // Summary numbers
@@ -193,6 +201,56 @@ export default function ProgressPage() {
           suggestedCount={suggestedCount}
           stats={{ avgBest, topicsDone: totals.topicsDone, totalTopics: allTopics.length }}
         />
+      </Reveal>
+
+      {/* ── Test attempts ────────────────────────────────────── */}
+      <Reveal delay={240}>
+        <Card
+          className="mt-5"
+          title="Test attempts"
+          subtitle="Your latest completed mock tests"
+          action={
+            <Link
+              to="/attempts"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700"
+            >
+              View all <ChevronRight className="w-3 h-3" />
+            </Link>
+          }
+        >
+          {attemptsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : attemptsError ? (
+            <p className="text-sm text-slate-500">
+              Couldn&apos;t load your attempts right now.
+            </p>
+          ) : recentAttempts.length === 0 ? (
+            <p className="text-sm text-slate-500 py-2 text-center">
+              You haven&apos;t taken any mock tests yet.{" "}
+              <Link to="/tests" className="text-brand-600 font-semibold hover:underline">
+                Start one now
+              </Link>
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentAttempts.map((a) => (
+                <AttemptRow key={a.id} attempt={a} compact />
+              ))}
+              {attemptsTotal > recentAttempts.length && (
+                <Link
+                  to="/attempts"
+                  className="block text-center text-xs font-semibold text-brand-600 hover:text-brand-700 pt-1"
+                >
+                  See all {attemptsTotal} attempts
+                </Link>
+              )}
+            </div>
+          )}
+        </Card>
       </Reveal>
 
       {/* ── Progress by subject ──────────────────────────────── */}

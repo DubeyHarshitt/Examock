@@ -11,6 +11,7 @@ import {
   getYtChannels,
   getProgress,
   getTopicProgress,
+  getAttempts,
   listNotifications,
   markNotificationsRead,
   changeExamType,
@@ -31,6 +32,7 @@ router.get("/notes/:id",          getNoteById);
 router.get("/yt-channels",        getYtChannels);
 router.get("/progress",           getProgress);
 router.get("/progress/:topicId",  getTopicProgress);
+router.get("/attempts",           getAttempts);   // ?page= & ?pageSize=
 
 // ── Ticket 01: student notifications ────────────────────────────
 

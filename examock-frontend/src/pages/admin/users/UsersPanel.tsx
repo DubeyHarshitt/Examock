@@ -1,30 +1,13 @@
 // src/pages/admin/users/UsersPanel.tsx
-// Admin page to list, search, and view users; reset exam type; view user detail.
+// Admin page to list and search users. Clicking a user opens the full
+// user-detail screen (/admin/users/:id).
 
 import { useEffect, useState } from "react";
-import {
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
-  CheckCircle2,
-  XCircle,
-  BarChart3,
-  FileText,
-  CreditCard,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 import { useAdminStore } from "../../../store/admin/admin.store";
-import { useToast } from "../../../components/ui/toast/toast-context";
 import { AdminLayout } from "../../../components/layout/AdminLayout";
-import {
-  Button,
-  Badge,
-  Modal,
-  EmptyState,
-  Alert,
-  Skeleton,
-  SkeletonCard,
-} from "../../../components/ui";
+import { Badge, EmptyState, Alert, SkeletonCard } from "../../../components/ui";
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -35,10 +18,6 @@ function formatDate(iso: string | null) {
   });
 }
 
-function formatRupees(paise: number) {
-  return "₹" + (paise / 100).toLocaleString("en-IN");
-}
-
 export function UsersPanel() {
   const {
     users,
@@ -47,20 +26,13 @@ export function UsersPanel() {
     usersLoading,
     usersError,
     usersSearch,
-    selectedUser,
-    selectedUserLoading,
     fetchUsers,
-    fetchUserDetail,
-    resetUserExam,
     setUsersSearch,
-    clearSelectedUser,
   } = useAdminStore();
-  const toast = useToast();
+  const navigate = useNavigate();
 
   const [searchInput, setSearchInput] = useState("");
-  const [detailOpen, setDetailOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [resettingId, setResettingId] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(usersTotal / usersLimit));
 
@@ -82,22 +54,7 @@ export function UsersPanel() {
     fetchUsers({ page: p, search: usersSearch });
   };
 
-  const openDetail = async (id: string) => {
-    setDetailOpen(true);
-    await fetchUserDetail(id);
-  };
-
-  const handleResetExam = async (id: string) => {
-    setResettingId(id);
-    try {
-      await resetUserExam(id);
-      toast.success("Exam type reset — user must re-onboard");
-    } catch {
-      toast.error("Failed to reset exam type");
-    } finally {
-      setResettingId(null);
-    }
-  };
+  const openUser = (id: string) => navigate(`/admin/users/${id}`);
 
   return (
     <AdminLayout title="Users" subtitle={`${usersTotal} registered user${usersTotal === 1 ? "" : "s"}`}>
@@ -148,7 +105,7 @@ export function UsersPanel() {
                   {users.map((u) => (
                     <tr
                       key={u.id}
-                      onClick={() => openDetail(u.id)}
+                      onClick={() => openUser(u.id)}
                       className="hover:bg-slate-50/60 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3">
@@ -201,7 +158,7 @@ export function UsersPanel() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            openDetail(u.id);
+                            openUser(u.id);
                           }}
                           className="text-xs font-semibold text-brand-600 hover:text-brand-800"
                         >
@@ -241,179 +198,6 @@ export function UsersPanel() {
           )}
         </div>
       </div>
-
-      {/* User detail modal */}
-      <Modal
-        open={detailOpen}
-        onClose={() => {
-          setDetailOpen(false);
-          clearSelectedUser();
-        }}
-        title="User details"
-        size="lg"
-        footer={
-          <div className="w-full flex items-center justify-between gap-2 pt-1">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => selectedUser && handleResetExam(selectedUser.id)}
-              disabled={!selectedUser || !selectedUser.examTypeId}
-              loading={resettingId === selectedUser?.id}
-              icon={<RotateCcw className="w-3.5 h-3.5" />}
-            >
-              Reset exam type
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setDetailOpen(false);
-                clearSelectedUser();
-              }}
-            >
-              Close
-            </Button>
-          </div>
-        }
-      >
-        {selectedUserLoading || !selectedUser ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {/* Header info */}
-            <div className="flex items-center gap-3">
-              {selectedUser.name?.[0] ? (
-                <div className="w-12 h-12 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center text-lg font-bold uppercase">
-                  {selectedUser.name[0]}
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-lg font-bold uppercase">
-                  ?
-                </div>
-              )}
-              <div>
-                <p className="text-base font-bold text-slate-900">
-                  {selectedUser.name ?? "Unnamed"}
-                </p>
-                <p className="text-sm text-slate-500">{selectedUser.email}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-slate-50 rounded-lg px-3 py-2">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">Mobile</p>
-                <p className="text-slate-800 font-medium">
-                  {selectedUser.mobile ?? "—"}
-                  {selectedUser.mobileVerified && (
-                    <CheckCircle2 className="inline w-3.5 h-3.5 text-emerald-500 ml-1.5" />
-                  )}
-                </p>
-              </div>
-              <div className="bg-slate-50 rounded-lg px-3 py-2">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">Exam type</p>
-                <p className="text-slate-800 font-medium">
-                  {selectedUser.examType?.name ?? "Not set"}
-                </p>
-              </div>
-              <div className="bg-slate-50 rounded-lg px-3 py-2">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">Exam date</p>
-                <p className="text-slate-800 font-medium">
-                  {formatDate(selectedUser.examDate)}
-                </p>
-              </div>
-              <div className="bg-slate-50 rounded-lg px-3 py-2">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">Joined</p>
-                <p className="text-slate-800 font-medium">{formatDate(selectedUser.createdAt)}</p>
-              </div>
-            </div>
-
-            {/* Sections */}
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5" /> Recent attempts ({selectedUser.testAttempts.length})
-              </h4>
-              {selectedUser.testAttempts.length === 0 ? (
-                <p className="text-xs text-slate-400">No attempts yet.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {selectedUser.testAttempts.map((a) => (
-                    <div
-                      key={a.id}
-                      className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"
-                    >
-                      <span className="text-xs text-slate-700 truncate">{a.mockTest.title}</span>
-                      <span className="text-xs text-slate-500 shrink-0 ml-2">
-                        {a.score ?? "—"} · {a.percentile ?? "—"}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" /> Topic progress ({selectedUser.topicProgress.length})
-              </h4>
-              {selectedUser.topicProgress.length === 0 ? (
-                <p className="text-xs text-slate-400">No topic progress yet.</p>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {selectedUser.topicProgress.map((tp) => (
-                    <div
-                      key={tp.id}
-                      className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"
-                    >
-                      <span className="text-xs text-slate-700 truncate">{tp.topic.name}</span>
-                      <span className="text-xs text-slate-500 shrink-0 ml-2">
-                        best {tp.bestScore ?? "—"} · {tp.attemptCount} attempts
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" /> Payments ({selectedUser.payments.length})
-              </h4>
-              {selectedUser.payments.length === 0 ? (
-                <p className="text-xs text-slate-400">No payments.</p>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {selectedUser.payments.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"
-                    >
-                      <span className="text-xs text-slate-700 truncate">
-                        {p.mockTest?.title ?? "Payment"} · {formatRupees(p.amountPaise)}
-                      </span>
-                      <Badge
-                        variant={
-                          ({
-                            PAID: "success",
-                            PENDING: "warning",
-                            FAILED: "danger",
-                            REFUNDED: "default",
-                          } as const)[p.status] ?? "default"
-                        }
-                      >
-                        {p.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
     </AdminLayout>
   );
 }

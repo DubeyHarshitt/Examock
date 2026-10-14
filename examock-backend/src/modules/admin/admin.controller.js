@@ -130,6 +130,8 @@ export const deleteYtChannel  = handle((req) => adminService.deleteYtChannel(req
 // ── Users ────────────────────────────────────────────────────
 export const listUsers         = handle((req) => adminService.getUsers(req.query));
 export const getUserDetail     = handle((req) => adminService.getUserDetail(req.params.id));
+export const getUserAttempts   = handle((req) => adminService.getUserAttempts(req.params.id, req.query));
+export const getUserAttemptDetail = handle((req) => adminService.getUserAttemptDetail(req.params.id, req.params.attemptId));
 export const resetUserExamType = handle((req) => adminService.resetUserExamType(req.params.id));
 
 // ── Analytics ────────────────────────────────────────────────

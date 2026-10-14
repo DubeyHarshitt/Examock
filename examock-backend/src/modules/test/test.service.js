@@ -1,6 +1,11 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
 import { contributingChapters } from "../admin/lib/progress.js";
+import {
+  fetchTestQuestions,
+  gradeAttempt,
+  toStudentQuestionResults,
+} from "./lib/scoring.js";
 
 // ─────────────────────────────────────────────────────────────
 // 1. List tests for user's exam type
@@ -112,10 +117,13 @@ export async function startTest(userId, testId) {
     const remaining = test.durationMins * 60 - elapsed;
 
     if (remaining <= 0) {
-      await abandonExpiredAttempt(existing.id);
+      // Score the expired attempt instead of discarding it (F6), then tell the
+      // client where the (now available) result lives.
+      const result = await finalizeExpiredAttempt(existing);
       throw new AppError(
         "Your previous session expired. Please start a new test.",
         410,
+        { attemptId: result.attemptId },
       );
     }
     return {
@@ -169,8 +177,13 @@ export async function getQuestion(userId, attemptId, questionIndex) {
   const remaining = test.durationMins * 60 - elapsed;
 
   if (remaining <= 0) {
-    await abandonExpiredAttempt(attemptId);
-    throw new AppError("Time is up — your test has been auto-submitted", 410);
+    // Time's up: auto-submit (score) the attempt rather than abandoning it, so
+    // the student's answers become a real, fetchable result (F6) instead of
+    // being thrown away unscored.
+    await finalizeExpiredAttempt(attempt);
+    throw new AppError("Time is up — your test has been auto-submitted", 410, {
+      attemptId: attempt.id,
+    });
   }
 
   // correctOption and explanation NOT exposed here — only after submission
@@ -222,6 +235,22 @@ export async function saveAnswer(
 ) {
   const attempt = await getActiveAttempt(userId, attemptId);
 
+  // Answering after the clock has run out must not silently extend the test:
+  // finalize (auto-submit) and reject, exactly like getQuestion does.
+  const meta = await prisma.mockTest.findUnique({
+    where: { id: attempt.mockTestId },
+    select: { durationMins: true },
+  });
+  const elapsed = Math.floor(
+    (Date.now() - new Date(attempt.startedAt).getTime()) / 1000,
+  );
+  if ((meta?.durationMins ?? 0) * 60 - elapsed <= 0) {
+    await finalizeExpiredAttempt(attempt);
+    throw new AppError("Time is up — your test has been auto-submitted", 410, {
+      attemptId: attempt.id,
+    });
+  }
+
   if (!["A", "B", "C", "D", null].includes(selectedOption)) {
     throw new AppError(
       "Invalid option — must be A, B, C, D or null to clear",
@@ -249,76 +278,33 @@ export async function saveAnswer(
 // 6. Submit test — score + save result
 // ─────────────────────────────────────────────────────────────
 
-export async function submitTest(userId, attemptId) {
-  const attempt = await getActiveAttempt(userId, attemptId);
+// Grading lives in ./lib/scoring.js so the admin attempt-breakdown view grades
+// with the exact same rules. This adapter shape trims the rich rows down to the
+// student-facing review payload (which hides the correct answer).
+function buildScoredResult(testQuestions, userAnswers) {
+  const { rows, score, correct, incorrect, unattempted } = gradeAttempt(
+    testQuestions,
+    userAnswers,
+  );
 
-  const testQuestions = await prisma.testQuestion.findMany({
-    where: { testId: attempt.mockTestId },
-    orderBy: { orderIndex: "asc" },
-    include: {
-      question: {
-        select: {
-          id: true,
-          topicId: true, // drives the progress fan-out (ticket 04)
-          correctOption: true,
-          marks: true,
-          negMarks: true,
-          explanation: true,
-          text: true, // review section render (ticket 07)
-          imageUrl: true,
-        },
-      },
-    },
-  });
+  return {
+    questionResults: toStudentQuestionResults(rows),
+    score,
+    correct,
+    incorrect,
+    unattempted,
+  };
+}
 
+// Score an attempt, persist it as COMPLETED, then fan the score out to the
+// chapters that actually contributed questions (ticket 04 / decision Q3).
+// Used by BOTH the manual submit path and the timeout path, so a timed-out
+// attempt is auto-submitted with exactly the same scoring as a normal submit
+// instead of being discarded as ABANDONED (F6).
+async function finalizeAttempt(attempt, testQuestions) {
   const userAnswers = attempt.answersJson ?? {};
-  let score = 0;
-  let correct = 0;
-  let incorrect = 0;
-  let unattempted = 0;
-
-  const questionResults = testQuestions.map(({ question }) => {
-    const selected = userAnswers[question.id] ?? null;
-
-    if (!selected) {
-      unattempted++;
-      return {
-        questionId: question.id,
-        selected: null,
-        isCorrect: false,
-        marksAwarded: 0,
-        explanation: question.explanation,
-        text: question.text,
-        imageUrl: question.imageUrl,
-      };
-    }
-
-    if (selected === question.correctOption) {
-      correct++;
-      score += question.marks;
-      return {
-        questionId: question.id,
-        selected,
-        isCorrect: true,
-        marksAwarded: question.marks,
-        explanation: question.explanation,
-        text: question.text,
-        imageUrl: question.imageUrl,
-      };
-    } else {
-      incorrect++;
-      score -= question.negMarks;
-      return {
-        questionId: question.id,
-        selected,
-        isCorrect: false,
-        marksAwarded: -question.negMarks,
-        explanation: question.explanation,
-        text: question.text,
-        imageUrl: question.imageUrl,
-      };
-    }
-  });
+  const { questionResults, score, correct, incorrect, unattempted } =
+    buildScoredResult(testQuestions, userAnswers);
 
   const timeTakenSec = Math.floor(
     (Date.now() - new Date(attempt.startedAt).getTime()) / 1000,
@@ -327,7 +313,7 @@ export async function submitTest(userId, attemptId) {
   const percentile = await calculatePercentile(attempt.mockTestId, score);
 
   await prisma.testAttempt.update({
-    where: { id: attemptId },
+    where: { id: attempt.id },
     data: {
       status: "COMPLETED",
       score,
@@ -343,21 +329,16 @@ export async function submitTest(userId, attemptId) {
     select: { totalMarks: true },
   });
 
-  // Progress fan-out (ticket 04 / decision Q3): write this score to each
-  // chapter that *actually contributed questions* to the attempt — and only
-  // those. Fanning out to every chapter in scope would stamp a full-exam
-  // score onto chapters the student never drilled; updating nothing (old
-  // `FULL`) threw away real signal. The old CHAPTER/MODULE branches read the
-  // dropped `type`/`topicId` columns and are gone. `contributingChapters` is a
-  // pure function covered by test/progress.test.js (ticket 01) — but it reads
-  // `q.topicId` off flat question rows, so unwrap the `{ question }` wrapper
-  // from the relation include (caught by the end-to-end submit in ticket 04).
-  for (const chapterId of contributingChapters(testQuestions.map((tq) => tq.question))) {
-    await updateTopicProgress(userId, chapterId, score, test.totalMarks);
-  }
+  // Fan out in parallel — one round-trip instead of a sequential for/await.
+  await Promise.all(
+    contributingChapters(testQuestions.map((tq) => tq.question)).map(
+      (chapterId) =>
+        updateTopicProgress(attempt.userId, chapterId, score, test.totalMarks),
+    ),
+  );
 
   return {
-    attemptId,
+    attemptId: attempt.id,
     score,
     totalMarks: test.totalMarks,
     percentile,
@@ -367,6 +348,20 @@ export async function submitTest(userId, attemptId) {
     unattempted,
     questionResults,
   };
+}
+
+// Called when the clock has run out but the attempt is still IN_PROGRESS
+// (browser closed, network dropped, or the client never sent /submit). Scores
+// it like a normal submit so the result + progress are recoverable.
+async function finalizeExpiredAttempt(attempt) {
+  const testQuestions = await fetchTestQuestions(attempt.mockTestId);
+  return finalizeAttempt(attempt, testQuestions);
+}
+
+export async function submitTest(userId, attemptId) {
+  const attempt = await getActiveAttempt(userId, attemptId);
+  const testQuestions = await fetchTestQuestions(attempt.mockTestId);
+  return finalizeAttempt(attempt, testQuestions);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -385,6 +380,13 @@ export async function getResult(userId, attemptId) {
 
   if (!attempt) throw new AppError("Result not found", 404);
 
+  // Rebuild the same per-question payload the submit path returns, so a
+  // refetched result (page refresh, shared link, timeout) renders identically
+  // to a fresh submit (F11).
+  const testQuestions = await fetchTestQuestions(attempt.mockTestId);
+  const { questionResults, correct, incorrect, unattempted } =
+    buildScoredResult(testQuestions, attempt.answersJson ?? {});
+
   return {
     attemptId: attempt.id,
     testTitle: attempt.mockTest.title,
@@ -393,7 +395,10 @@ export async function getResult(userId, attemptId) {
     percentile: attempt.percentile,
     timeTakenSec: attempt.timeTakenSec,
     completedAt: attempt.completedAt,
-    answers: attempt.answersJson,
+    correct,
+    incorrect,
+    unattempted,
+    questionResults,
   };
 }
 
@@ -414,13 +419,6 @@ async function getActiveAttempt(userId, attemptId) {
   });
   if (!attempt) throw new AppError("No active session found", 404);
   return attempt;
-}
-
-async function abandonExpiredAttempt(attemptId) {
-  await prisma.testAttempt.update({
-    where: { id: attemptId },
-    data: { status: "ABANDONED", completedAt: new Date() },
-  });
 }
 
 async function calculatePercentile(testId, score) {

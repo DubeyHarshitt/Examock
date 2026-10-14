@@ -17,6 +17,7 @@ import TestListPage from "./pages/tests/TestListPage";
 import TestDetailPage from "./pages/tests/TestDetailPage";
 import TestEnginePage from "./pages/tests/TestEnginePage";
 import TestResultPage from "./pages/tests/TestResultPage";
+import AttemptsPage from "./pages/tests/AttemptsPage";
 import NotesPage from "./pages/notes/NotesPage";
 import ChannelsPage from "./pages/channels/ChannelsPage";
 import ProgressPage from "./pages/progress/ProgressPage";
@@ -29,6 +30,7 @@ import ProfilePage from "./pages/profile/ProfilePage";
 // Admin
 import AdminDashboard from "./pages/admin/adminDashboard";
 import UsersPanel from "./pages/admin/users/UsersPanel";
+import UserDetailPage from "./pages/admin/users/UserDetailPage";
 import AnalyticsPanel from "./pages/admin/analytics/AnalyticsPanel";
 import NotificationsPanel from "./pages/admin/notifications/NotificationsPanel";
 // Content tree (ticket 05)
@@ -99,6 +101,7 @@ export default function App() {
               <Route path="/tests/:id" element={<TestDetailPage />} />
               <Route path="/tests/:id/take" element={<TestEnginePage />} />
               <Route path="/tests/:id/result" element={<TestResultPage />} />
+              <Route path="/attempts" element={<AttemptsPage />} />
               <Route path="/notes" element={<NotesPage />} />
               <Route path="/channels" element={<ChannelsPage />} />
               <Route path="/progress" element={<ProgressPage />} />
@@ -113,6 +116,7 @@ export default function App() {
             <Route element={<AdminRoute />}>
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UsersPanel />} />
+              <Route path="/admin/users/:id" element={<UserDetailPage />} />
               <Route path="/admin/analytics" element={<AnalyticsPanel />} />
               <Route path="/admin/notifications" element={<NotificationsPanel />} />
               {/* Content tree (ticket 05) */}

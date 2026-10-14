@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as studentApi from "../../api/student.api";
-import type { DashboardResponse } from "../../types/student.types";
+import type { AttemptsResponse, DashboardResponse } from "../../types/student.types";
 
 export const studentKeys = {
   all: ["student"] as const,
@@ -20,6 +20,8 @@ export const studentKeys = {
   progress: () => [...studentKeys.all, "progress"] as const,
   topicProgress: (topicId: string) =>
     [...studentKeys.all, "progress", topicId] as const,
+  attempts: (page: number, pageSize = 20) =>
+    [...studentKeys.all, "attempts", page, pageSize] as const,
   notifications: () => [...studentKeys.all, "notifications"] as const,
 };
 
@@ -92,6 +94,19 @@ export function useTopicProgress(topicId: string) {
     queryKey: studentKeys.topicProgress(topicId),
     queryFn: () => studentApi.getTopicProgress(topicId),
     enabled: !!topicId,
+  });
+}
+
+// ── Attempt history ────────────────────────────────────────────────────────────
+// `placeholderData: keepPreviousData` keeps the current page visible while the
+// next one loads, so pagination doesn't flash an empty list.
+
+export function useAttempts(page = 1, pageSize = 20) {
+  return useQuery<AttemptsResponse>({
+    queryKey: studentKeys.attempts(page, pageSize),
+    queryFn: () => studentApi.getAttempts({ page, pageSize }),
+    staleTime: 1000 * 60,
+    placeholderData: (prev) => prev,
   });
 }
 

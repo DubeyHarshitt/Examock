@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const subjects = data?.subjects ?? [];
   const recentAttempts = data?.recentAttempts ?? [];
   const suggestedTopics = data?.suggestedTopics ?? [];
+  const totalAttempts = data?.totalAttempts ?? recentAttempts.length;
   const totalTopicsAttempted = data?.totalTopicsAttempted ?? 0;
 
   // ── Loading skeleton ───────────────────────────────────────
@@ -176,7 +177,7 @@ export default function DashboardPage() {
           <StatCard
             delay={180}
             label="Tests Taken"
-            value={recentAttempts.length}
+            value={totalAttempts}
             icon={<BarChart3 className="w-5 h-5" />}
             tile="bg-gradient-to-br from-sky-500 to-blue-600 text-white"
           />
@@ -192,7 +193,20 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── Recent attempts ──────────────────────────────────── */}
           <Reveal delay={100}>
-            <Card title="Recent Tests" subtitle="Your last completed attempts">
+            <Card
+              title="Recent Tests"
+              subtitle="Your last completed attempts"
+              action={
+                recentAttempts.length > 0 ? (
+                  <Link
+                    to="/attempts"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700"
+                  >
+                    View all <ChevronRight className="w-3 h-3" />
+                  </Link>
+                ) : undefined
+              }
+            >
               {recentAttempts.length === 0 ? (
                 <p className="text-sm text-slate-500 py-4 text-center">
                   You haven&apos;t taken any tests yet.{" "}
@@ -206,9 +220,10 @@ export default function DashboardPage() {
                     const pct = Math.max(0, Math.min(100, attempt.percentile));
                     const colors = ringColors(pct);
                     return (
-                      <div
+                      <Link
                         key={attempt.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
+                        to={`/tests/${attempt.mockTestId}/result?attemptId=${attempt.id}`}
+                        className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
                       >
                         <ProgressRing value={pct} size={44} stroke={5} from={colors.from} to={colors.to} className="shrink-0">
                           <span className="text-[10px] font-bold text-slate-800 tabular-nums">
@@ -216,7 +231,7 @@ export default function DashboardPage() {
                           </span>
                         </ProgressRing>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
+                          <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-brand-700 transition-colors">
                             {attempt.mockTest?.title ?? "Mock Test"}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
@@ -233,7 +248,8 @@ export default function DashboardPage() {
                         <span className="text-[11px] text-slate-400 whitespace-nowrap">
                           {formatDate(attempt.completedAt)}
                         </span>
-                      </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-brand-500 transition-colors shrink-0" />
+                      </Link>
                     );
                   })}
                 </div>

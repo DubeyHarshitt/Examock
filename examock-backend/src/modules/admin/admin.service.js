@@ -6,6 +6,7 @@ import { parseCsvToRows } from "./lib/csvRows.js";
 import { ingestFile } from "../rag/pipelines/ingestion.pipeline.js";
 import { reconcileMarks } from "./lib/marks.js";
 import { deriveScope, SCOPE } from "./lib/scope.js";
+import { fetchTestQuestions, gradeAttempt } from "../test/lib/scoring.js";
 import fs from "fs";
 
 // ── Exam Types ───────────────────────────────────────────────
@@ -1419,19 +1420,28 @@ export const getUsers = async ({ examTypeId, page = 1, limit = 20, search }) => 
 };
 
 
+// Full profile for the admin user-detail screen: identity, an activity
+// summary, every chapter-progress row, and every payment. Attempts are NOT
+// inlined here (they were capped at 10 before) — the screen pages them from
+// `getUserAttempts` so it can show *all* of them.
 export const getUserDetail = async (id) => {
   const user = await prisma.user.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      avatarUrl: true,
+      mobile: true,
+      mobileVerified: true,
+      role: true,
+      examTypeId: true,
+      examDate: true,
+      createdAt: true,
       examType: { select: { name: true } },
       topicProgress: {
         include: { topic: { select: { name: true } } },
         orderBy: { lastActivity: "desc" },
-      },
-      testAttempts: {
-        include: { mockTest: { select: { title: true, subjectId: true } } },
-        orderBy: { startedAt: "desc" },
-        take: 10,
       },
       payments: {
         include: { mockTest: { select: { title: true } } },
@@ -1441,7 +1451,172 @@ export const getUserDetail = async (id) => {
   });
 
   if (!user) throw new AppError("User not found", 404);
-  return user;
+
+  // Aggregates for the summary panel. `testAttempts` is only used for counts /
+  // score stats here; the table itself comes from getUserAttempts.
+  const [attempts, completedAgg, paidAgg] = await Promise.all([
+    prisma.testAttempt.findMany({
+      where: { userId: id },
+      select: { status: true, score: true, completedAt: true },
+    }),
+    prisma.testAttempt.aggregate({
+      where: { userId: id, status: "COMPLETED" },
+      _avg: { score: true },
+      _max: { score: true },
+      _count: true,
+    }),
+    prisma.payment.aggregate({
+      where: { userId: id, status: "PAID" },
+      _sum: { amountPaise: true },
+      _count: true,
+    }),
+  ]);
+
+  const totalAttempts = attempts.length;
+  const completedAttempts = attempts.filter(
+    (a) => a.status === "COMPLETED",
+  ).length;
+  const inProgressAttempts = attempts.filter(
+    (a) => a.status === "IN_PROGRESS",
+  ).length;
+
+  const lastActivityCandidates = [
+    ...user.topicProgress.map((tp) => tp.lastActivity),
+    ...attempts.map((a) => a.completedAt),
+    user.createdAt,
+  ].filter(Boolean);
+  const lastActive = lastActivityCandidates.reduce(
+    (max, d) => (d > max ? d : max),
+    lastActivityCandidates[0] ?? null,
+  );
+
+  const { payments, topicProgress, ...identity } = user;
+
+  return {
+    ...identity,
+    topicProgress,
+    payments,
+    summary: {
+      totalAttempts,
+      completedAttempts,
+      inProgressAttempts,
+      averageScore:
+        completedAgg._avg.score != null
+          ? Math.round(completedAgg._avg.score * 10) / 10
+          : null,
+      bestScore: completedAgg._max.score ?? null,
+      chaptersStarted: topicProgress.length,
+      videosWatched: topicProgress.reduce((n, tp) => n + tp.videosWatched, 0),
+      paymentsCount: paidAgg._count ?? 0,
+      totalPaidPaise: paidAgg._sum.amountPaise ?? 0,
+      lastActive,
+    },
+  };
+};
+
+// Paginated attempt history for one user — every attempt, any status.
+export const getUserAttempts = async (userId, { page = 1, limit = 20, status } = {}) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!user) throw new AppError("User not found", 404);
+
+  const take = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+  // Ignore an unknown status rather than letting Prisma reject it (500).
+  const statusFilter = ["IN_PROGRESS", "COMPLETED", "ABANDONED"].includes(status)
+    ? status
+    : undefined;
+  const where = { userId, ...(statusFilter ? { status: statusFilter } : {}) };
+
+  const [attempts, total] = await Promise.all([
+    prisma.testAttempt.findMany({
+      where,
+      select: {
+        id: true,
+        mockTestId: true,
+        status: true,
+        score: true,
+        percentile: true,
+        timeTakenSec: true,
+        startedAt: true,
+        completedAt: true,
+        mockTest: {
+          select: {
+            title: true,
+            totalMarks: true,
+            subject: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { startedAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.testAttempt.count({ where }),
+  ]);
+
+  return {
+    attempts: attempts.map((a) => ({
+      id: a.id,
+      mockTestId: a.mockTestId,
+      mockTestTitle: a.mockTest.title,
+      subjectName: a.mockTest.subject?.name ?? null,
+      status: a.status,
+      score: a.score,
+      totalMarks: a.mockTest.totalMarks,
+      percentile: a.percentile,
+      timeTakenSec: a.timeTakenSec,
+      startedAt: a.startedAt,
+      completedAt: a.completedAt,
+    })),
+    total,
+    page: Math.max(Number(page) || 1, 1),
+    limit: take,
+  };
+};
+
+// One attempt, graded question-by-question, for the admin drill-down. Reuses
+// the same grader as the student flow so right/wrong always agree.
+export const getUserAttemptDetail = async (userId, attemptId) => {
+  const attempt = await prisma.testAttempt.findFirst({
+    where: { id: attemptId, userId },
+    include: {
+      mockTest: {
+        select: {
+          title: true,
+          totalMarks: true,
+          subject: { select: { name: true } },
+        },
+      },
+    },
+  });
+  if (!attempt) throw new AppError("Attempt not found", 404);
+
+  const testQuestions = await fetchTestQuestions(attempt.mockTestId);
+  const { rows, score, correct, incorrect, unattempted } = gradeAttempt(
+    testQuestions,
+    attempt.answersJson ?? {},
+  );
+
+  return {
+    attemptId: attempt.id,
+    mockTestId: attempt.mockTestId,
+    mockTestTitle: attempt.mockTest.title,
+    subjectName: attempt.mockTest.subject?.name ?? null,
+    status: attempt.status,
+    score: attempt.score ?? score,
+    totalMarks: attempt.mockTest.totalMarks,
+    percentile: attempt.percentile,
+    timeTakenSec: attempt.timeTakenSec,
+    startedAt: attempt.startedAt,
+    completedAt: attempt.completedAt,
+    correct,
+    incorrect,
+    unattempted,
+    questionResults: rows,
+  };
 };
 
 

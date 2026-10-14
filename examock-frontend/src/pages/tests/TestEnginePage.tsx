@@ -118,7 +118,7 @@ export default function TestEnginePage() {
       } catch (err: any) {
         if (err?.response?.status === 410) {
           toast.error("Time is up — your test has ended.");
-          handleExpire();
+          handleExpire(err?.response?.data?.details?.attemptId);
         } else {
           toast.error("Failed to load question. Please try again.");
         }
@@ -166,7 +166,7 @@ export default function TestEnginePage() {
         await loadQuestion(0, session.attemptId);
       } catch (err: any) {
         if (err?.response?.status === 410) {
-          handleExpire();
+          handleExpire(err?.response?.data?.details?.attemptId);
         } else if (err?.response?.status === 403) {
           toast.error("Please purchase this test to continue.");
           navigate(`/tests/${id}`, { replace: true });
@@ -183,16 +183,32 @@ export default function TestEnginePage() {
     };
   }, [id]);
 
-  function handleExpire() {
+  async function handleExpire(explicitAttemptId?: string) {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    const aid = attemptId ?? (id ? useTestStore.getState().sessions[id]?.attemptId : null);
+    const aid =
+      explicitAttemptId ??
+      attemptId ??
+      (id ? useTestStore.getState().sessions[id]?.attemptId : null);
     if (id) clearTest(id);
     if (aid && id) {
-      navigate(`/tests/${id}/result?attemptId=${aid}`, { replace: true });
-    } else {
-      navigate(`/tests/${id}`, { replace: true });
+      // Auto-submit so a timed-out attempt is scored server-side (F6) instead
+      // of being discarded unscored. If the server already finalised it (e.g.
+      // a 410 from getQuestion/saveAnswer), the submit fails harmlessly and
+      // the result page fetches the stored result instead (F11).
+      try {
+        const { result } = await submitTest(id, aid);
+        navigate(`/tests/${id}/result?attemptId=${result.attemptId}`, {
+          state: result,
+          replace: true,
+        });
+        return;
+      } catch {
+        navigate(`/tests/${id}/result?attemptId=${aid}`, { replace: true });
+        return;
+      }
     }
+    if (id) navigate(`/tests/${id}`, { replace: true });
   }
 
   // ── Countdown timer ─────────────────────────────────────────

@@ -28,7 +28,7 @@ async function getUserExamTypeId(userId) {
 export const getDashboard = async (userId) => {
   const examTypeId = await getUserExamTypeId(userId);
 
-  const [examType, subjects, recentAttempts, progressRecords] = await Promise.all([
+  const [examType, subjects, recentAttempts, totalAttempts, progressRecords] = await Promise.all([
     // Exam type details
     prisma.examType.findUnique({
       where:  { id: examTypeId },
@@ -47,11 +47,13 @@ export const getDashboard = async (userId) => {
       orderBy: { orderIndex: "asc" },
     }),
 
-    // Last 3 completed test attempts
+    // Last 3 completed test attempts. `mockTestId` is selected so each row can
+    // link through to its result page (`/tests/:mockTestId/result?attemptId=…`).
     prisma.testAttempt.findMany({
       where:   { userId, status: "COMPLETED" },
       select:  {
         id: true,
+        mockTestId: true,
         score: true,
         percentile: true,
         timeTakenSec: true,
@@ -60,6 +62,12 @@ export const getDashboard = async (userId) => {
       },
       orderBy: { completedAt: "desc" },
       take:    3,
+    }),
+
+    // Real total of completed attempts. The list above is capped at 3, so its
+    // length must never be shown as "Tests Taken" — that would max out at 3.
+    prisma.testAttempt.count({
+      where: { userId, status: "COMPLETED" },
     }),
 
     // All topic progress for this user
@@ -103,6 +111,7 @@ export const getDashboard = async (userId) => {
     })),
     recentAttempts,
     suggestedTopics,
+    totalAttempts,
     totalTopicsAttempted: progressRecords.filter((p) => p.attemptCount > 0).length,
   };
 };
@@ -414,6 +423,7 @@ export const getTopicProgress = async (userId, topicId) => {
       },
       select:  {
         id: true,
+        mockTestId: true,
         score: true,
         percentile: true,
         timeTakenSec: true,
@@ -446,7 +456,84 @@ export const getTopicProgress = async (userId, topicId) => {
     lastActivity:  progress.lastActivity,
     totalVideos:   progress.topic._count.videos,
     totalQuestions: progress.topic._count.questions,
-    recentAttempts,
+    // Flatten to the shape `TopicAttemptSummary` declares — the raw Prisma rows
+    // nest title/totalMarks under `mockTest`, which left `mockTestTitle` and
+    // `totalMarks` undefined in the UI (it rendered "score/undefined").
+    recentAttempts: recentAttempts.map((a) => ({
+      id: a.id,
+      mockTestId: a.mockTestId,
+      mockTestTitle: a.mockTest.title,
+      score: a.score,
+      totalMarks: a.mockTest.totalMarks,
+      percentile: a.percentile,
+      timeTakenSec: a.timeTakenSec,
+      completedAt: a.completedAt,
+    })),
+  };
+};
+
+// ─────────────────────────────────────────────────────────────
+// 10. Attempts — paginated history of completed tests
+// ─────────────────────────────────────────────────────────────
+
+const ATTEMPTS_PAGE_SIZE = 20;
+const ATTEMPTS_MAX_PAGE_SIZE = 50;
+
+export const getAttempts = async (userId, { page, pageSize } = {}) => {
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const safeSize =
+    Number.isFinite(pageSize) && pageSize > 0
+      ? Math.min(Math.floor(pageSize), ATTEMPTS_MAX_PAGE_SIZE)
+      : ATTEMPTS_PAGE_SIZE;
+
+  const where = { userId, status: "COMPLETED" };
+
+  const [total, attempts] = await Promise.all([
+    prisma.testAttempt.count({ where }),
+    prisma.testAttempt.findMany({
+      where,
+      select: {
+        id: true,
+        mockTestId: true,
+        score: true,
+        percentile: true,
+        timeTakenSec: true,
+        completedAt: true,
+        mockTest: {
+          select: {
+            title: true,
+            totalMarks: true,
+            durationMins: true,
+            subjectId: true,
+            subject: { select: { name: true } },
+            examType: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { completedAt: "desc" },
+      skip: (safePage - 1) * safeSize,
+      take: safeSize,
+    }),
+  ]);
+
+  return {
+    attempts: attempts.map((a) => ({
+      id: a.id,
+      mockTestId: a.mockTestId,
+      title: a.mockTest.title,
+      subjectId: a.mockTest.subjectId,
+      subjectName: a.mockTest.subject?.name ?? null,
+      examTypeName: a.mockTest.examType?.name ?? null,
+      score: a.score,
+      totalMarks: a.mockTest.totalMarks,
+      percentile: a.percentile,
+      timeTakenSec: a.timeTakenSec,
+      completedAt: a.completedAt,
+    })),
+    total,
+    page: safePage,
+    pageSize: safeSize,
+    totalPages: Math.max(1, Math.ceil(total / safeSize)),
   };
 };
 

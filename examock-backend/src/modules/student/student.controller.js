@@ -43,6 +43,12 @@ export const getProgress = handle((req) =>
 export const getTopicProgress = handle((req) =>
   studentService.getTopicProgress(req.user.userId, req.params.topicId),
 );
+export const getAttempts = handle((req) =>
+  studentService.getAttempts(req.user.userId, {
+    page: parseLimit(req.query.page),
+    pageSize: parseLimit(req.query.pageSize),
+  }),
+);
 
 // ── Ticket 01: student notifications ────────────────────────────
 

@@ -15,11 +15,11 @@ export interface DashboardSubject {
 
 export interface DashboardRecentAttempt {
   id: string;
+  /** Mock the attempt belongs to — used to link into `/tests/:mockTestId/result`. */
   mockTestId: string;
   /** Backend selects these via `mockTest: { select: { title, totalMarks } }` */
   mockTest?: { title?: string; totalMarks?: number };
   score: number;
-  totalMarks: number;
   percentile: number;
   timeTakenSec: number;
   completedAt: string;
@@ -38,7 +38,35 @@ export interface DashboardResponse {
   subjects: DashboardSubject[];
   recentAttempts: DashboardRecentAttempt[];
   suggestedTopics: DashboardSuggestedTopic[];
+  /** Real count of completed attempts (recentAttempts is capped at 3). */
+  totalAttempts: number;
   totalTopicsAttempted: number;
+}
+
+// ── Attempt history ───────────────────────────────────────────────────────────
+// One row of GET /student/attempts — a completed attempt, flattened for the
+// history list. `mockTestId` + `id` build the link to the detailed result page.
+
+export interface AttemptSummary {
+  id: string;
+  mockTestId: string;
+  title: string;
+  subjectId: string | null;
+  subjectName: string | null;
+  examTypeName: string | null;
+  score: number;
+  totalMarks: number;
+  percentile: number;
+  timeTakenSec: number;
+  completedAt: string;
+}
+
+export interface AttemptsResponse {
+  attempts: AttemptSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 // ── Subjects ──────────────────────────────────────────────────────────────────

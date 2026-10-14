@@ -1,16 +1,8 @@
 // store/admin/slices/users.slice.ts
 import type { StateCreator } from "zustand";
 import type { AdminStore } from "../types/admin.store.types";
-import {
-  getUsersApi,
-  getUserDetailApi,
-  resetUserExamTypeApi,
-} from "../../../api/admin.api";
-import type {
-  AdminUser,
-  AdminUserDetail,
-  GetUsersResponse,
-} from "../../../types/admin.types";
+import { getUsersApi, resetUserExamTypeApi } from "../../../api/admin.api";
+import type { AdminUser, GetUsersResponse } from "../../../types/admin.types";
 
 export interface UsersSlice {
   users: AdminUser[];
@@ -20,19 +12,14 @@ export interface UsersSlice {
   usersLoading: boolean;
   usersError: string | null;
   usersSearch: string;
-  /** Currently-viewed user detail (from the detail drawer/page) */
-  selectedUser: AdminUserDetail | null;
-  selectedUserLoading: boolean;
 
   fetchUsers: (filters?: {
     examTypeId?: string;
     page?: number;
     search?: string;
   }) => Promise<void>;
-  fetchUserDetail: (id: string) => Promise<void>;
   resetUserExam: (id: string) => Promise<void>;
   setUsersSearch: (search: string) => void;
-  clearSelectedUser: () => void;
 }
 
 export const createUsersSlice: StateCreator<
@@ -48,8 +35,6 @@ export const createUsersSlice: StateCreator<
   usersLoading: false,
   usersError: null,
   usersSearch: "",
-  selectedUser: null,
-  selectedUserLoading: false,
 
   fetchUsers: async (filters) => {
     const page = filters?.page ?? get().usersPage;
@@ -75,19 +60,6 @@ export const createUsersSlice: StateCreator<
     }
   },
 
-  fetchUserDetail: async (id) => {
-    set({ selectedUserLoading: true, usersError: null });
-    try {
-      const user: AdminUserDetail = await getUserDetailApi(id);
-      set({ selectedUser: user, usersError: null });
-    } catch (error) {
-      set({ usersError: (error as Error).message });
-      throw error;
-    } finally {
-      set({ selectedUserLoading: false });
-    }
-  },
-
   resetUserExam: async (id) => {
     set({ usersLoading: true, usersError: null });
     try {
@@ -109,9 +81,5 @@ export const createUsersSlice: StateCreator<
 
   setUsersSearch: (search) => {
     set({ usersSearch: search });
-  },
-
-  clearSelectedUser: () => {
-    set({ selectedUser: null });
   },
 });

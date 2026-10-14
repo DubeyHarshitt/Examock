@@ -1,15 +1,17 @@
 // src/pages/tests/TestResultPage.tsx
 //
 // Shows score, percentile, time taken, and a per-question breakdown.
-// Prefers the rich submit result passed via router state.
 //
-// Two result shapes coexist in the codebase:
-//   1. The navigation-state payload below (rich: marksAwarded, imageUrl, …)
-//   2. `TestResultResponse.result.answers[]` from GET /test/:id/result
-// We render shape #1 because it carries per-row imageUrl + explanation. A
-// future ticket will unify the two; until then we explicitly don't refetch.
+// The result arrives one of two ways:
+//   1. Router state — set right after a manual submit (no extra round-trip).
+//   2. `GET /test/:id/result?attemptId=…` — used when state is absent, i.e.
+//      after a refresh, a shared/opened link, a timeout auto-submit, or an
+//      expired attempt finalised server-side.
+// Both paths return the same `TestScoredResult` shape, so the render below is
+// identical either way (F11).
 
-import { useLocation, useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useParams, useSearchParams, Link } from "react-router-dom";
 import {
   CheckCircle2,
   XCircle,
@@ -19,33 +21,14 @@ import {
   RotateCcw,
   ArrowLeft,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
 import { PageHeader, Button, EmptyState, ProgressRing, Reveal } from "../../components/ui";
 import { cn } from "../../utils/cn";
-
-interface QuestionReview {
-  questionId: string;
-  selected: "A" | "B" | "C" | "D" | null;
-  isCorrect: boolean;
-  marksAwarded: number;
-  explanation?: string | null;
-  text?: string;
-  imageUrl?: string | null;
-}
-
-interface SubmitPayload {
-  attemptId: string;
-  score: number;
-  totalMarks: number;
-  percentile: number;
-  timeTakenSec: number;
-  correct: number;
-  incorrect: number;
-  unattempted: number;
-  questionResults: QuestionReview[];
-}
+import { getResult } from "../../api/test.api";
+import type { TestScoredResult } from "../../types/test.types";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -56,7 +39,34 @@ function formatTime(seconds: number): string {
 export default function TestResultPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const result = (location.state as SubmitPayload | null) ?? null;
+  const [searchParams] = useSearchParams();
+
+  const stateResult = (location.state as TestScoredResult | null) ?? null;
+  const attemptId = searchParams.get("attemptId");
+
+  const [result, setResult] = useState<TestScoredResult | null>(stateResult);
+  // Only show the spinner when we actually have something to fetch.
+  const [loading, setLoading] = useState(!stateResult && !!id && !!attemptId);
+
+  useEffect(() => {
+    // Router state is memory-only, so it's gone after a refresh or on an
+    // external link. Fall back to the API using attemptId from the query.
+    if (stateResult || !id || !attemptId) return;
+    let cancelled = false;
+    getResult(id, attemptId)
+      .then((data) => {
+        if (!cancelled) setResult(data.result);
+      })
+      .catch(() => {
+        if (!cancelled) setResult(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, attemptId, stateResult]);
 
   return (
     <AppShell section="student">
@@ -73,7 +83,12 @@ export default function TestResultPage() {
       />
 
       <div className="mt-6 max-w-3xl space-y-6">
-        {!result ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <Loader2 className="w-7 h-7 text-brand-600 animate-spin" />
+            <p className="text-sm text-slate-500">Loading your result…</p>
+          </div>
+        ) : !result ? (
           <EmptyState
             title="No result yet"
             description="Complete a test to view your result here."

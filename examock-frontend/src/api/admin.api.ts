@@ -1,6 +1,7 @@
 // admin.api.ts
 import api from "./axios";
 import type { CreateExamTypeDto, CreateMockTestDto, CreateSubjectDto, CreateTopicDto, Topic, createQuestionsDto, CreateTestWithQuestionsDto, CsvImportResult, DraftRow, ExamDetail, ExamNode, GetQuestionsResponse, MockTestDetail, PdfImport, RowsSaveSummary, Subject, TestsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
+import type { AdminAttemptDetail, AdminUserAttemptsResponse, AdminUserDetail } from "../types/admin.types";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -428,8 +429,29 @@ export const getUsersApi = async (filters?: {
   return data;
 };
 
-export const getUserDetailApi = async (id: string) => {
-  const { data } = await api.get(`/admin/users/${id}`);
+export const getUserDetailApi = async (id: string): Promise<AdminUserDetail> => {
+  const { data } = await api.get<AdminUserDetail>(`/admin/users/${id}`);
+  return data;
+};
+
+export const getUserAttemptsApi = async (
+  id: string,
+  params?: { page?: number; limit?: number; status?: string },
+): Promise<AdminUserAttemptsResponse> => {
+  const { data } = await api.get<AdminUserAttemptsResponse>(
+    `/admin/users/${id}/attempts`,
+    { params },
+  );
+  return data;
+};
+
+export const getUserAttemptDetailApi = async (
+  id: string,
+  attemptId: string,
+): Promise<AdminAttemptDetail> => {
+  const { data } = await api.get<AdminAttemptDetail>(
+    `/admin/users/${id}/attempts/${attemptId}`,
+  );
   return data;
 };
 

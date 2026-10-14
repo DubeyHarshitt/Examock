@@ -93,19 +93,25 @@ export interface AnswerResponse {
 }
 
 // ── Submit / result ───────────────────────────────────────────────────────────
+// One scored-result shape for the whole app. `POST /test/:id/submit` and
+// `GET /test/:id/result` return the same per-question payload (see
+// test.service.js `buildScoredResult`), so the result page never branches on
+// how it arrived.
 
 export interface QuestionResult {
   questionId: string;
-  text?: string;
-  selectedOption: OptionKey | null;
-  correctOption: OptionKey;
+  /** selected option, or null when the question was left unattempted */
+  selected: OptionKey | null;
   isCorrect: boolean;
+  /** marks added (or deducted) for this question */
+  marksAwarded: number;
   explanation?: string | null;
-  marks: number;
-  negMarks: number;
+  text?: string;
+  imageUrl?: string | null;
 }
 
-export interface TestSubmitResult {
+/** Payload returned by submit and by the timeout auto-submit. */
+export interface TestScoredResult {
   attemptId: string;
   score: number;
   totalMarks: number;
@@ -117,24 +123,13 @@ export interface TestSubmitResult {
   questionResults: QuestionResult[];
 }
 
+/** Back-compat alias — submit uses the same shape. */
+export type TestSubmitResult = TestScoredResult;
+
 export interface TestResultResponse {
-  result: {
-    attemptId: string;
+  /** Same scored payload, plus test metadata unique to the fetch path. */
+  result: TestScoredResult & {
     testTitle: string;
-    score: number;
-    totalMarks: number;
-    percentile: number;
-    timeTakenSec: number;
     completedAt: string;
-    answers: {
-      questionId: string;
-      text: string;
-      selectedOption: OptionKey | null;
-      correctOption: OptionKey;
-      isCorrect: boolean;
-      explanation?: string | null;
-      marks: number;
-      negMarks: number;
-    }[];
   };
 }

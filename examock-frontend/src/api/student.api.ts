@@ -1,5 +1,6 @@
 import api from "./axios";
 import type {
+  AttemptsResponse,
   DashboardResponse,
   ListNotificationsResponse,
 } from "../types/student.types";
@@ -53,6 +54,18 @@ export const getProgress = async () => {
 
 export const getTopicProgress = async (topicId: string) => {
   const { data } = await api.get(`/student/progress/${topicId}`);
+  return data;
+};
+
+// ── Attempt history ───────────────────────────────────────────────────────────
+
+export const getAttempts = async (params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<AttemptsResponse> => {
+  const { data } = await api.get<AttemptsResponse>("/student/attempts", {
+    params,
+  });
   return data;
 };
 

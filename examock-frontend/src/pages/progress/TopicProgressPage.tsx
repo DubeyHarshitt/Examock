@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Clock,
   Trophy,
+  ChevronRight,
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
@@ -186,12 +187,13 @@ export default function TopicProgressPage() {
                 const attemptPct =
                   a.totalMarks > 0 ? Math.round((a.score / a.totalMarks) * 100) : 0;
                 return (
-                  <div
+                  <Link
                     key={a.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
+                    to={`/tests/${a.mockTestId}/result?attemptId=${a.id}`}
+                    className="group flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/60 transition-colors"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-brand-700 transition-colors">
                         {a.mockTestTitle ?? "Mock Test"}
                       </p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
@@ -206,10 +208,13 @@ export default function TopicProgressPage() {
                         </span>
                       </div>
                     </div>
-                    <Badge variant={attemptPct >= 70 ? "success" : attemptPct >= 40 ? "warning" : "danger"}>
-                      {attemptPct}%
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={attemptPct >= 70 ? "success" : attemptPct >= 40 ? "warning" : "danger"}>
+                        {attemptPct}%
+                      </Badge>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-brand-500 transition-colors" />
+                    </div>
+                  </Link>
                 );
               })}
             </div>

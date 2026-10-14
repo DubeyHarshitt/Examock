@@ -75,21 +75,25 @@ export interface UserTopicProgress {
   topic: { name: string };
 }
 
-export interface UserTestAttempt {
-  id: string;
-  mockTestId: string;
-  score: number | null;
-  percentile: number | null;
-  status: string;
-  startedAt: string;
-  completedAt: string | null;
-  mockTest: { title: string; subjectId: string | null };
+/** Roll-up stats shown in the admin user-detail summary panel. */
+export interface AdminUserSummary {
+  totalAttempts: number;
+  completedAttempts: number;
+  inProgressAttempts: number;
+  averageScore: number | null;
+  bestScore: number | null;
+  chaptersStarted: number;
+  videosWatched: number;
+  paymentsCount: number;
+  totalPaidPaise: number;
+  lastActive: string | null;
 }
 
 export interface AdminUserDetail {
   id: string;
   email: string;
   name: string | null;
+  avatarUrl: string | null;
   mobile: string | null;
   mobileVerified: boolean;
   role: "STUDENT" | "ADMIN";
@@ -98,8 +102,64 @@ export interface AdminUserDetail {
   createdAt: string;
   examType: { name: string } | null;
   topicProgress: UserTopicProgress[];
-  testAttempts: UserTestAttempt[];
   payments: PaymentRecord[];
+  summary: AdminUserSummary;
+}
+
+// ── User attempts (admin user-detail screen) ──────────────────────────────────
+
+export interface AdminUserAttempt {
+  id: string;
+  mockTestId: string;
+  mockTestTitle: string;
+  subjectName: string | null;
+  status: string;
+  score: number | null;
+  totalMarks: number;
+  percentile: number | null;
+  timeTakenSec: number | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface AdminUserAttemptsResponse {
+  attempts: AdminUserAttempt[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminAttemptQuestion {
+  questionId: string;
+  topicId: string;
+  text: string;
+  imageUrl: string | null;
+  explanation: string | null;
+  options: { A: string; B: string; C: string; D: string };
+  correctOption: string | null;
+  marks: number;
+  negMarks: number;
+  selected: string | null;
+  isCorrect: boolean;
+  marksAwarded: number;
+}
+
+export interface AdminAttemptDetail {
+  attemptId: string;
+  mockTestId: string;
+  mockTestTitle: string;
+  subjectName: string | null;
+  status: string;
+  score: number | null;
+  totalMarks: number;
+  percentile: number | null;
+  timeTakenSec: number | null;
+  startedAt: string;
+  completedAt: string | null;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+  questionResults: AdminAttemptQuestion[];
 }
 
 export interface GetUsersResponse {

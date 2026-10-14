@@ -43,6 +43,9 @@ app.set('trust proxy', 1);
 app.get("/health",(_req, res)=> {
     res.status(200).json({success: true, message:"OK"})
 });
+app.get("/api/health",(_req, res)=> {
+    res.status(200).json({success: true, message:"OK, The server is running and the API is reachable"})
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);

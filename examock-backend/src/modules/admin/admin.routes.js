@@ -31,7 +31,7 @@ import {
   // Notes
   listNotes, createNote, updateNote, deleteNote,
   // Users
-  listUsers, getUserDetail, resetUserExamType,
+  listUsers, getUserDetail, getUserAttempts, getUserAttemptDetail, resetUserExamType,
   // Analytics
   getOverview, getTestAnalytics, getPaymentRecords,
   // Notifications
@@ -277,6 +277,8 @@ router.delete("/yt-channels/:id",  deleteYtChannel);
 // ── Users ────────────────────────────────────────────────────
 router.get("/users",               listUsers);          // ?examTypeId= &page= &limit=
 router.get("/users/:id",           getUserDetail);
+router.get("/users/:id/attempts",  getUserAttempts);    // ?page= &limit= &status=
+router.get("/users/:id/attempts/:attemptId", getUserAttemptDetail);
 router.patch("/users/:id/reset-exam", resetUserExamType);
 
 // ── Analytics ────────────────────────────────────────────────
