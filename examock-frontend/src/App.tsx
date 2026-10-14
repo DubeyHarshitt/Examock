@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useInitAuth } from "./hooks/authHook/useInitAuth";
@@ -8,7 +9,8 @@ import { ToastProvider } from "./components/ui/toast/ToastProvider";
 import LoginPage from "./pages/auth/LoginPage";
 import OnboardingPage from "./pages/auth/OnboardingPage";
 
-// Student
+// Student — happy path stays eager: these are the first screens a student
+// reaches, so lazy-loading them would only add a round-trip.
 import DashboardPage from "./pages/dashboard/dashboardPage";
 import SubjectListPage from "./pages/subjects/SubjectListPage";
 import StudentSubjectDetailPage from "./pages/subjects/SubjectDetailPage";
@@ -16,30 +18,33 @@ import SubjectTopicsRedirect from "./pages/subjects/SubjectTopicsRedirect";
 import VideoPage from "./pages/videos/VideoPage";
 import TestListPage from "./pages/tests/TestListPage";
 import TestDetailPage from "./pages/tests/TestDetailPage";
-import TestEnginePage from "./pages/tests/TestEnginePage";
 import TestResultPage from "./pages/tests/TestResultPage";
 import AttemptsPage from "./pages/tests/AttemptsPage";
 import ChannelsPage from "./pages/channels/ChannelsPage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import TopicProgressPage from "./pages/progress/TopicProgressPage";
-import ChatPage from "./pages/rag/ChatPage";
-import UploadPage from "./pages/rag/UploadPage";
 import NotificationsPage from "./pages/notifications/NotificationsPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 
-// Admin
-import AdminDashboard from "./pages/admin/adminDashboard";
-import UsersPanel from "./pages/admin/users/UsersPanel";
-import UserDetailPage from "./pages/admin/users/UserDetailPage";
-import AnalyticsPanel from "./pages/admin/analytics/AnalyticsPanel";
-import NotificationsPanel from "./pages/admin/notifications/NotificationsPanel";
+// Student — lazily loaded (F15): the exam console, and the RAG pages that drag
+// in react-markdown/remark-gfm. Most sessions never open these.
+const TestEnginePage = lazy(() => import("./pages/tests/TestEnginePage"));
+const ChatPage = lazy(() => import("./pages/rag/ChatPage"));
+const UploadPage = lazy(() => import("./pages/rag/UploadPage"));
+
+// Admin — lazily loaded (F15): a student must never download the admin panel.
+const AdminDashboard = lazy(() => import("./pages/admin/adminDashboard"));
+const UsersPanel = lazy(() => import("./pages/admin/users/UsersPanel"));
+const UserDetailPage = lazy(() => import("./pages/admin/users/UserDetailPage"));
+const AnalyticsPanel = lazy(() => import("./pages/admin/analytics/AnalyticsPanel"));
+const NotificationsPanel = lazy(() => import("./pages/admin/notifications/NotificationsPanel"));
 // Content tree (ticket 05)
-import ExamsPage from "./pages/admin/content/ExamsPage";
-import ExamDetailPage from "./pages/admin/content/ExamDetailPage";
-import SubjectDetailPage from "./pages/admin/content/SubjectDetailPage";
-import TestsPage from "./pages/admin/content/TestsPage";
-import TestCreatePage from "./pages/admin/content/TestCreatePage";
-import PaperGrid from "./pages/admin/tests/PaperGrid";
+const ExamsPage = lazy(() => import("./pages/admin/content/ExamsPage"));
+const ExamDetailPage = lazy(() => import("./pages/admin/content/ExamDetailPage"));
+const SubjectDetailPage = lazy(() => import("./pages/admin/content/SubjectDetailPage"));
+const TestsPage = lazy(() => import("./pages/admin/content/TestsPage"));
+const TestCreatePage = lazy(() => import("./pages/admin/content/TestCreatePage"));
+const PaperGrid = lazy(() => import("./pages/admin/tests/PaperGrid"));
 // import ExamTypesPage from "./pages/admin/ExamTypesPage";
 // import SubjectsPage from "./pages/admin/SubjectsPage";
 // import TopicsPage from "./pages/admin/TopicsPage";
@@ -68,6 +73,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// Fallback shown while a lazily-loaded route chunk is fetched (F15).
+function RouteFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <Spinner />
+    </div>
+  );
+}
+
 export default function App() {
   const { loading } = useInitAuth();
   if (loading)
@@ -82,6 +96,7 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <ErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* ── Public routes ─────────────────────────────── */}
             <Route path="/login" element={<LoginPage />} />
@@ -146,6 +161,7 @@ export default function App() {
             {/* ── Fallback ───────────────────────────────────── */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </ToastProvider>
