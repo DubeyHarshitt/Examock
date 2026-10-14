@@ -114,6 +114,14 @@ export default function TestEnginePage() {
         // Remember which questionId lives at this index for palette accuracy
         indexToIdRef.current[index] = res.question.id;
         setCurrentQuestion(res);
+        // Safety net: if the server already holds an answer for this question
+        // and the store has no entry (resume that didn't seed it), adopt the
+        // server's value so the option shows as picked (F12). An explicit null
+        // left by "Clear Response" is respected and never overwritten.
+        const localAnswers = useTestStore.getState().sessions[id]?.answers;
+        if (res.savedAnswer != null && localAnswers?.[res.question.id] === undefined) {
+          saveAnswerLocal(id, res.question.id, res.savedAnswer);
+        }
         setTimeRemaining(res.timeRemainingSec);
         setVisited((prev) => new Set(prev).add(index));
       } catch (err) {
@@ -127,7 +135,7 @@ export default function TestEnginePage() {
         setQuestionLoading(false);
       }
     },
-    [attemptId, id]
+    [attemptId, id, saveAnswerLocal]
   );
 
   // ── Start or resume on mount ────────────────────────────────
@@ -142,6 +150,13 @@ export default function TestEnginePage() {
       try {
         const { session } = await startTest(id);
         if (cancelled) return;
+
+        // Seed index → questionId for questions already answered server-side so
+        // the palette reads correctly the moment a resumed attempt opens,
+        // rather than only for questions re-visited in this session (F12).
+        for (const { questionIndex, questionId } of session.savedAnswers ?? []) {
+          indexToIdRef.current[questionIndex] = questionId;
+        }
 
         // If we already initialized THIS exact attempt (e.g. a remount/revisit of
         // the same test), don't wipe answers/currentIndex — just refresh the timer
@@ -162,6 +177,7 @@ export default function TestEnginePage() {
         startTestSession(id, {
           attemptId: session.attemptId,
           totalQuestions: session.totalQuestions,
+          savedAnswers: session.savedAnswers,
         });
         setTimeRemaining(session.timeRemainingSec);
         await loadQuestion(0, session.attemptId);

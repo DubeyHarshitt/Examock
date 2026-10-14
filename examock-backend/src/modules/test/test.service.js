@@ -6,6 +6,7 @@ import {
   gradeAttempt,
   toStudentQuestionResults,
 } from "./lib/scoring.js";
+import { mapSavedAnswers } from "./lib/resumeAnswers.js";
 
 // ─────────────────────────────────────────────────────────────
 // 1. List tests for user's exam type
@@ -126,11 +127,24 @@ export async function startTest(userId, testId) {
         { attemptId: result.attemptId },
       );
     }
+    // Hand the client the answers already saved on this attempt so the engine
+    // can seed its store + palette immediately on resume instead of showing
+    // 0 answered until every question is re-opened (F12).
+    const orderedQuestions = await prisma.testQuestion.findMany({
+      where: { testId },
+      orderBy: { orderIndex: "asc" },
+      select: { questionId: true },
+    });
+
     return {
       attemptId: existing.id,
       timeRemainingSec: remaining,
       totalQuestions: test._count.questions,
       resumed: true,
+      savedAnswers: mapSavedAnswers(
+        existing.answersJson,
+        orderedQuestions.map((q) => q.questionId),
+      ),
     };
   }
 
@@ -147,6 +161,7 @@ export async function startTest(userId, testId) {
     timeRemainingSec: test.durationMins * 60,
     totalQuestions: test._count.questions,
     resumed: false,
+    savedAnswers: [],
   };
 }
 

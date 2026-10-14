@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { QuestionResponse, TestSession } from "../types/test.types";
 
 export const getTests = async () => {
   const { data } = await api.get("/test");
@@ -10,7 +11,9 @@ export const getTestById = async (testId: string) => {
   return data;
 };
 
-export const startTest = async (testId: string) => {
+export const startTest = async (
+  testId: string
+): Promise<{ session: TestSession }> => {
   const { data } = await api.post(`/test/${testId}/start`);
   return data;
 };
@@ -19,7 +22,7 @@ export const getQuestion = async (
   testId: string,
   attemptId: string,
   index: number
-) => {
+): Promise<QuestionResponse> => {
   const { data } = await api.get(`/test/${testId}/question`, {
     params: { attemptId, index },
   });

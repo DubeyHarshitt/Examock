@@ -51,11 +51,19 @@ export interface TestDetail extends TestItem {
 
 // ── Session / start ───────────────────────────────────────────────────────────
 
+export interface SavedAnswer {
+  questionId: string;
+  questionIndex: number;
+  selectedOption: OptionKey;
+}
+
 export interface TestSession {
   attemptId: string;
   timeRemainingSec: number;
   totalQuestions: number;
   resumed: boolean;
+  /** Answers already stored server-side; seeded into the engine on resume. */
+  savedAnswers: SavedAnswer[];
 }
 
 // ── Question (single-fetch during test) ───────────────────────────────────────

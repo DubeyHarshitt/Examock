@@ -2,6 +2,12 @@ import { create } from "zustand";
 
 type Option = "A" | "B" | "C" | "D";
 
+interface SavedAnswer {
+  questionId: string;
+  questionIndex: number;
+  selectedOption: Option;
+}
+
 /**
  * Per-test session. Each `TestEnginePage` instance reads and writes its own
  * session via the keyed store, so cross-test navigation never leaks
@@ -21,7 +27,9 @@ interface TestStore {
   // Actions
   startTest: (
     testId: string,
-    session: Omit<TestSession, "answers" | "currentIndex">,
+    session: Omit<TestSession, "answers" | "currentIndex"> & {
+      savedAnswers?: SavedAnswer[];
+    },
   ) => void;
   saveAnswer: (testId: string, questionId: string, option: Option | null) => void;
   setCurrentIndex: (testId: string, index: number) => void;
@@ -44,13 +52,19 @@ export const useTestStore = create<TestStore>((set, get) => ({
       if (existing && existing.attemptId === session.attemptId) {
         return state;
       }
+      // Seed answers the server already holds so a resumed attempt shows the
+      // right answered count + palette straight away instead of blank (F12).
+      const answers: Record<string, Option | null> = {};
+      for (const { questionId, selectedOption } of session.savedAnswers ?? []) {
+        answers[questionId] = selectedOption;
+      }
       return {
         sessions: {
           ...state.sessions,
           [testId]: {
             attemptId: session.attemptId,
             totalQuestions: session.totalQuestions,
-            answers: {},
+            answers,
             currentIndex: 0,
           },
         },
