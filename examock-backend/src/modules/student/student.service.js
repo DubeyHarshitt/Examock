@@ -234,7 +234,10 @@ export const getVideos = async (userId, { topicId }) => {
 // 5. Notes — study materials for the student
 // ─────────────────────────────────────────────────────────────
 
-export const getNotes = async (userId, { subjectId, topicId, isFree, page = 1, limit = 20 }) => {
+export const getNotes = async (
+  userId,
+  { subjectId, topicId, isFree, unassigned, page = 1, limit = 20 },
+) => {
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: { examTypeId: true },
@@ -250,6 +253,8 @@ export const getNotes = async (userId, { subjectId, topicId, isFree, page = 1, l
   const where = { isActive: true, examTypeId: user.examTypeId };
   if (subjectId) where.subjectId = subjectId;
   if (topicId) where.topicId = topicId;
+  // Exam-wide ("General") material — notes not tied to any subject.
+  if (unassigned === "true" || unassigned === true) where.subjectId = null;
   if (isFree !== undefined) where.isFree = isFree === "true" || isFree === true;
 
   const [notes, total] = await Promise.all([

@@ -27,7 +27,7 @@ router.get("/dashboard",          getDashboard);
 router.get("/subjects",           getSubjects);
 router.get("/topics",             getTopics);        // ?subjectId=
 router.get("/videos",             getVideos);        // ?topicId= or ?subjectId=
-router.get("/notes",              getNotes);         // ?topicId= or ?subjectId=
+router.get("/notes",              getNotes);         // ?topicId= | ?subjectId= | ?unassigned=true
 router.get("/notes/:id",          getNoteById);
 router.get("/yt-channels",        getYtChannels);
 router.get("/progress",           getProgress);

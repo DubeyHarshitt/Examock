@@ -11,14 +11,14 @@ import OnboardingPage from "./pages/auth/OnboardingPage";
 // Student
 import DashboardPage from "./pages/dashboard/dashboardPage";
 import SubjectListPage from "./pages/subjects/SubjectListPage";
-import TopicListPage from "./pages/subjects/TopicListPage";
+import StudentSubjectDetailPage from "./pages/subjects/SubjectDetailPage";
+import SubjectTopicsRedirect from "./pages/subjects/SubjectTopicsRedirect";
 import VideoPage from "./pages/videos/VideoPage";
 import TestListPage from "./pages/tests/TestListPage";
 import TestDetailPage from "./pages/tests/TestDetailPage";
 import TestEnginePage from "./pages/tests/TestEnginePage";
 import TestResultPage from "./pages/tests/TestResultPage";
 import AttemptsPage from "./pages/tests/AttemptsPage";
-import NotesPage from "./pages/notes/NotesPage";
 import ChannelsPage from "./pages/channels/ChannelsPage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import TopicProgressPage from "./pages/progress/TopicProgressPage";
@@ -95,14 +95,18 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/subjects" element={<SubjectListPage />} />
-              <Route path="/subjects/:subjectId/topics" element={<TopicListPage />} />
+              <Route path="/subjects/:subjectId" element={<StudentSubjectDetailPage />} />
+              <Route
+                path="/subjects/:subjectId/topics"
+                element={<SubjectTopicsRedirect />}
+              />
               <Route path="/topics/:topicId/videos" element={<VideoPage />} />
               <Route path="/tests" element={<TestListPage />} />
               <Route path="/tests/:id" element={<TestDetailPage />} />
               <Route path="/tests/:id/take" element={<TestEnginePage />} />
               <Route path="/tests/:id/result" element={<TestResultPage />} />
               <Route path="/attempts" element={<AttemptsPage />} />
-              <Route path="/notes" element={<NotesPage />} />
+              <Route path="/notes" element={<Navigate to="/subjects" replace />} />
               <Route path="/channels" element={<ChannelsPage />} />
               <Route path="/progress" element={<ProgressPage />} />
               <Route path="/progress/:topicId" element={<TopicProgressPage />} />

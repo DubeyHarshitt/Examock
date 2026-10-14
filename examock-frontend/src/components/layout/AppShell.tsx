@@ -12,12 +12,11 @@ import {
   X,
   LayoutDashboard,
   BookOpen,
-  FileText,
   MonitorPlay,
   BarChart3,
   Users,
   MessageCircle,
-  FolderOpen,
+  LibraryBig,
   Bell,
   GraduationCap,
   ListChecks,
@@ -43,9 +42,8 @@ interface AppShellProps {
 
 const studentNav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" />, end: true },
-  { to: "/subjects", label: "Subjects", icon: <FolderOpen className="w-4 h-4" /> },
+  { to: "/subjects", label: "Library", icon: <LibraryBig className="w-4 h-4" /> },
   { to: "/tests", label: "Mock Tests", icon: <BookOpen className="w-4 h-4" /> },
-  { to: "/notes", label: "Notes", icon: <FileText className="w-4 h-4" /> },
   { to: "/channels", label: "Channels", icon: <MonitorPlay className="w-4 h-4" /> },
   { to: "/progress", label: "Progress", icon: <BarChart3 className="w-4 h-4" /> },
   { to: "/chat", label: "Ask AI", icon: <MessageCircle className="w-4 h-4" /> },
@@ -66,7 +64,7 @@ const adminNav: NavItem[] = [
 /** Mobile bottom tab bar (student only) — surface the 5 core destinations. */
 const studentBottomNav: NavItem[] = [
   { to: "/", label: "Home", icon: <LayoutDashboard className="w-5 h-5" />, end: true },
-  { to: "/subjects", label: "Subjects", icon: <FolderOpen className="w-5 h-5" /> },
+  { to: "/subjects", label: "Library", icon: <LibraryBig className="w-5 h-5" /> },
   { to: "/tests", label: "Tests", icon: <BookOpen className="w-5 h-5" /> },
   { to: "/progress", label: "Progress", icon: <BarChart3 className="w-5 h-5" /> },
   { to: "/chat", label: "Ask AI", icon: <MessageCircle className="w-5 h-5" /> },

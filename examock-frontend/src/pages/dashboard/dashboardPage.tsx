@@ -150,7 +150,7 @@ export default function DashboardPage() {
                     className="text-white border border-white/30 hover:bg-white/10"
                     icon={<BookOpen className="w-4 h-4" />}
                   >
-                    Browse Subjects
+                    Browse Library
                   </Button>
                 </Link>
               </div>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                   return (
                     <Link
                       key={subject.id}
-                      to={`/subjects/${subject.id}/topics`}
+                      to={`/subjects/${subject.id}`}
                       className={cn(
                         "inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl border border-slate-200 bg-white transition-all hover:shadow-sm",
                         hue.hoverBorder

@@ -57,7 +57,11 @@ export function useVideosByTopic(topicId: string) {
   });
 }
 
-export function useNotes(filters?: { topicId?: string; subjectId?: string }) {
+export function useNotes(filters?: {
+  topicId?: string;
+  subjectId?: string;
+  unassigned?: boolean;
+}) {
   return useQuery({
     queryKey: studentKeys.notes(filters),
     queryFn: () => studentApi.getNotes(filters),

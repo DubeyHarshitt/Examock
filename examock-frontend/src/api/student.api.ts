@@ -32,6 +32,7 @@ export const getVideosByTopic = async (topicId: string) => {
 export const getNotes = async (filters?: {
   topicId?: string;
   subjectId?: string;
+  unassigned?: boolean;
 }) => {
   const { data } = await api.get("/student/notes", { params: filters });
   return data;
