@@ -123,20 +123,20 @@ test("marks/negMarks are read per question, not assumed", () => {
   assert.equal(score, 1.5);
 });
 
-test("the student shape hides the correct answer and the options", () => {
+test("the student shape keeps the correct answer + options but drops topicId", () => {
   const { rows } = gradeAttempt([tq("q1", "A")], { q1: "B" });
   const [student] = toStudentQuestionResults(rows);
   assert.deepEqual(student, {
     questionId: "q1",
     selected: "B",
+    correctOption: "A",
+    options: { A: "a", B: "b", C: "c", D: "d" },
     isCorrect: false,
     marksAwarded: -1,
     explanation: "why q1",
     text: "question q1",
     imageUrl: null,
   });
-  assert.equal("correctOption" in student, false);
-  assert.equal("options" in student, false);
   assert.equal("topicId" in student, false);
 });
 

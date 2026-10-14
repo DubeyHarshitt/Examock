@@ -69,12 +69,15 @@ export function gradeAttempt(testQuestions, userAnswers) {
   return { rows, score, correct, incorrect, unattempted };
 }
 
-// The student-facing review shape — deliberately omits the correct answer and
-// the option text (the UI shows what the student picked + the explanation).
+// The student-facing review shape — carries what the student picked, the
+// correct option, and the four option texts so the post-test review can show
+// the full question. topicId stays out (internal to fan-out, not a review need).
 export function toStudentQuestionResults(rows) {
   return rows.map((r) => ({
     questionId: r.questionId,
     selected: r.selected,
+    correctOption: r.correctOption,
+    options: r.options,
     isCorrect: r.isCorrect,
     marksAwarded: r.marksAwarded,
     explanation: r.explanation,

@@ -28,7 +28,7 @@ import AppShell from "../../components/layout/AppShell";
 import { PageHeader, Button, EmptyState, ProgressRing, Reveal } from "../../components/ui";
 import { cn } from "../../utils/cn";
 import { getResult } from "../../api/test.api";
-import type { TestScoredResult } from "../../types/test.types";
+import type { TestScoredResult, OptionKey } from "../../types/test.types";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -191,8 +191,9 @@ export default function TestResultPage() {
                             : "border-red-200 bg-red-50/60"
                         )}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <div className="flex items-start gap-3">
+                          {/* Number + status badge column — text/options align beside it */}
+                          <span className="shrink-0 flex items-center gap-1.5 text-sm font-bold text-slate-700 tabular-nums">
                             {item.isCorrect ? (
                               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                             ) : (
@@ -200,46 +201,84 @@ export default function TestResultPage() {
                             )}
                             Q{i + 1}
                           </span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-slate-500">
-                              Your answer:{" "}
-                              <span className={cn("font-bold", item.selected ? "text-slate-800" : "text-slate-400")}>
-                                {item.selected ?? "—"}
-                              </span>
-                            </span>
-                            <span
-                              className={cn(
-                                "text-xs font-bold tabular-nums",
-                                item.marksAwarded > 0
-                                  ? "text-emerald-600"
-                                  : item.marksAwarded < 0
-                                    ? "text-red-600"
-                                    : "text-slate-400"
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3">
+                              {item.text && (
+                                <p className="flex-1 min-w-0 text-sm font-semibold text-slate-800 whitespace-pre-wrap">
+                                  {item.text}
+                                </p>
                               )}
-                            >
-                              {item.marksAwarded > 0 ? "+" : ""}
-                              {item.marksAwarded}
-                            </span>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="text-xs text-slate-500">
+                                  Your answer:{" "}
+                                  <span className={cn("font-bold", item.selected ? "text-slate-800" : "text-slate-400")}>
+                                    {item.selected ?? "—"}
+                                  </span>
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-xs font-bold tabular-nums",
+                                    item.marksAwarded > 0
+                                      ? "text-emerald-600"
+                                      : item.marksAwarded < 0
+                                        ? "text-red-600"
+                                        : "text-slate-400"
+                                  )}
+                                >
+                                  {item.marksAwarded > 0 ? "+" : ""}
+                                  {item.marksAwarded}
+                                </span>
+                              </div>
+                            </div>
+                            {item.imageUrl && (
+                              <img
+                                src={item.imageUrl}
+                                alt=""
+                                loading="lazy"
+                                className="mt-2 max-h-64 w-auto rounded-lg border border-slate-100 object-contain"
+                              />
+                            )}
+                            {/* Options: the pick (even if wrong) and the right answer. */}
+                            {item.options && (
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {(["A", "B", "C", "D"] as OptionKey[]).map((key) => {
+                                  const isCorrect = key === item.correctOption;
+                                  const isPicked = key === item.selected;
+                                  return (
+                                    <div
+                                      key={key}
+                                      className={cn(
+                                        "flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs",
+                                        isCorrect
+                                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                          : isPicked
+                                            ? "bg-red-50 text-red-800 border border-red-200"
+                                            : "bg-slate-50 text-slate-600 border border-transparent"
+                                      )}
+                                    >
+                                      <span className="font-bold shrink-0">{key}.</span>
+                                      <span className="flex-1">{item.options[key]}</span>
+                                      {isPicked && (
+                                        <span className="shrink-0 text-[10px] font-bold uppercase opacity-80">
+                                          Picked
+                                        </span>
+                                      )}
+                                      {isCorrect && (
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {item.explanation && (
+                              <p className="mt-2 text-xs text-slate-500">
+                                {item.explanation}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {item.text && (
-                          <p className="mt-2 text-sm font-semibold text-slate-800 whitespace-pre-wrap">
-                            {item.text}
-                          </p>
-                        )}
-                        {item.imageUrl && (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            loading="lazy"
-                            className="mt-2 max-h-64 w-auto rounded-lg border border-slate-100 object-contain"
-                          />
-                        )}
-                        {item.explanation && (
-                          <p className="mt-2 text-xs text-slate-500">
-                            {item.explanation}
-                          </p>
-                        )}
                       </div>
                     ))}
                   </div>

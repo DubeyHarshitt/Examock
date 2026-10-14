@@ -102,6 +102,10 @@ export interface QuestionResult {
   questionId: string;
   /** selected option, or null when the question was left unattempted */
   selected: OptionKey | null;
+  /** the correct option, shown in the post-test review */
+  correctOption: OptionKey | null;
+  /** option text by key, shown in the post-test review */
+  options: Record<OptionKey, string>;
   isCorrect: boolean;
   /** marks added (or deducted) for this question */
   marksAwarded: number;
