@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -115,10 +116,10 @@ export default function TestEnginePage() {
         setCurrentQuestion(res);
         setTimeRemaining(res.timeRemainingSec);
         setVisited((prev) => new Set(prev).add(index));
-      } catch (err: any) {
-        if (err?.response?.status === 410) {
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 410) {
           toast.error("Time is up — your test has ended.");
-          handleExpire(err?.response?.data?.details?.attemptId);
+          handleExpire(err.response.data?.details?.attemptId);
         } else {
           toast.error("Failed to load question. Please try again.");
         }
@@ -164,10 +165,10 @@ export default function TestEnginePage() {
         });
         setTimeRemaining(session.timeRemainingSec);
         await loadQuestion(0, session.attemptId);
-      } catch (err: any) {
-        if (err?.response?.status === 410) {
-          handleExpire(err?.response?.data?.details?.attemptId);
-        } else if (err?.response?.status === 403) {
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 410) {
+          handleExpire(err.response.data?.details?.attemptId);
+        } else if (axios.isAxiosError(err) && err.response?.status === 403) {
           toast.error("Please purchase this test to continue.");
           navigate(`/tests/${id}`, { replace: true });
         } else {
@@ -270,10 +271,10 @@ export default function TestEnginePage() {
         state: result,
         replace: true,
       });
-    } catch (err: any) {
+    } catch (err) {
       submittedRef.current = false;
       setSubmitting(false);
-      if (err?.response?.status === 410) {
+      if (axios.isAxiosError(err) && err.response?.status === 410) {
         handleExpire();
       } else {
         toast.error("Could not submit. Please try again.");

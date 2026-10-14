@@ -7,6 +7,7 @@ import type {
   UpdateNoteDto,
   GetNotesFilters,
 } from "../types/admin.types";
+import { getErrorMessage } from "../../../utils/errorMessage";
 
 // ─── Slice state + actions ────────────────────────────────────────────────────
 
@@ -63,8 +64,8 @@ export const createNotesSlice: StateCreator<
         notesPage: res.page,
         notesLimit: res.limit,
       });
-    } catch (err: any) {
-      set({ notesError: err?.response?.data?.message ?? "Failed to fetch notes" });
+    } catch (err) {
+      set({ notesError: getErrorMessage(err, "Failed to fetch notes") });
     } finally {
       set({ notesLoading: false });
     }
@@ -85,8 +86,8 @@ export const createNotesSlice: StateCreator<
       await createNoteApi(formData);
       // Re-fetch with current filters to keep list fresh
       await get().fetchNotes();
-    } catch (err: any) {
-      set({ notesError: err?.response?.data?.message ?? "Failed to create note" });
+    } catch (err) {
+      set({ notesError: getErrorMessage(err, "Failed to create note") });
       throw err; // re-throw so UI can react
     } finally {
       set({ notesLoading: false });
@@ -102,8 +103,8 @@ export const createNotesSlice: StateCreator<
       set((s) => ({
         notes: s.notes.map((n) => (n.id === id ? { ...n, ...updated.note ?? dto } : n)),
       }));
-    } catch (err: any) {
-      set({ notesError: err?.response?.data?.message ?? "Failed to update note" });
+    } catch (err) {
+      set({ notesError: getErrorMessage(err, "Failed to update note") });
       throw err;
     } finally {
       set({ notesLoading: false });
@@ -117,8 +118,8 @@ export const createNotesSlice: StateCreator<
       await deleteNoteApi(id);
       // Remove from local list immediately (it's soft-deleted / isActive=false)
       set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
-    } catch (err: any) {
-      set({ notesError: err?.response?.data?.message ?? "Failed to delete note" });
+    } catch (err) {
+      set({ notesError: getErrorMessage(err, "Failed to delete note") });
       throw err;
     } finally {
       set({ notesLoading: false });

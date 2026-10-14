@@ -1,0 +1,55 @@
+name: CI
+
+# Runs the gates that already exist but were never enforced (audit F13/F14):
+# the backend node:test suite, and the frontend type-check + lint + build.
+# Nothing here deploys; a red run means "do not merge".
+on:
+  push:
+    branches: [main, DEV]
+  pull_request:
+    branches: [main, DEV]
+
+jobs:
+  backend:
+    name: backend (tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examock-backend
+    env:
+      # @prisma/client's postinstall and `prisma generate` resolve the datasource
+      # URLs from the schema. Tests never touch a DB, so dummy values are enough;
+      # without them the generate step errors on the missing env vars.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+      DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: examock-backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+
+  frontend:
+    name: frontend (typecheck + lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examock-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: examock-frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc -b
+      - name: Lint
+        run: npx eslint .
+      - name: Build
+        run: npm run build

@@ -16,6 +16,7 @@ import type {
   CreateMockTestDto,
   UpdateMockTestDto,
 } from "../types/admin.types";
+import { getErrorMessage } from "../../../utils/errorMessage";
 
 export interface MockTestsSlice {
   mockTests: MockTest[];
@@ -59,9 +60,9 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
         mockTestsTotal: data.total,
         mockTestsLoading: false,
       });
-    } catch (err: any) {
+    } catch (err) {
       set({
-        mockTestsError: err?.response?.data?.message ?? "Failed to fetch mock tests",
+        mockTestsError: getErrorMessage(err, "Failed to fetch mock tests"),
         mockTestsLoading: false,
       });
     }
@@ -72,9 +73,9 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
     try {
       const detail: MockTestDetail = await getMockTestDetailApi(id);
       set({ currentMockTest: detail, currentMockTestLoading: false });
-    } catch (err: any) {
+    } catch (err) {
       set({
-        mockTestsError: err?.response?.data?.message ?? "Failed to fetch test detail",
+        mockTestsError: getErrorMessage(err, "Failed to fetch test detail"),
         currentMockTestLoading: false,
       });
     }
@@ -86,8 +87,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
       const created: MockTest = await createMockTestApi(data);
       set((state) => ({ mockTests: [created, ...state.mockTests] }));
       return created;
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to create mock test" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to create mock test") });
       return undefined;
     }
   },
@@ -99,8 +100,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
       set((state) => ({
         mockTests: state.mockTests.map((t) => (t.id === id ? updated : t)),
       }));
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to update mock test" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to update mock test") });
     }
   },
 
@@ -114,8 +115,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
           t.id === id ? { ...t, isActive: false } : t
         ),
       }));
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to delete mock test" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to delete mock test") });
     }
   },
 
@@ -134,8 +135,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
       if (get().currentMockTest?.id === testId) {
         await get().fetchMockTestDetail(testId);
       }
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to add question to test" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to add question to test") });
     }
   },
 
@@ -153,8 +154,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
       if (get().currentMockTest?.id === testId) {
         await get().fetchMockTestDetail(testId);
       }
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to remove question from test" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to remove question from test") });
     }
   },
 
@@ -165,8 +166,8 @@ export const createMockTestsSlice: StateCreator<MockTestsSlice> = (set, get) => 
       if (get().currentMockTest?.id === testId) {
         await get().fetchMockTestDetail(testId);
       }
-    } catch (err: any) {
-      set({ mockTestsError: err?.response?.data?.message ?? "Failed to reorder test questions" });
+    } catch (err) {
+      set({ mockTestsError: getErrorMessage(err, "Failed to reorder test questions") });
     }
   },
 });

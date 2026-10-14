@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Target,
   ListVideo,
-  Smartphone,
 } from "lucide-react";
 
 import AppShell from "../../components/layout/AppShell";
@@ -119,12 +118,6 @@ export default function ProgressPage() {
             Track chapter mastery, test attempts, and videos watched
           </p>
         </div>
-        {/* <Link
-          to="/chat"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
-        >
-          <Smartphone className="w-4 h-4" /> Ask AI about these
-        </Link> */}
       </div>
 
       {/* ── Readiness hero ─────────────────────────────────── */}

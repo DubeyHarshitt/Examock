@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/auth.store";
 import { googleLogin } from "../../api/auth.api";
@@ -24,6 +24,34 @@ declare global {
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setAuth, isAuthenticated, isFullyOnboarded } = useAuthStore();
+
+  // Declared before the effect that registers it and kept stable with
+  // useCallback, so Google always invokes the current handler rather than a
+  // stale first-render closure (audit F13: react-hooks/immutability).
+  const handleGoogleCallback = useCallback(
+    async (response: { credential: string }) => {
+      try {
+        const result = await googleLogin(response.credential);
+
+        setAuth(result.accessToken, result.user, result.onboarding);
+
+        // Redirect based on onboarding state
+        if (
+          result.onboarding.needsExamSelection ||
+          result.onboarding.needsEmailVerification
+        ) {
+          navigate("/onboarding", { replace: true });
+        } else if (result.user.role === "ADMIN") {
+          navigate("/admin-dashboard", { replace: true });
+        } else {
+          navigate("/", { replace: true });
+        }
+      } catch (err) {
+        console.error("Google login failed:", err);
+      }
+    },
+    [setAuth, navigate],
+  );
 
   // If already logged in redirect immediately
   useEffect(() => {
@@ -60,29 +88,7 @@ export default function LoginPage() {
       window.addEventListener("load", initGoogle);
       return () => window.removeEventListener("load", initGoogle);
     }
-  }, []);
-
-  const handleGoogleCallback = async (response: { credential: string }) => {
-    try {
-      const result = await googleLogin(response.credential);
-
-      setAuth(result.accessToken, result.user, result.onboarding);
-
-      // Redirect based on onboarding state
-      if (
-        result.onboarding.needsExamSelection ||
-        result.onboarding.needsEmailVerification
-      ) {
-        navigate("/onboarding", { replace: true });
-      } else if(result.user.role === "ADMIN"){
-        navigate("/admin-dashboard", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
-    } catch (err) {
-      console.error("Google login failed:", err);
-    }
-  };
+  }, [handleGoogleCallback]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

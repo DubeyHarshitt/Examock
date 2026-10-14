@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { AxiosRequestConfig } from "axios";
 import config from "../utils/config";
+import type { LoginResponse } from "../types/auth.types";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -43,11 +44,11 @@ api.interceptors.request.use((config) => {
 let isRefreshing = false;
 
 let failedQueue: {
-  resolve: (payload: any) => void;
+  resolve: (payload: LoginResponse) => void;
   reject: (err: unknown) => void;
 }[] = [];
 
-const processQueue = (error: unknown, payload: any) => {
+const processQueue = (error: unknown, payload: LoginResponse | null) => {
   failedQueue.forEach((prom) => {
     if (payload) {
       prom.resolve(payload);
@@ -66,17 +67,17 @@ const processQueue = (error: unknown, payload: any) => {
  * of truth used by both the response interceptor (on 401) and useInitAuth (on
  * app boot), so we never hammer the endpoint with concurrent calls.
  */
-export async function refreshAccessToken(): Promise<any> {
+export async function refreshAccessToken(): Promise<LoginResponse> {
   if (isRefreshing) {
     // Someone else is refreshing — wait for it and get the payload.
-    return new Promise<any>((resolve, reject) => {
+    return new Promise<LoginResponse>((resolve, reject) => {
       failedQueue.push({ resolve, reject });
     });
   }
 
   isRefreshing = true;
   try {
-    const { data } = await api.post("/auth/refresh");
+    const { data } = await api.post<LoginResponse>("/auth/refresh");
     setAccessToken(data.accessToken);
     processQueue(null, data);
     return data;
@@ -111,7 +112,7 @@ api.interceptors.response.use(
 
     // ── If refresh already happening → queue request ──
     if (isRefreshing) {
-      return new Promise<any>((resolve, reject) => {
+      return new Promise<LoginResponse>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       }).then((payload) => {
         original.headers = original.headers || {};
