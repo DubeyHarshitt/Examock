@@ -17,6 +17,13 @@ import studentRoutes from "./src/modules/student/student.routes.js"
 const app = express();
 const PORT = config.PORT ?? 3000;
 
+// Don't advertise the framework. `x-powered-by: Express` is free
+// reconnaissance for an attacker (audit F3). The other security headers
+// (HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy) are
+// set at the nginx `server {}` level so the HTML document gets them too —
+// see EXAMOCK_SERVER_SETUP.md §8.
+app.disable("x-powered-by");
+
 app.use(cors({
     origin: config.CLIENT_URI ?? "http://localhost:5173/",
     credentials: true,
