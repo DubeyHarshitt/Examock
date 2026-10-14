@@ -321,7 +321,7 @@ function StudyPlanner({
   }, [suggestedCount, stats.avgBest]);
 
   return (
-    <Card
+    <Card className="mt-5"
       title="Study Planner"
       subtitle="A suggested focus based on your activity"
       action={
