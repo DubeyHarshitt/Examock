@@ -49,6 +49,24 @@ export interface PaymentsResponse {
   limit: number;
 }
 
+// ── Product events (ticket 27 → 38) ───────────────────────────────────────────
+
+export interface EventFunnelStep {
+  name: string;
+  count: number;
+}
+
+/** Shape returned by GET /api/events/summary (modules/events/events.service.js). */
+export interface EventsSummary {
+  since: string;
+  until: string;
+  total: number;
+  byName: Record<string, number>;
+  distinctSessions: number;
+  distinctUsers: number;
+  funnel: EventFunnelStep[];
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export interface AdminUser {

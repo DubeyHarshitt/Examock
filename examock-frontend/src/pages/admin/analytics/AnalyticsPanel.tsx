@@ -22,6 +22,7 @@ import {
   Skeleton,
 } from "../../../components/ui";
 import type { PaymentStatus } from "../../../types/admin.types";
+import EventsFunnel from "./EventsFunnel";
 
 function formatRupees(paise: number) {
   return "₹" + (paise / 100).toLocaleString("en-IN");
@@ -156,6 +157,10 @@ export function AnalyticsPanel() {
             ))}
           </div>
         )}
+
+        {/* Growth funnel (ticket 38) — visitors, sign-ups, first question,
+            first test, week-1 return, referrals. */}
+        <EventsFunnel />
 
         {/* Per-test analytics */}
         <Card

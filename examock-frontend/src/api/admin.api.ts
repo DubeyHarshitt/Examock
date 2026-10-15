@@ -1,7 +1,7 @@
 // admin.api.ts
 import api from "./axios";
 import type { CreateExamTypeDto, CreateMockTestDto, CreateSubjectDto, CreateTopicDto, Topic, createQuestionsDto, CreateTestWithQuestionsDto, CsvImportResult, DraftRow, ExamDetail, ExamNode, GetQuestionsResponse, MockTestDetail, PdfImport, RowsSaveSummary, Subject, TestsResponse, UpdateMockTestDto, updateQuestionDto, UpdateSubjectDto, UpdateTopicDto } from "../store/admin/types/admin.types";
-import type { AdminAttemptDetail, AdminUserAttemptsResponse, AdminUserDetail } from "../types/admin.types";
+import type { AdminAttemptDetail, AdminUserAttemptsResponse, AdminUserDetail, EventsSummary } from "../types/admin.types";
 
 // ── Exam Types ───────────────────────────────────────────────
 
@@ -475,6 +475,14 @@ export const getTestAnalyticsApi = async () => {
 export const getPaymentRecordsApi = async (page = 1, status?: string) => {
   const { data } = await api.get("/admin/analytics/payments", {
     params: { page, status },
+  });
+  return data;
+};
+
+// GET /api/events/summary — product-event funnel (admin-gated, ticket 38).
+export const getEventsSummaryApi = async (days = 7): Promise<EventsSummary> => {
+  const { data } = await api.get<EventsSummary>("/events/summary", {
+    params: { days },
   });
   return data;
 };
