@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useInitAuth } from "./hooks/authHook/useInitAuth";
+import { useAuthStore } from "./store/auth.store";
 
 import { ToastProvider } from "./components/ui/toast/ToastProvider";
 
@@ -31,6 +32,10 @@ import ProfilePage from "./pages/profile/ProfilePage";
 const TestEnginePage = lazy(() => import("./pages/tests/TestEnginePage"));
 const ChatPage = lazy(() => import("./pages/rag/ChatPage"));
 const UploadPage = lazy(() => import("./pages/rag/UploadPage"));
+
+// Marketing (ticket 04) — only logged-out visitors reach this, so it stays out
+// of the student bundle until needed.
+const LandingPage = lazy(() => import("./pages/marketing/LandingPage"));
 
 // Admin — lazily loaded (F15): a student must never download the admin panel.
 const AdminDashboard = lazy(() => import("./pages/admin/adminDashboard"));
@@ -82,8 +87,19 @@ function RouteFallback() {
   );
 }
 
+// Auth-aware root (ticket 04): a logged-out visitor to `/` gets the marketing
+// page instead of a redirect to /login; an onboarded user still gets the
+// student dashboard unchanged.
+function HomeRoute() {
+  const { isAuthenticated, isFullyOnboarded } = useAuthStore();
+  if (!isAuthenticated()) return <LandingPage />;
+  if (!isFullyOnboarded()) return <Navigate to="/onboarding" replace />;
+  return <DashboardPage />;
+}
+
 export default function App() {
   const { loading } = useInitAuth();
+
   if (loading)
     return (
       <div className="flex h-screen items-center justify-center">
@@ -99,6 +115,7 @@ export default function App() {
           <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* ── Public routes ─────────────────────────────── */}
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* ── Onboarding — auth required, not yet fully onboarded ── */}
@@ -108,7 +125,6 @@ export default function App() {
 
             {/* ── Student routes — auth + fully onboarded ───── */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<DashboardPage />} />
               <Route path="/subjects" element={<SubjectListPage />} />
               <Route path="/subjects/:subjectId" element={<StudentSubjectDetailPage />} />
               <Route
