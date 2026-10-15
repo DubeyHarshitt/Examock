@@ -26,9 +26,14 @@ import {
 
 import AppShell from "../../components/layout/AppShell";
 import { PageHeader, Button, EmptyState, ProgressRing, Reveal } from "../../components/ui";
+import ShareResultCard from "../../components/student/ShareResultCard";
 import { cn } from "../../utils/cn";
 import { getResult } from "../../api/test.api";
 import type { TestScoredResult, OptionKey } from "../../types/test.types";
+
+// The fetch path (`GET /test/:id/result`) returns `testTitle`; the router-state
+// path does not. Allow it optionally so the share card can use it when present.
+type ResultWithMeta = TestScoredResult & { testTitle?: string };
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -44,7 +49,7 @@ export default function TestResultPage() {
   const stateResult = (location.state as TestScoredResult | null) ?? null;
   const attemptId = searchParams.get("attemptId");
 
-  const [result, setResult] = useState<TestScoredResult | null>(stateResult);
+  const [result, setResult] = useState<ResultWithMeta | null>(stateResult);
   // Only show the spinner when we actually have something to fetch.
   const [loading, setLoading] = useState(!stateResult && !!id && !!attemptId);
 
@@ -168,6 +173,22 @@ export default function TestResultPage() {
                     count={result.unattempted ?? 0}
                     variant="muted"
                     icon={<MinusCircle className="w-4 h-4" />}
+                  />
+                </div>
+
+                {/* Ticket 20: one-tap share of this result. */}
+                <div className="mt-6">
+                  <ShareResultCard
+                    attemptId={result.attemptId}
+                    data={{
+                      testTitle: result.testTitle,
+                      score: result.score,
+                      totalMarks: result.totalMarks,
+                      percentile: result.percentile,
+                      correct: result.correct ?? 0,
+                      incorrect: result.incorrect ?? 0,
+                      unattempted: result.unattempted ?? 0,
+                    }}
                   />
                 </div>
               </div>
