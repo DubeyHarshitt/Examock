@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/auth.store";
 import { googleLogin } from "../../api/auth.api";
 import config from "../../utils/config";
+import { trackSignup } from "../../utils/analytics";
 
 // Google Sign In button uses the Google Identity Services script
 // Add this to your index.html:
@@ -34,6 +35,10 @@ export default function LoginPage() {
         const result = await googleLogin(response.credential);
 
         setAuth(result.accessToken, result.user, result.onboarding);
+
+        // Ticket 27: a brand-new account always needs exam selection on its
+        // first sign-in, so that flag is our reliable "signup" signal.
+        if (result.onboarding.needsExamSelection) trackSignup();
 
         // Redirect based on onboarding state
         if (

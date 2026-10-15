@@ -25,6 +25,21 @@ export function requireAuth(req, res, next) {
   }
 }
 
+// Attaches req.user when a valid Bearer token is present, but never rejects.
+// Used by the public event-tracking endpoint (ticket 27), where logged-out
+// traffic is expected and must still be recorded — just without a userId.
+export function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      req.user = verifyAccessToken(authHeader.slice(7));
+    } catch {
+      // Invalid or expired token → treat as an anonymous visitor.
+    }
+  }
+  next();
+}
+
 export const getExamTypes = async (req, res) => {
   try {
     const examTypes = await authService.getAllExamTypes();

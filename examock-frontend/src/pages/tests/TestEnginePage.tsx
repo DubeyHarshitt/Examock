@@ -28,6 +28,7 @@ import {
 import { useToast } from "../../components/ui/toast/toast-context";
 import { ConfirmDialog, Skeleton } from "../../components/ui";
 import { cn } from "../../utils/cn";
+import { trackFirstTest } from "../../utils/analytics";
 import type { OptionKey, QuestionResponse } from "../../types/test.types";
 
 const OPTIONS: OptionKey[] = ["A", "B", "C", "D"];
@@ -215,6 +216,7 @@ export default function TestEnginePage() {
       // the result page fetches the stored result instead (F11).
       try {
         const { result } = await submitTest(id, aid);
+        trackFirstTest(); // ticket 27
         navigate(`/tests/${id}/result?attemptId=${result.attemptId}`, {
           state: result,
           replace: true,
@@ -282,6 +284,7 @@ export default function TestEnginePage() {
     setSubmitting(true);
     try {
       const { result } = await submitTest(id, attemptId);
+      trackFirstTest(); // ticket 27
       clearTest(id);
       navigate(`/tests/${id}/result?attemptId=${result.attemptId}`, {
         state: result,

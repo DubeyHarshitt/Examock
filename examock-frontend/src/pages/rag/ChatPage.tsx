@@ -21,6 +21,7 @@ import Markdown from "../../components/shared/Markdown";
 import { Button } from "../../components/ui";
 import { useAskQuestion } from "../../hooks/rag/useRag";
 import type { ChatMessage } from "../../types/rag.types";
+import { trackFirstQuestion } from "../../utils/analytics";
 
 const SUGGESTED_QUESTIONS = [
   "Explain Newton's second law with an example",
@@ -57,6 +58,8 @@ export default function ChatPage() {
 
     try {
       const res = await askMutation.mutateAsync(question);
+      // Ticket 27: the student's first answered AI question.
+      trackFirstQuestion();
       setMessages((prev) => [
         ...prev,
         {

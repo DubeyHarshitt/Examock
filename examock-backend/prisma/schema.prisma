@@ -31,6 +31,7 @@ model User {
   testAttempts      TestAttempt[]
   topicProgress     UserTopicProgress[]
   videoWatches      VideoWatch[]
+  events            Event[]
   examType          ExamType?           @relation(fields: [examTypeId], references: [id])
 
   @@map("users")
@@ -353,6 +354,30 @@ model TestPdfImport {
 
   @@index([testId])
   @@map("test_pdf_imports")
+}
+
+// Ticket 27 (growth plan): the measurement spine. One row per tracked product
+// event (signup, first_question, first_test_completed, return_visit, share,
+// referral_signup, feedback_submitted, page_view, cta_click).
+//
+// `userId` is null for anonymous (logged-out) visitors — the landing page and
+// guest traffic must be measurable. `sessionId` groups a single browser
+// session so a funnel can be read as distinct sessions, not raw hit counts.
+// `props` is intentionally non-PII payload (channel / utm / path); the service
+// strips anything that looks like personal data before it is written.
+model Event {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  sessionId String?  @map("session_id")
+  name      String
+  props     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([name, createdAt])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("events")
 }
 
 enum FileType {

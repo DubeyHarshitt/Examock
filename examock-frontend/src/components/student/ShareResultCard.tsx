@@ -10,6 +10,7 @@ import { Share2, Download, Link2, MessageCircle, Send } from "lucide-react";
 
 import { Button, Modal } from "../ui";
 import { useToast } from "../ui/toast/toast-context";
+import { track } from "../../utils/analytics";
 import {
   renderShareCard,
   shareUrl,
@@ -54,6 +55,11 @@ export default function ShareResultCard({ attemptId, data }: Props) {
         typeof navigator.canShare === "function" &&
         navigator.canShare({ files: [file] });
 
+      track("share", {
+        surface: "result",
+        channel: canShareFiles ? "native_image" : "native",
+      });
+
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share(
           canShareFiles
@@ -80,6 +86,7 @@ export default function ShareResultCard({ attemptId, data }: Props) {
   };
 
   const onChannel = (kind: "whatsapp" | "telegram" | "download" | "copy") => {
+    track("share", { surface: "result", channel: kind });
     if (kind === "download" && blob) {
       downloadBlob(blob, shareCardFileName());
       success("Image downloaded");

@@ -1,10 +1,12 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useInitAuth } from "./hooks/authHook/useInitAuth";
 import { useAuthStore } from "./store/auth.store";
+import { initAnalytics } from "./utils/analytics";
 
 import { ToastProvider } from "./components/ui/toast/ToastProvider";
+import RouteTracker from "./components/shared/RouteTracker";
 
 // Auth
 import LoginPage from "./pages/auth/LoginPage";
@@ -100,6 +102,11 @@ function HomeRoute() {
 export default function App() {
   const { loading } = useInitAuth();
 
+  // Ticket 27: fire `return_visit` once per session for a known visitor.
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   if (loading)
     return (
       <div className="flex h-screen items-center justify-center">
@@ -113,6 +120,7 @@ export default function App() {
         <BrowserRouter>
           <ErrorBoundary>
           <Suspense fallback={<RouteFallback />}>
+          <RouteTracker />
           <Routes>
             {/* ── Public routes ─────────────────────────────── */}
             <Route path="/" element={<HomeRoute />} />

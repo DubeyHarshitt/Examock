@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { track } from "../../utils/analytics";
 
 // Ticket 04: the public marketing page for logged-out visitors. Rendered at
 // `/` by App.tsx's auth-aware HomeRoute.
@@ -30,10 +31,12 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   const onTryFree = () => {
+    track("cta_click", { cta: "try_free", location: "hero" });
     navigate("/login");
   };
 
   const onSignIn = () => {
+    track("cta_click", { cta: "sign_in", location: "nav" });
     navigate("/login");
   };
 

@@ -13,6 +13,7 @@ import testRoutes from "./src/modules/test/test.route.js"
 import ragRoutes from "./src/modules/rag/rag.routes.js"
 import adminRoutes from "./src/modules/admin/admin.routes.js"
 import studentRoutes from "./src/modules/student/student.routes.js"
+import eventRoutes from "./src/modules/events/events.routes.js"
 
 const app = express();
 const PORT = config.PORT ?? 3000;
@@ -59,6 +60,7 @@ app.use("/api/test", testRoutes);
 app.use("/api/rag", ragRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/events", eventRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {
