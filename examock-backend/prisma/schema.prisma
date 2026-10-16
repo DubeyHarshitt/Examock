@@ -74,6 +74,9 @@ model Subject {
   id         String     @id @default(uuid())
   examTypeId String     @map("exam_type_id")
   name       String
+  // URL segment for public SEO pages (ticket 24). Unique per exam — the exam
+  // slug in /exams/:examSlug/:subjectSlug disambiguates across exams.
+  slug       String
   orderIndex Int        @default(0) @map("order_index")
   isActive   Boolean    @default(true) @map("is_active")
   createdAt  DateTime   @default(now()) @map("created_at")
@@ -82,6 +85,7 @@ model Subject {
   examType   ExamType   @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
   topics     Topic[]
 
+  @@unique([examTypeId, slug])
   @@index([examTypeId])
   @@map("subjects")
 }
@@ -90,6 +94,9 @@ model Topic {
   id           String              @id @default(uuid())
   subjectId    String              @map("subject_id")
   name         String
+  // URL segment for public SEO pages (ticket 24). Unique per subject — the
+  // parent path disambiguates identical chapter names across subjects.
+  slug         String
   orderIndex   Int                 @default(0) @map("order_index")
   isActive     Boolean             @default(true) @map("is_active")
   createdAt    DateTime            @default(now()) @map("created_at")
@@ -99,6 +106,7 @@ model Topic {
   userProgress UserTopicProgress[]
   videos       Video[]
 
+  @@unique([subjectId, slug])
   @@index([subjectId])
   @@map("topics")
 }

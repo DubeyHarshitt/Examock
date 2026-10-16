@@ -14,6 +14,7 @@ import ragRoutes from "./src/modules/rag/rag.routes.js"
 import adminRoutes from "./src/modules/admin/admin.routes.js"
 import studentRoutes from "./src/modules/student/student.routes.js"
 import eventRoutes from "./src/modules/events/events.routes.js"
+import publicRoutes from "./src/modules/public/public.routes.js"
 
 const app = express();
 const PORT = config.PORT ?? 3000;
@@ -61,6 +62,8 @@ app.use("/api/rag", ragRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/events", eventRoutes);
+// Public SEO reads (ticket 24) — no auth by design, read-only taxonomy only.
+app.use("/api/public", publicRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((req, res) => {

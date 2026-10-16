@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { track } from "../../utils/analytics";
 
 // Ticket 04: the public marketing page for logged-out visitors. Rendered at
@@ -7,6 +7,9 @@ import { track } from "../../utils/analytics";
 // The primary CTA is "Try free". The guest/signup-free flow is ticket 19 and is
 // not built yet, so for now the CTA routes to /login; when 19 lands, only this
 // handler changes.
+//
+// Ticket 24: the nav/hero/footer also link into /exams and /free-questions so
+// crawlers hitting `/` discover the public SEO pages without a sitemap.
 
 const FEATURES = [
   {
@@ -53,12 +56,26 @@ export default function LandingPage() {
           />
           <span className="text-lg font-bold tracking-tight">Examock</span>
         </div>
-        <button
-          onClick={onSignIn}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-        >
-          Sign in
-        </button>
+        <div className="flex items-center gap-1 sm:gap-3">
+          <Link
+            to="/exams"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Syllabus
+          </Link>
+          <Link
+            to="/free-questions"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Free questions
+          </Link>
+          <button
+            onClick={onSignIn}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Sign in
+          </button>
+        </div>
       </header>
 
       {/* ── Hero ────────────────────────────────────────────── */}
@@ -84,8 +101,14 @@ export default function LandingPage() {
             >
               Try free
             </button>
-            <span className="text-sm text-slate-400">No card required</span>
+            <Link
+              to="/exams"
+              className="w-full rounded-xl border border-slate-200 px-7 py-3 text-center text-base font-semibold text-slate-700 transition hover:border-brand-300 hover:text-brand-700 sm:w-auto"
+            >
+              Browse the syllabus
+            </Link>
           </div>
+          <p className="mt-4 text-sm text-slate-400">No card required</p>
         </div>
       </section>
 
@@ -122,10 +145,30 @@ export default function LandingPage() {
         >
           Try free
         </button>
+        <p className="mt-4 text-sm text-slate-500">
+          Not ready?{" "}
+          <Link to="/free-questions" className="font-medium text-brand-600 hover:underline">
+            Solve free sample questions first
+          </Link>{" "}
+          — no signup needed.
+        </p>
       </section>
 
-      <footer className="border-t border-slate-100 py-6 text-center text-xs text-slate-400">
-        Examock — prepare smarter for your competitive exam.
+      <footer className="border-t border-slate-100 py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 text-xs text-slate-400 sm:flex-row">
+          <span>Examock — prepare smarter for your competitive exam.</span>
+          <nav className="flex items-center gap-5">
+            <Link to="/exams" className="transition hover:text-slate-700">
+              Syllabus
+            </Link>
+            <Link to="/free-questions" className="transition hover:text-slate-700">
+              Free questions
+            </Link>
+            <Link to="/login" className="transition hover:text-slate-700">
+              Sign in
+            </Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );

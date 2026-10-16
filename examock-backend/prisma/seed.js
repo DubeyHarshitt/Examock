@@ -7,11 +7,11 @@ data: { name: "JEE", slug: "jee" },
 });
 
 const subject = await prisma.subject.create({
-data: { name: "Physics", examTypeId: exam.id },
+data: { name: "Physics", slug: "physics", examTypeId: exam.id },
 });
 
 const topic = await prisma.topic.create({
-data: { name: "Kinematics", subjectId: subject.id },
+data: { name: "Kinematics", slug: "kinematics", subjectId: subject.id },
 });
 
 const question = await prisma.question.create({

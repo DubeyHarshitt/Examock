@@ -13,13 +13,24 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#4538d6" />
+    <!-- Static <head> baseline (ticket 24): every route gets its own title,
+         description, canonical and og/twitter tags at runtime via useSeo();
+         these are the pre-JS fallback for crawlers and social scrapers. -->
+    <meta
+      name="description"
+      content="Examock — mock tests, syllabus-grounded AI answers with sources, and progress tracking for JEE, NEET and MHT-CET."
+    />
     <meta property="og:title" content="Examock — Prepare smarter for your competitive exam" />
     <meta property="og:description" content="Topic-wise video playlists, free & paid mock tests, AI-powered doubt solving, and progress tracking." />
     <meta property="og:image" content="/og-image.png" />
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Examock — Prepare smarter for your competitive exam" />
+    <meta name="twitter:description" content="Topic-wise video playlists, free & paid mock tests, AI-powered doubt solving, and progress tracking." />
+    <meta name="twitter:image" content="/og-image.png" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Examock</title>
+    <title>Examock — Prepare smarter for your competitive exam</title>
   </head>
   <body>
     <div id="root"></div>

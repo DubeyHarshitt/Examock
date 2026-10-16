@@ -1,0 +1,31 @@
+# robots.txt — crawled surface of Examock (ticket 24).
+#
+# Rules-only: the absolute `Sitemap:` line is appended at build time by
+# scripts/gen-sitemap.mjs (it needs the real domain, which this static file
+# can't know), so dist/robots.txt = this file + Sitemap line.
+#
+# Public, indexable pages: /, /exams and everything under it, /free-questions.
+# Everything else below is auth-gated app surface a logged-out crawler can
+# only bounce off — keep crawl budget on the pages that can actually rank.
+User-agent: *
+Allow: /
+
+# Auth-only
+Disallow: /login
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-dashboard
+
+# Student app (ProtectedRoute → login redirect for logged-out crawlers)
+Disallow: /subjects
+Disallow: /topics
+Disallow: /tests
+Disallow: /attempts
+Disallow: /notes
+Disallow: /channels
+Disallow: /progress
+Disallow: /chat
+Disallow: /upload
+Disallow: /notifications
+Disallow: /profile

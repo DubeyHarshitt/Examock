@@ -1,5 +1,6 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
+import { uniqueSlug } from "../../utils/slug.js";
 import { boss, QUEUE } from "../../config/queue.js";
 import cloudinary from "../../config/cloudinary.js";
 import { parseCsvToRows } from "./lib/csvRows.js";
@@ -48,12 +49,22 @@ export const getSubjects = async (examTypeId) => {
   });
 };
 
-export const createSubject = async ({ examTypeId, name, orderIndex = 0 }) => {
+export const createSubject = async ({ examTypeId, name, orderIndex = 0, slug }) => {
   if (!examTypeId || !name)
     throw new AppError("examTypeId and name are required", 400);
-  return prisma.subject.create({ data: { examTypeId, name, orderIndex } });
+  // URL slug for public SEO pages (ticket 24), unique within this exam.
+  const siblings = await prisma.subject.findMany({
+    where: { examTypeId },
+    select: { slug: true },
+  });
+  const finalSlug = uniqueSlug(slug || name, siblings.map((s) => s.slug));
+  return prisma.subject.create({
+    data: { examTypeId, name, slug: finalSlug, orderIndex },
+  });
 };
 
+// Note: slug is intentionally NOT regenerated on rename — public URLs
+// (/exams/:examSlug/:subjectSlug) must stay stable once indexed.
 export const updateSubject = async (id, data) => {
   return prisma.subject.update({ where: { id }, data });
 };
@@ -90,12 +101,22 @@ export const getTopics = async (subjectId) => {
   });
 };
 
-export const createTopic = async ({ subjectId, name, orderIndex = 0 }) => {
+export const createTopic = async ({ subjectId, name, orderIndex = 0, slug }) => {
   if (!subjectId || !name)
     throw new AppError("subjectId and name are required", 400);
-  return prisma.topic.create({ data: { subjectId, name, orderIndex } });
+  // URL slug for public SEO pages (ticket 24), unique within this subject.
+  const siblings = await prisma.topic.findMany({
+    where: { subjectId },
+    select: { slug: true },
+  });
+  const finalSlug = uniqueSlug(slug || name, siblings.map((t) => t.slug));
+  return prisma.topic.create({
+    data: { subjectId, name, slug: finalSlug, orderIndex },
+  });
 };
 
+// Note: slug is intentionally NOT regenerated on rename — public URLs
+// must stay stable once indexed.
 export const updateTopic = async (id, data) => {
   return prisma.topic.update({ where: { id }, data });
 };

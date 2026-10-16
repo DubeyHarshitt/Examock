@@ -39,6 +39,15 @@ const UploadPage = lazy(() => import("./pages/rag/UploadPage"));
 // of the student bundle until needed.
 const LandingPage = lazy(() => import("./pages/marketing/LandingPage"));
 
+// Public SEO pages (ticket 24) — unauthenticated, so lazy-loaded behind the
+// shared PublicShell; they must never pull student/admin code into the bundle.
+const PublicShell = lazy(() => import("./pages/public/PublicShell"));
+const PublicExamsPage = lazy(() => import("./pages/public/ExamsListPage"));
+const SyllabusPage = lazy(() => import("./pages/public/SyllabusPage"));
+const SubjectPage = lazy(() => import("./pages/public/SubjectPage"));
+const TopicPage = lazy(() => import("./pages/public/TopicPage"));
+const FreeQuestionsPage = lazy(() => import("./pages/public/FreeQuestionsPage"));
+
 // Admin — lazily loaded (F15): a student must never download the admin panel.
 const AdminDashboard = lazy(() => import("./pages/admin/adminDashboard"));
 const UsersPanel = lazy(() => import("./pages/admin/users/UsersPanel"));
@@ -125,6 +134,23 @@ export default function App() {
             {/* ── Public routes ─────────────────────────────── */}
             <Route path="/" element={<HomeRoute />} />
             <Route path="/login" element={<LoginPage />} />
+
+            {/* Public SEO pages (ticket 24) — outside ProtectedRoute on
+                purpose: crawlers and logged-out visitors must reach them.
+                Slugs in the path, not ids, so URLs stay stable. */}
+            <Route element={<PublicShell />}>
+              <Route path="/exams" element={<PublicExamsPage />} />
+              <Route path="/exams/:examSlug" element={<SyllabusPage />} />
+              <Route
+                path="/exams/:examSlug/:subjectSlug"
+                element={<SubjectPage />}
+              />
+              <Route
+                path="/exams/:examSlug/:subjectSlug/:topicSlug"
+                element={<TopicPage />}
+              />
+              <Route path="/free-questions" element={<FreeQuestionsPage />} />
+            </Route>
 
             {/* ── Onboarding — auth required, not yet fully onboarded ── */}
             <Route element={<OnboardingRoute />}>
